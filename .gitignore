@@ -1,0 +1,8 @@
+__pycache__/
+**/__pycache__/
+.vscode/
+test_file.*
+test_image.*
+**/.DS_Store
+backlog.txt
+data/*
