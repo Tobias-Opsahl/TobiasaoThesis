@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 import torchvision
 
@@ -100,6 +101,101 @@ def make_attr_model_double(n_input=112, n_hidden=200, n_output=200):
     return model
 
 
+class LinearWithInput(nn.Module):
+    """
+    Custom Linear Layer that also returns the input. Used for skip
+    connections on pretrained models.
+    """
+
+    def __init__(self, in_features, out_features):
+        super(LinearWithInput, self).__init__()
+        self.linear_layer = nn.Linear(in_features, out_features)
+        self.in_features = in_features
+        self.out_features = out_features
+
+    def forward(self, x):
+        output = self.linear_layer(x)
+        return output, x
+
+
+class Identity(nn.Module):
+    """
+    Identity function, in order to `remove` a layer of a pytorch model.
+    """
+
+    def __init__(self):
+        super(Identity, self).__init__()
+
+    def forward(self, x):
+        return x
+
+
+class CBMWithSkip(nn.Module):
+    """
+    CBM model with skip connection.
+    """
+    def __init__(self, n_attr, n_output, n_hidden, sigmoid, concat=False, small=True):
+        """
+        Model looks as follows:
+        Pretrained -> x -> attribute_layer -> y + x -> class_layer
+        Constructor. Can make residual or concatinated skip connections.
+
+        Args:
+            n_attr (int): Nodes in the attribute layer.
+            n_output (int): Nodes in the output layer
+            n_hidden (int): Nodes in the hidden layer (both before attribute
+                layer and class layer).
+            sigmoid (bool): Wether or not sigmoid is used in the attribute layer.
+            concat (bool, optional): Wether or not the skip connection is concatinated.
+                If not, they are added (like in ResNet). Defaults to False.
+            small (bool, optional): Wether or not to use small mobilenetv3 model.
+                Defaults to True.
+        """
+        super(CBMWithSkip, self).__init__()
+        self.concat = concat
+        # Load pretrained model
+        if small:
+            mobilenetv3 = torchvision.models.mobilenet_v3_small(weights="IMAGENET1K_V1")
+        else:
+            mobilenetv3 = torchvision.models.mobilenet_v3_large(weights="IMAGENET1K_V2")
+
+        for param in mobilenetv3.parameters():  # Freeze all layers
+            param.requires_grad = False
+
+        in_features = mobilenetv3.classifier[3].in_features  # Last layer of model
+        mobilenetv3.classifier[3] = nn.Linear(in_features, n_hidden)
+
+        for param in mobilenetv3.classifier[3].parameters():
+            param.requires_grad = True  # Make last layer trainable
+        self.pretrained = mobilenetv3
+
+        self.attribute_classifier = nn.Linear(n_hidden, n_attr)
+        self.sigmoid = None
+        if sigmoid:  # Sigmoid on attribute layer
+            self.sigmoid = nn.Sigmoid()
+        self.class_classifier1 = nn.Linear(n_attr, n_hidden)
+        self.class_activation = nn.ReLU()
+        if concat:  # Concatinate skip connection (DenseNet style)
+            self.class_classifier2 = nn.Linear(2 * n_hidden, n_output)
+        else:  # Residual skip connection (ResNet Style)
+            self.class_classifier2 = nn.Linear(n_hidden, n_output)
+
+    def forward(self, x):
+        pretrained_output = self.pretrained(x)
+        attr_output = self.attribute_classifier(pretrained_output)
+        if self.sigmoid is not None:
+            attr_output = self.sigmoid(attr_output)
+        if self.concat:  # Densenet skip connection
+            y = self.class_classifier1(attr_output)
+            x = torch.concat((y, pretrained_output), dim=1)
+        else:  # Residual connection
+            x = self.class_classifier1(attr_output) + pretrained_output
+
+        x = self.class_activation(x)
+        x = self.class_classifier2(x)
+        return x, attr_output
+
+
 class CombineModels(nn.Module):
     """
     Combines two models. The forward function will output both the final outputs,
@@ -109,16 +205,21 @@ class CombineModels(nn.Module):
     second model is the top layer(s) and takes 112 as input and output the amount
     of classes (200).
     """
-    def __init__(self, first_model, second_model, activation_func="sigmoid"):
+    def __init__(self, first_model, second_model, sigmoid=True):
+        """
+        Constructer of the model described above.
+
+        Args:
+            first_model (model): The first model (pretrained to attributes)
+            second_model (model): Second model (attributes to classes)
+            sigmoid (bool, optional): Wether or not to use sigmoid activation
+                function at the attribute layer. Defaults to True.
+        """
         super(CombineModels, self).__init__()
         self.first_model = first_model
         self.second_model = second_model
-        self.activation_func = activation_func
-        if activation_func is None:
-            self.actication_func = None
-        elif activation_func.lower() == "relu":
-            self.actication_func = nn.ReLU()
-        elif activation_func.lower() == "sigmoid":
+        self.activation_func = None
+        if sigmoid is not None:
             self.activation_func = nn.Sigmoid()
 
     def forward(self, inputs):
@@ -127,3 +228,32 @@ class CombineModels(nn.Module):
             attr_outputs = self.activation_func(attr_outputs)
         outputs = self.second_model(attr_outputs)
         return outputs, attr_outputs
+
+
+def make_cbm(n_classes, n_attr=112, sigmoid=True, double_top=True, n_hidden=256, small=True):
+    """
+    A normal CBM model, made with a pretrained model, classifier layers
+    and then combined with CombineModels.
+    Uses Mobilenetv3 (small or large) as the pretrained model
+
+    Args:
+        n_classes (int): Amount of output classes.
+        n_attr (int, optional): Amount of attributes. Defaults to 112.
+        sigmoid (bool): Wether or not to use sigmoid activation function at the
+            attribute layer.
+        double_top (bool, optional): If True, will use double Linear layer
+            at the top. Defaults to True.
+        n_hidden (int, optional): Number of hidden nodes to use in hidden layer
+            if `double_top` is True. Defaults to 256.
+        small (bool, optional): Wether to use small or large mobilenetv3. Defaults to True.
+
+    Returns:
+        model: The model
+    """
+    mobilenetv3 = make_mobilenetv3(n_output=n_attr, small=small)
+    if double_top:
+        top_model = make_attr_model_double(n_input=n_attr, n_hidden=n_hidden, n_output=n_classes)
+    else:
+        top_model = make_attr_model_single(n_input=n_attr, n_output=n_classes)
+    model = CombineModels(mobilenetv3, top_model, sigmoid=sigmoid)
+    return model

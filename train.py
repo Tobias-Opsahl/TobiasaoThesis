@@ -1,7 +1,7 @@
 import torch
 
 
-def train_model_simple(model, criterion, optimizer, train_loader, val_loader=None, n_epochs=10, scheduler=None):
+def train_simple(model, criterion, optimizer, train_loader, val_loader=None, n_epochs=10, scheduler=None):
     """
     Trains a model and calculate training and valudation stats, given the model, loader, optimizer
     and some hyperparameters.
