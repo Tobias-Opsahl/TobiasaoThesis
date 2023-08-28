@@ -1,12 +1,13 @@
 import pickle
 import torch
 import torchvision
+import numpy as np
 from torch.utils.data import Dataset, DataLoader
 from PIL import Image
 
 
 class CUBDataset(Dataset):
-    def __init__(self, data_path=None, data_list=None, transform=None, mapping=None):
+    def __init__(self, data_path=None, data_list=None, transform=None, mapping=None, attr_mask=None):
         """
         Dataset object for CUB dataset. The Dataloader returns
         (PIL-image, class-label-int, list-of-attribute-labels, img_path).
@@ -42,6 +43,10 @@ class CUBDataset(Dataset):
                 send this argument to convert the labels from bird indecies to indices in
                 0, ..., n_classes. See utils.make_small_dataset() for info of the subset,
                 this is useful for exploring since it runs much faster.
+            n_attr (np.array of int): If not None, will load a subset of the attributes.
+                The elements of the list are the indices of the features to be loaded.
+                Which features to use can be determined by `feature_selection.py`.
+                Note: Has to be array, list is not possible.
         """
         if data_list is not None:
             self.data_list = data_list
@@ -68,6 +73,7 @@ class CUBDataset(Dataset):
         self.transform = transform
         if mapping is not None:
             self.mapping = mapping
+        self.attr_mask = attr_mask
 
     def __len__(self):
         return len(self.data_list)
@@ -76,6 +82,9 @@ class CUBDataset(Dataset):
         img_path = self.data_list[idx]["img_path"]
         class_label = self.data_list[idx]["class_label"]
         attribute_label = torch.tensor(self.data_list[idx]["attribute_label"]).to(torch.float32)
+
+        if self.attr_mask is not None:  # Load only a subset of attribues
+            attribute_label = attribute_label[self.attr_mask]
 
         image = Image.open(img_path).convert("RGB")  # Some images are grayscale
 
@@ -169,7 +178,7 @@ def make_dataloader(dataset, sampler=None, batch_size=4, shuffle=True, drop_last
     return dataloader
 
 
-def load_data(mode="all", subset=None, path="data/CUB_processed/class_attr_data_10/",
+def load_data(mode="all", subset=None, n_attr=112, path="data/CUB_processed/class_attr_data_10/",
               resol=224, normalization="[-1, 1]", brightness=32 / 255,
               saturation=[0.5, 1.5], sampler=None, batch_size=4, shuffle=True, drop_last=False):
     """
@@ -188,6 +197,10 @@ def load_data(mode="all", subset=None, path="data/CUB_processed/class_attr_data_
         subset (int, optional): If not None, will only use a subset of the classes from the
             CUB dataset. Note that `utils.make_small_dataset()` should be called with
             the `n_classes` corresponding to `subset`, in order to first create the files.
+        n_attr (int): The amount of attributes (out of 112) to use. If not 112, the
+            features determined by the feature selection in `feature_selection.py` will
+            be used. This file should already be called, and saved as
+            "CUB_processed/CUB_feature_selection.pkl".
         path (str, optional): _description_. Defaults to "data/CUB_processed/class_attr_data_10/".
         resol (int, optional): The expected input height and width by the model,
             which the transfroms transforms to. Defaults to 224.
@@ -216,7 +229,16 @@ def load_data(mode="all", subset=None, path="data/CUB_processed/class_attr_data_
     mapping = None
     if subset is not None:  # Map class indices to labels
         mapping_path = path + str(subset) + "_class_mapping.pkl"
+        # Make sure `python initialize.py --make_dataset --n_classes subset`
+        # is called to make this dict:
         mapping = pickle.load(open(mapping_path, "rb"))
+
+    attr_mask = None
+    if n_attr < 112:
+        feature_path = "data/CUB_processed/CUB_feature_selection.pkl"
+        # Make sure `feature_selection.py` is called to make this dict:
+        info_dict = pickle.load(open(feature_path, "rb"))
+        attr_mask = np.array(info_dict[n_attr]["features"])
 
     for mode in modes:  # Loop over the train, val, test (or just one of them)
         transform = get_transforms(mode, resol=resol, normalization=normalization,
@@ -225,7 +247,8 @@ def load_data(mode="all", subset=None, path="data/CUB_processed/class_attr_data_
             full_path = path + str(subset) + "_" + mode + ".pkl"
         else:
             full_path = path + mode + ".pkl"
-        dataset = CUBDataset(data_path=full_path, transform=transform, mapping=mapping)
+        dataset = CUBDataset(data_path=full_path, transform=transform,
+                             mapping=mapping, attr_mask=attr_mask)
         dataloader = make_dataloader(dataset, sampler, batch_size, shuffle, drop_last)
         dataloaders.append(dataloader)
 

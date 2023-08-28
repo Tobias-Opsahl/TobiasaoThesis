@@ -12,12 +12,12 @@ from train import train_simple, train_cbm
 
 if __name__ == "__main__":
     n_classes = 10
-    n_attr = 112
+    n_attr = 15
     n_epochs = 10
     sigmoid = True
     n_hidden = 64
     small = True
-    train_loader, val_loader, test_loader = load_data(subset=n_classes)
+    train_loader, val_loader, test_loader = load_data(subset=n_classes, n_attr=n_attr)
 
     cbm = make_cbm(n_classes=n_classes, n_attr=n_attr, sigmoid=sigmoid, double_top=True,
                    n_hidden=n_hidden, small=small)
