@@ -1,7 +1,8 @@
 import torch
 
 
-def train_simple(model, criterion, optimizer, train_loader, val_loader=None, n_epochs=10, scheduler=None):
+def train_simple(model, criterion, optimizer, train_loader, val_loader=None, n_epochs=10,
+                 scheduler=None, device=None, non_blocking=False):
     """
     Trains a model and calculate training and valudation stats, given the model, loader, optimizer
     and some hyperparameters.
@@ -15,16 +16,24 @@ def train_simple(model, criterion, optimizer, train_loader, val_loader=None, n_e
             If not None, will calculate validation loss and accuracy after each epoch.
         n_epochs (int, optional): Amount of epochs to run. Defaults to 10.
         scheduler (scheduler, optional): Optional learning rate scheduler.
+        device (str): Use "cpu" for cpu training and "cuda:0" for gpu training.
+        non_blocking (bool): If True, allows for asyncronous transfer between RAM and VRAM.
+            This only works together with `pin_memory=True` to dataloader and GPU training.
 
     Returns:
         model: The trained model.
     """
-
+    if device is None:
+        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    model = model.to(device, non_blocking=non_blocking)
     for epoch in range(n_epochs):  # Train
         train_loss = 0
         train_correct = 0
         model.train()
         for input, labels, attr_labels, paths in train_loader:
+            input = input.to(device, non_blocking=non_blocking)
+            labels = labels.to(device, non_blocking=non_blocking)
+
             optimizer.zero_grad()
             outputs = model(input)
 
@@ -44,6 +53,8 @@ def train_simple(model, criterion, optimizer, train_loader, val_loader=None, n_e
             val_loss = 0
             val_correct = 0
             for input, labels, attr_labels, paths in val_loader:
+                input = input.to(device, non_blocking=non_blocking)
+                labels = labels.to(device, non_blocking=non_blocking)
                 optimizer.zero_grad()
                 outputs = model(input)
 
@@ -69,7 +80,7 @@ def train_simple(model, criterion, optimizer, train_loader, val_loader=None, n_e
 
 
 def train_cbm(model, criterion, attr_criterion, optimizer, train_loader, val_loader=None,
-              n_epochs=10, attr_weight=0.01, scheduler=None):
+              n_epochs=10, attr_weight=0.01, scheduler=None, device=None, non_blocking=False):
     """
     Trains and evaluates a Joint Concept Bottleneck Model. This means it is both trained normal
     output cross entropy loss, but also on the intermediary attribute loss.
@@ -86,10 +97,16 @@ def train_cbm(model, criterion, attr_criterion, optimizer, train_loader, val_loa
         attr_weight (float): The weight of the attribute loss function. Equal to Lambda in
             the Concept Bottleneck Models paper.
         scheduler (scheduler, optional): Optional learning rate scheduler.
+        device (str): Use "cpu" for cpu training and "cuda:0" for gpu training.
+        non_blocking (bool): If True, allows for asyncronous transfer between RAM and VRAM.
+            This only works together with `pin_memory=True` to dataloader and GPU training.
 
     Returns:
         model: The trained model.
     """
+    if device is None:
+        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    model = model.to(device, non_blocking=non_blocking)
     for epoch in range(n_epochs):  # Train
         train_attr_loss = 0
         train_attr_correct = 0
@@ -97,6 +114,9 @@ def train_cbm(model, criterion, attr_criterion, optimizer, train_loader, val_loa
         train_class_correct = 0
         model.train()
         for input, labels, attr_labels, paths in train_loader:
+            input = input.to(device, non_blocking=non_blocking)
+            labels = labels.to(device, non_blocking=non_blocking)
+            attr_labels = attr_labels.to(device, non_blocking=non_blocking)
             optimizer.zero_grad()
             class_outputs, attr_outputs = model(input)
 
@@ -126,6 +146,9 @@ def train_cbm(model, criterion, attr_criterion, optimizer, train_loader, val_loa
             val_class_loss = 0
             val_class_correct = 0
             for input, labels, attr_labels, paths in val_loader:
+                input = input.to(device, non_blocking=non_blocking)
+                labels = labels.to(device, non_blocking=non_blocking)
+                attr_labels = attr_labels.to(device, non_blocking=non_blocking)
                 optimizer.zero_grad()
                 class_outputs, attr_outputs = model(input)
 

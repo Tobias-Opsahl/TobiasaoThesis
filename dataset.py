@@ -71,8 +71,7 @@ class CUBDataset(Dataset):
 
         self.data_list = data_list
         self.transform = transform
-        if mapping is not None:
-            self.mapping = mapping
+        self.mapping = mapping
         self.attr_mask = attr_mask
 
     def __len__(self):
@@ -90,6 +89,8 @@ class CUBDataset(Dataset):
 
         if self.transform:
             image = self.transform(image)
+        else:
+            image = torchvision.transforms.ToTensor()(image)
 
         if self.mapping is not None:  # Map bird index to label
             class_label = self.mapping[class_label]
@@ -151,7 +152,8 @@ def get_transforms(mode, resol=224, normalization="[-1, 1]",
     return transform
 
 
-def make_dataloader(dataset, sampler=None, batch_size=4, shuffle=True, drop_last=False):
+def make_dataloader(dataset, sampler=None, batch_size=4, shuffle=True, drop_last=False,
+                    num_workers=0, pin_memory=False, persistent_workers=False):
     """
     Converts a Dataset to a Dataloader.
     If one uses a costum sampler, send this as `sampler`.
@@ -165,6 +167,13 @@ def make_dataloader(dataset, sampler=None, batch_size=4, shuffle=True, drop_last
             It is recommended to use `True` for training and `False` for validating.
         drop_last (bool, optional): Determines wether the last iteration of an epoch
             is dropped when the amount of elements is less than `batch_size`.
+        num_workers (int): The amount of subprocesses used to load the data from disk to RAM.
+            0, default, means that it will run as main process.
+        pin_memory (bool): Whether or not to pin RAM memory (make it non-pagable).
+            This can increase loading speed from RAM to VRAM (when using `to("cuda:0")`,
+            but also increases the amount of RAM necessary to run the job. Should only
+            be used with GPU training.
+        persistent_workers (bool): If `True`, will not shut down workers between epochs.
 
     Returns:
         Dataloader: The Dataloader
@@ -172,15 +181,18 @@ def make_dataloader(dataset, sampler=None, batch_size=4, shuffle=True, drop_last
     if sampler is not None:
         batch_sampler = torch.utils.data.BatchSampler(sampler(dataset), batch_size=batch_size,
                                                       shuffle=shuffle, drop_last=drop_last)
-        dataloader = DataLoader(dataset, sampler=batch_sampler)
+        dataloader = DataLoader(dataset, sampler=batch_sampler, num_workers=num_workers, pin_memory=pin_memory,
+                                persistent_workers=persistent_workers)
     else:
-        dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, drop_last=drop_last)
+        dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, drop_last=drop_last,
+                                num_workers=num_workers, pin_memory=pin_memory, persistent_workers=persistent_workers)
     return dataloader
 
 
 def load_data(mode="all", subset=None, n_attr=112, path="data/CUB_processed/class_attr_data_10/",
               resol=224, normalization="[-1, 1]", brightness=32 / 255,
-              saturation=[0.5, 1.5], sampler=None, batch_size=4, shuffle=True, drop_last=False):
+              saturation=[0.5, 1.5], sampler=None, batch_size=4, shuffle=True, drop_last=False,
+              num_workers=0, pin_memory=False, persistent_workers=False):
     """
     Main function to call for loading the CUB dataset.
 
@@ -216,6 +228,13 @@ def load_data(mode="all", subset=None, n_attr=112, path="data/CUB_processed/clas
             It is recommended to use `True` for training and `False` for validating.
         drop_last (bool, optional): Determines wether the last iteration of an epoch
             is dropped when the amount of elements is less than `batch_size`.
+        num_workers (int): The amount of subprocesses used to load the data from disk to RAM.
+            0, default, means that it will run as main process.
+        pin_memory (bool): Whether or not to pin RAM memory (make it non-pagable).
+            This can increase loading speed from RAM to VRAM (when using `to("cuda:0")`,
+            but also increases the amount of RAM necessary to run the job. Should only
+            be used with GPU training.
+        persistent_workers (bool): If `True`, will not shut down workers between epochs.
 
     Returns:
         Dataloader: The dataloader, or the list of the three dataloaders.
@@ -227,6 +246,8 @@ def load_data(mode="all", subset=None, n_attr=112, path="data/CUB_processed/clas
 
     dataloaders = []
     mapping = None
+    if subset == 200:  # We are using all the classes, so no actual subset will be used
+        subset = None
     if subset is not None:  # Map class indices to labels
         mapping_path = path + str(subset) + "_class_mapping.pkl"
         # Make sure `python initialize.py --make_dataset --n_classes subset`
@@ -249,7 +270,9 @@ def load_data(mode="all", subset=None, n_attr=112, path="data/CUB_processed/clas
             full_path = path + mode + ".pkl"
         dataset = CUBDataset(data_path=full_path, transform=transform,
                              mapping=mapping, attr_mask=attr_mask)
-        dataloader = make_dataloader(dataset, sampler, batch_size, shuffle, drop_last)
+        dataloader = make_dataloader(dataset=dataset, sampler=sampler, batch_size=batch_size, shuffle=shuffle,
+                                     drop_last=drop_last, num_workers=num_workers, pin_memory=pin_memory,
+                                     persistent_workers=persistent_workers)
         dataloaders.append(dataloader)
 
     if len(dataloaders) == 1:  # Just return the datalaoder, not list
