@@ -257,3 +257,54 @@ def make_cbm(n_classes, n_attr=112, sigmoid=True, double_top=True, n_hidden=256,
         top_model = make_attr_model_single(n_input=n_attr, n_output=n_classes)
     model = CombineModels(mobilenetv3, top_model, sigmoid=sigmoid)
     return model
+
+
+class SequentialConceptModel(nn.Module):
+    """
+    Model based on CBM that trains on concepts, but concepts are distributed
+    along layers, instead of all in one layer.
+    """
+    def __init__(self, n_attr, n_hidden, n_classes, small=True):
+        super(SequentialConceptModel, self).__init__()
+        self.n_attr = n_attr
+        # Load pretrained model
+        if small:
+            mobilenetv3 = torchvision.models.mobilenet_v3_small(weights="IMAGENET1K_V1")
+        else:
+            mobilenetv3 = torchvision.models.mobilenet_v3_large(weights="IMAGENET1K_V2")
+
+        for param in mobilenetv3.parameters():  # Freeze all layers
+            param.requires_grad = False
+
+        in_features = mobilenetv3.classifier[3].in_features  # Last layer of model
+        mobilenetv3.classifier[3] = nn.Linear(in_features, n_hidden)
+
+        for param in mobilenetv3.classifier[3].parameters():
+            param.requires_grad = True  # Make last layer trainable
+        self.pretrained = mobilenetv3
+
+        self.linear_layers = []
+        self.activation_functions = []
+        self.batch_norms = []
+        self.output_layers = []
+        for _ in range(n_attr):
+            self.linear_layers.append(nn.Linear(n_hidden, n_hidden))
+            self.batch_norms.append(nn.BatchNorm1d(n_hidden))
+            self.activation_functions.append(nn.ReLU())
+            self.output_layers.append(nn.Linear(n_hidden, 1))
+        self.classifier = nn.Linear(n_hidden + n_attr, n_classes)
+
+    def forward(self, x):
+        x = self.pretrained(x)
+        pretrained_output = x  # TODO: Check that this is not inplace
+        concepts = []
+        for i in range(self.n_attr):
+            x = self.linear_layers[i](x)
+            x = self.batch_norms[i](x)
+            x = self.activation_functions[i](x)
+            concept_output = self.output_layers[i](x)
+            concepts.append(concept_output)
+        concepts = torch.concat(concepts, dim=1)  # Turn list into tensor
+        x = torch.concat((x, concepts), dim=1)
+        x = self.classifier(x)
+        return x, concepts
