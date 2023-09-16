@@ -20,16 +20,17 @@ for each class for different amount of total classes.
 
 The datasets gets saved and organised in folders, with one folder of images for each class. The concept-labels,
 class labels and image-paths can be found in `data-list`, which is stored as a pickle file. This can be split
-into "train", "validation" and "test". There are also help function for renaming and making subsets of data.
+into "train", "validation" and "test". There are also help function for renaming and making subsets of data,
+found in `datasets_shapes.py`.
 """
 
 import os
 import shutil
 import pickle
-import random
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+from utils import split_dataset
 
 
 def draw_concept_probabilities(n_classes, class_number, signal_strength=0.98,
@@ -552,103 +553,6 @@ def generate_shapes_dataset(class_names, shape_combinations, n_images_class=10, 
         print("Finished writing tables.")
 
 
-def split_dataset(data_list, tables_dir, seed=57):
-    """
-    Splits a dataset into "train", "validation" and "test".
-
-    Args:
-        data_list (list): List of rows, each element is an instance-dict.
-        tables_dir (str): The path to save the data-tables
-        seed (int, optional): Seed for the rng. Defaults to 57.
-    """
-    random.seed(seed)
-    n_images = len(data_list)
-    random.shuffle(data_list)
-    train_size = int(0.5 * n_images)
-    val_size = int(0.3 * n_images)
-
-    train_data = data_list[: train_size]
-    val_data = data_list[train_size: train_size + val_size]
-    test_data = data_list[train_size + val_size:]
-    with open(tables_dir + "train_data.pkl", "wb") as outfile:
-        pickle.dump(train_data, outfile)
-    with open(tables_dir + "val_data.pkl", "wb") as outfile:
-        pickle.dump(val_data, outfile)
-    with open(tables_dir + "test_data.pkl", "wb") as outfile:
-        pickle.dump(test_data, outfile)
-
-
-def make_table_subsets(path, n_images_class, n_classes, split_data=True, seed=57):
-    """
-    Makes a subset of a data-table. This can then be split into "train", "validation" and "test".
-    This makes it possible to easily train with less data for a given dataset. For example, if there are
-    5k images for each class in a dataset, one can call this function with `n_images_class=100` to make
-    new data-tables. The path of these can then be sent into the dataloader, so that only 100 images
-    (which are randomly drawn here) will be used in the dataloader.
-
-    Args:
-        path (str): Path to where the data-list lies.
-        n_images_class (int): The amount of images to include for each class. Must be less than the total number
-            of images in each class.
-        n_classes (int): The total amount of classes in the dataset.
-        split_data (bool, optional): If True, splits into "train", "validation" and "test". Defaults to True.
-        seed (int, optional): The seed for the rng. Defaults to 57.
-    """
-    random.seed(seed)
-    data_list = pickle.load(open(path + "data_list.pkl", "rb"))
-
-    class_dict = {}  # Sort dicts by label
-    for i in range(n_classes):
-        class_dict[i] = []
-    for i in range(len(data_list)):
-        class_dict[data_list[i]["class_label"]].append(data_list[i])
-
-    new_list = []
-    for i in range(n_classes):
-        sub_list = random.sample(class_dict[i], n_images_class)
-        new_list.extend(sub_list)
-
-    tables_dir = path + "sub" + str(n_images_class) + "/"
-    os.makedirs(tables_dir, exist_ok=True)
-    with open(tables_dir + "data_list.pkl", "wb") as outfile:
-        pickle.dump(data_list, outfile)
-    if split_data:
-        split_dataset(new_list, tables_dir)
-
-
-def change_dataset_name(old_path, new_path):
-    """
-    Changes a name of a dataset folder, and correspondingly changes all of the image-paths in the
-    data-lists and splits corresponding to it.
-
-    The data-lists and splits are stored in the folder `dataset_path/tables/`, and if there are subset of them,
-    created with `make_table_subsets()`, they are stored in `dataset_path/tables/sub100/`.
-    Replaces all of the data-lists files img_paths.
-
-    Args:
-        old_path (str): The path to the dataset to be renamed. Must contain both the path and the folder name.
-        new_path (str): The name of the new path and folder. Must contain both the path and the folder name.
-    """
-    os.rename(old_path, new_path)  # Rename the actual folder
-
-    tables_paths = [new_path + "tables/"]  # Find all the directories containing data-lists and splits
-    for name in os.listdir(new_path + "tables/"):  # Check for folders inside `tables/`
-        new_full_path = new_path + "tables/" + name
-        if os.path.isdir(new_full_path):
-            tables_paths.append(new_full_path)
-
-    for table_path in tables_paths:  # Loop over the possible table-folders
-        for filename in os.listdir(table_path):  # Loop over the files inside the folder
-            if not filename.endswith(".pkl"):
-                continue
-            file_path = table_path + filename
-            data_list = pickle.load(open(file_path, "rb"))
-            for i in range(len(data_list)):  # Loop over the instances in the data-list.
-                data_list[i]["img_path"] = data_list[i]["img_path"].replace(old_path, new_path)
-            with open(file_path, "wb") as outfile:  # Overwrite
-                pickle.dump(data_list, outfile)
-
-
 def make_shapes_10k_c4_correlation():
     """
     Makes a dataset with 10k images of 4 classes, with concept-class correlation.
@@ -690,7 +594,7 @@ if __name__ == "__main__":
     all_shapes = ["circle", "rectangle", "triangle", "pentagon", "hexagon", "ellipse", "wedge"]
     some_shapes = all_shapes[:5]
     shape_combinations = [[shape_name] for shape_name in some_shapes]
-    generate_shapes_dataset(some_shapes, shape_combinations, equal_probabilities=False)
-    change_dataset_name("data/shapes/shapes_testing/", "data/shapes/shapes_testing2/")
+    generate_shapes_dataset(some_shapes, shape_combinations, equal_probabilities=False, n_images_class=10)
+    # change_dataset_name("data/shapes/shapes_testing/", "data/shapes/shapes_testing2/")
     # from IPython import embed
     # embed()

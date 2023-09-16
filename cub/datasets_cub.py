@@ -7,23 +7,25 @@ from PIL import Image
 
 
 class CUBDataset(Dataset):
+    """
+    Dataset object for CUB dataset. The Dataloader returns
+    (PIL-image, class-label-int, list-of-attribute-labels, img_path).
+
+    This uses the CUB dataset and the preprocessed
+    version from the CBM 2020 paper. Note that the CBM paper have the authors full
+    path as image path arguments. This can be updated by calling `make_correct_paths()`
+    from `initialize.py`, or by `python initialize.py --base_path base_path`.
+
+    The original CUB dataset should be stored in the given `base_path`, where is `data/`
+    is used for the author. This folder should be in the same folder as this file if one
+    uses relative paths.
+    Additionally, the preprocessed pickle files from the CBM paper should also be in the
+    same folder. This pickle files contains a list of a object-level dict, with paths,
+    class labels, attribute labels and attribute certainty.
+    """
+
     def __init__(self, data_path=None, data_list=None, transform=None, mapping=None, attr_mask=None):
         """
-        Dataset object for CUB dataset. The Dataloader returns
-        (PIL-image, class-label-int, list-of-attribute-labels, img_path).
-
-        This uses the CUB dataset and the preprocessed
-        version from the CBM 2020 paper. Note that the CBM paper have the authors full
-        path as image path arguments. This can be updated by calling `make_correct_paths()`
-        from `initialize.py`, or by `python initialize.py --base_path base_path`.
-
-        The original CUB dataset should be stored in the given `base_path`, where is `data/`
-        is used for the author. This folder should be in the same folder as this file if one
-        uses relative paths.
-        Additionally, the preprocessed pickle files from the CBM paper should also be in the
-        same folder. This pickle files contains a list of a object-level dict, with paths,
-        class labels, attribute labels and attribute certainty.
-
         To access the CBM pickle data, please either proved `data_path` as a path to where
         it lies, or `data_list` where the pickle files are already read.
 
@@ -38,10 +40,10 @@ class CUBDataset(Dataset):
                 which one can reach by setting `data_path` to "default_train",
                 "default_val", or "default_test".
             transform (callable, optional): Optional transform to be applied on the image.
-                One can use `get_transforms()` to get this.
+                One can use `get_transforms_cub()` to get this.
             mapping (dict): In case the data_list use is a subset of all classes,
                 send this argument to convert the labels from bird indecies to indices in
-                0, ..., n_classes. See utils.make_small_dataset() for info of the subset,
+                0, ..., n_classes. See utils.make_subset_cub() for info of the subset,
                 this is useful for exploring since it runs much faster.
             n_attr (np.array of int): If not None, will load a subset of the attributes.
                 The elements of the list are the indices of the features to be loaded.
@@ -98,8 +100,8 @@ class CUBDataset(Dataset):
         return image, class_label, attribute_label, img_path
 
 
-def get_transforms(mode, resol=224, normalization="[-1, 1]",
-                   brightness=32 / 255, saturation=[0.5, 1.5]):
+def get_transforms_cub(mode, resol=224, normalization="[-1, 1]",
+                       brightness=32 / 255, saturation=[0.5, 1.5]):
     """
     Returns the callable for transforming the images for the CUB dataset.
     The `normalization` argument either scales to the interval [-1, 1], or
@@ -189,14 +191,14 @@ def make_dataloader(dataset, sampler=None, batch_size=4, shuffle=True, drop_last
     return dataloader
 
 
-def load_data(mode="all", subset=None, n_attr=112, path="data/CUB_processed/class_attr_data_10/",
-              resol=224, normalization="[-1, 1]", brightness=32 / 255,
-              saturation=[0.5, 1.5], sampler=None, batch_size=4, shuffle=True, drop_last=False,
-              num_workers=0, pin_memory=False, persistent_workers=False):
+def load_data_cub(mode="all", subset=None, n_attr=112, path="data/CUB_processed/class_attr_data_10/",
+                  resol=224, normalization="[-1, 1]", brightness=32 / 255,
+                  saturation=[0.5, 1.5], sampler=None, batch_size=4, shuffle=True, drop_last=False,
+                  num_workers=0, pin_memory=False, persistent_workers=False):
     """
     Main function to call for loading the CUB dataset.
 
-    Function that calls CUBDataset, get_transforms() and make_dataloader().
+    Function that calls CUBDataset, get_transforms_cub() and make_dataloader().
     This is meant as a convenient way of just calling one function to get the
     final dataloaders. Takes in all of the arguments that the other functions does.
     Note that `mode` can be in ["train", "val", "test", "all"]. If it is one of the
@@ -207,13 +209,13 @@ def load_data(mode="all", subset=None, n_attr=112, path="data/CUB_processed/clas
         mode (str, optional): The datasetmode to loader. If "all", will return a
             tuple of (train, val, test). Defaults to "all".
         subset (int, optional): If not None, will only use a subset of the classes from the
-            CUB dataset. Note that `utils.make_small_dataset()` should be called with
+            CUB dataset. Note that `utils.make_subset_cub()` should be called with
             the `n_classes` corresponding to `subset`, in order to first create the files.
         n_attr (int): The amount of attributes (out of 112) to use. If not 112, the
             features determined by the feature selection in `feature_selection.py` will
             be used. This file should already be called, and saved as
             "CUB_processed/CUB_feature_selection.pkl".
-        path (str, optional): _description_. Defaults to "data/CUB_processed/class_attr_data_10/".
+        path (str, optional): Path to the data-folder. Defaults to "data/CUB_processed/class_attr_data_10/".
         resol (int, optional): The expected input height and width by the model,
             which the transfroms transforms to. Defaults to 224.
         normalization (str, optional): The normalization method. Defaults to "[-1, 1]".
@@ -262,8 +264,8 @@ def load_data(mode="all", subset=None, n_attr=112, path="data/CUB_processed/clas
         attr_mask = np.array(info_dict[n_attr]["features"])
 
     for mode in modes:  # Loop over the train, val, test (or just one of them)
-        transform = get_transforms(mode, resol=resol, normalization=normalization,
-                                   brightness=brightness, saturation=saturation)
+        transform = get_transforms_cub(mode, resol=resol, normalization=normalization,
+                                       brightness=brightness, saturation=saturation)
         if subset is not None:
             full_path = path + str(subset) + "_" + mode + ".pkl"
         else:
@@ -278,3 +280,71 @@ def load_data(mode="all", subset=None, n_attr=112, path="data/CUB_processed/clas
     if len(dataloaders) == 1:  # Just return the datalaoder, not list
         return dataloaders[0]
     return dataloaders  # List of (train, val, test) dataloaders
+
+
+def make_subset_cub(n_classes=10, random_choice=True):
+    """
+    Makes a subset of the list of dictionaries, only containing some of the
+    original classes. The original image-files are untouched, since the dictionaries
+    contains paths to the images.
+
+    The new pickle files will be stored in the same place as the old ones,
+    where the name starts with the amount of classes followed by underscore.
+
+    Args:
+        n_classes (int, optional): Amonut of classes to use. Defaults to 10.
+        random_choice (bool, optional): If True, will chose indices (among the 200)
+            at random. If false, chooses the first from 1 to `n_classes` + 1.
+            Defaults to True.
+    """
+    total_classes = 200
+    if random_choice:  # Choose indices
+        indices = np.random.choice(total_classes, n_classes, replace=False)
+    else:
+        indices = np.arange(n_classes)
+    indices = indices + 1  # Image folders start indexing at 1
+    indices.sort()
+
+    preprocess_dir = "data/CUB_processed/class_attr_data_10/"
+    for mode in ["train", "val", "test"]:  # Make a new dict of every mode
+        new_list = []
+        full_path = preprocess_dir + mode + ".pkl"
+        data_list = pickle.load(open(full_path, "rb"))
+        for im_dict in data_list:  # For every dict in the list
+            index = int(im_dict["img_path"].split("/")[-2].split(".")[0])
+            if index in indices:  # Check if img-path is of correct class
+                new_list.append(im_dict)
+        with open(preprocess_dir + str(n_classes) + "_" + mode + ".pkl", "wb") as outfile:
+            pickle.dump(new_list, outfile)
+
+    mapping = {}  # Save mapping from indices to 0, ..., n_classes (for training)
+    for i in range(n_classes):
+        mapping[indices[i] - 1] = i  # Indices in labels start from 0
+
+    with open(preprocess_dir + str(n_classes) + "_class_mapping.pkl", "wb") as outfile:
+        pickle.dump(mapping, outfile)
+
+
+def make_correct_paths(base_path="data/"):
+    """
+    Reads the preprocessed CUB dictionaries and overwrites the base path.
+    The original published dataset had the authors full path in the `img_path`
+    attribute.
+    Saves the new pickled list of dicts as `train.pkl` for train, val and test.
+
+    Args:
+        base_path (str, optional): The base-path one. Defaults to "data/".
+            The folders `CUB_processed/class_attr_data_10/` should be inside
+            this folder.
+    """
+    mid_path = "CUB_processed/class_attr_data_10/"
+    for dataset in ["train", "val", "test"]:
+        full_path = base_path + mid_path + dataset + ".pkl"
+        data_list = pickle.load(open(full_path, "rb"))
+        # Data is a list of each observation
+        for row in data_list:  # Loop over each dict
+            # Overwrite each path with correct path
+            row["img_path"] = base_path + row["img_path"].split("datasets/")[1]
+
+        with open(base_path + mid_path + dataset + ".pkl", "wb") as outfile:
+            pickle.dump(data_list, outfile)

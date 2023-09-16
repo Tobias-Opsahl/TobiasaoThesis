@@ -1,3 +1,8 @@
+"""
+Models for the CUB dataset.
+NOTE: mobilenetv3s weight does not work for torch version 1, which is ran at ml.hpc.uio.
+It should be swapped for another pretrained model, or examined in more detail.
+"""
 import torch
 import torch.nn as nn
 import torchvision

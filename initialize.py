@@ -1,5 +1,5 @@
 import argparse
-from utils import make_correct_paths, make_small_dataset
+from utils import make_correct_paths, make_subset_cub
 
 
 def parse_arguments():
@@ -36,4 +36,4 @@ if __name__ == "__main__":
     if args.action == "make_paths":  # Corrects the paths in the data dictionaries
         make_correct_paths(args.base_path)
     elif args.action == "make_dataset":  # Makes subsets of data (only dictionaries)
-        make_small_dataset(n_classes=args.n_classes, random_choice=args.random_choice)
+        make_subset_cub(n_classes=args.n_classes, random_choice=args.random_choice)
