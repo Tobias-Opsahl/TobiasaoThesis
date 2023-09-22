@@ -31,6 +31,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from utils import split_dataset
+from shapes.datasets_shapes import make_subset_shapes
 
 
 def draw_concept_probabilities(n_classes, class_number, signal_strength=0.98,
@@ -93,6 +94,24 @@ def draw_concept_probabilities(n_classes, class_number, signal_strength=0.98,
         dark_facecolor_prob = set_probability(class_number, [1, 4, 5, 8, 9], signal_strength)
         dark_outline_prob = set_probability(class_number, [0, 6, 7], signal_strength)
         stripes_prob = set_probability(class_number, [3, 7, 9], signal_strength)
+        if use_position_concepts:
+            right_side_prob = set_probability(class_number, [0, 1], signal_strength)
+            upper_side_prob = set_probability(class_number, [1, 2], signal_strength)
+    elif n_classes == 15:
+        thick_outline_prob = set_probability(class_number, [0, 2, 4, 6, 8, 10, 12, 14], signal_strength)
+        big_figure_prob = set_probability(class_number, [0, 1, 2, 3, 4, 5, 6, 7], signal_strength)
+        dark_facecolor_prob = set_probability(class_number, [1, 4, 5, 8, 9, 11, 13], signal_strength)
+        dark_outline_prob = set_probability(class_number, [0, 6, 7, 10], signal_strength)
+        stripes_prob = set_probability(class_number, [3, 7, 9, 12], signal_strength)
+        if use_position_concepts:
+            right_side_prob = set_probability(class_number, [0, 1], signal_strength)
+            upper_side_prob = set_probability(class_number, [1, 2], signal_strength)
+    elif n_classes == 21:
+        thick_outline_prob = set_probability(class_number, [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20], signal_strength)
+        big_figure_prob = set_probability(class_number, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], signal_strength)
+        dark_facecolor_prob = set_probability(class_number, [1, 4, 5, 8, 9, 11, 13, 15, 19], signal_strength)
+        dark_outline_prob = set_probability(class_number, [3, 6, 7, 10, 17], signal_strength)
+        stripes_prob = set_probability(class_number, [3, 7, 9, 12, 14, 16, 18, 19], signal_strength)
         if use_position_concepts:
             right_side_prob = set_probability(class_number, [0, 1], signal_strength)
             upper_side_prob = set_probability(class_number, [1, 2], signal_strength)
@@ -508,7 +527,7 @@ def generate_shapes_dataset(class_names, shape_combinations, n_images_class=10, 
         shutil.rmtree(base_dir)
     os.makedirs(base_dir)
 
-    data_list = []  # List of instances' img_path, class_label, attribute_label, class_name
+    data_list = []  # List of instances" img_path, class_label, attribute_label, class_name
     for i in range(len(class_names)):
         shape_name = class_names[i]
         shape_combination = shape_combinations[i]
@@ -585,16 +604,40 @@ def make_shapes_2k_c10_correlation():
     shape_combinations = []  # Nested list structure
     for shape_name in class_names:
         shape_combinations.append([shape_name.split("_")[0], shape_name.split("_")[1]])
-    base_dir = "data/shapes/shapes_2k_c10_a5_correlation/"
+    base_dir = "data/shapes/shapes_2k_c10_a5/"
     generate_shapes_dataset(class_names=class_names, shape_combinations=shape_combinations, n_images_class=2000,
+                            split_data=True, base_dir=base_dir, use_position_concepts=False)
+
+
+def make_shapes_1k_c15_a5():
+    class_names = ["triangle_triangle", "triangle_rectangle", "triangle_hexagon", "triangle_ellipse", "triangle_wedge",
+                   "rectangle_rectangle", "rectangle_hexagon", "rectangle_ellipse", "rectangle_wedge",
+                   "hexagon_hexagon", "hexagon_ellipse", "hexagon_wedge", "ellipse_ellipse", "ellipse_wedge",
+                   "wedge_wedge"]
+    shape_combinations = []
+    for shape_name in class_names:
+        shape_combinations.append([shape_name.split("_")[0], shape_name.split("_")[1]])
+    base_dir = "data/shapes/shapes_1k_c15_a5/"
+    generate_shapes_dataset(class_names=class_names, shape_combinations=shape_combinations, n_images_class=1000,
+                            split_data=True, base_dir=base_dir, use_position_concepts=False)
+
+
+def make_shapes_1k_c21_a5():
+    class_names = ["triangle_triangle", "rectangle_triangle", "pentagon_triangle", "hexagon_triangle",
+                   "ellipse_triangle", "triangle_wedge", "rectangle_rectangle", "pentagon_rectangle",
+                   "hexagon_rectangle", "ellipse_rectangle", "rectangle_wedge", "pentagon_pentagon",
+                   "hexagon_pentagon", "ellipse_pentagon", "pentagon_wedge", "hexagon_hexagon", "ellipse_hexagon",
+                   "hexagon_wedge", "ellipse_ellipse", "ellipse_wedge", "wedge_wedge"]
+    shape_combinations = []
+    for shape_name in class_names:
+        shape_combinations.append([shape_name.split("_")[0], shape_name.split("_")[1]])
+    base_dir = "data/shapes/shapes_1k_c21_a5/"
+    generate_shapes_dataset(class_names=class_names, shape_combinations=shape_combinations, n_images_class=1000,
                             split_data=True, base_dir=base_dir, use_position_concepts=False)
 
 
 if __name__ == "__main__":
     all_shapes = ["circle", "rectangle", "triangle", "pentagon", "hexagon", "ellipse", "wedge"]
-    some_shapes = all_shapes[:5]
-    shape_combinations = [[shape_name] for shape_name in some_shapes]
-    generate_shapes_dataset(some_shapes, shape_combinations, equal_probabilities=False, n_images_class=10)
-    # change_dataset_name("data/shapes/shapes_testing/", "data/shapes/shapes_testing2/")
+
     # from IPython import embed
     # embed()
