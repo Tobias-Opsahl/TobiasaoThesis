@@ -7,3 +7,7 @@ test_image.*
 backlog.txt
 back_log.txt
 data/*
+history/*
+saved_models/*
+plots/*
+hyperparameters/shapes/testing/**
