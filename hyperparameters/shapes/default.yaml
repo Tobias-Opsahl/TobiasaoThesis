@@ -1,0 +1,28 @@
+cbm:
+  attr_weight: 1
+  gamma: 0.1
+  learning_rate: 0.01
+  n_epochs: 15
+  n_linear_output: 64
+  two_layers: true
+  activation: None
+cbm_res:
+  attr_weight: 1
+  gamma: 0.1
+  learning_rate: 0.01
+  n_epochs: 15
+  n_linear_output: 64
+  activation: None
+cbm_skip:
+  attr_weight: 1
+  gamma: 0.1
+  learning_rate: 0.01
+  n_epochs: 15
+  n_hidden: 16
+  n_linear_output: 64
+  activation: None
+cnn:
+  gamma: 0.1
+  learning_rate: 0.01
+  n_epochs: 15
+  n_linear_output: 64

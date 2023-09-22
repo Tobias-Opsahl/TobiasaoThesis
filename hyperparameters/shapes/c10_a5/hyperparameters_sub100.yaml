@@ -1,0 +1,36 @@
+cbm:
+  activation: sigmoid
+  attr_weight: 3.8723
+  gamma: 0.9119
+  learning_rate: 0.0
+  n_epochs: 2
+  n_linear_output: 150
+  test_accuracy: 0
+  two_layers: true
+  val_loss: 2.2199
+cbm_res:
+  activation: sigmoid
+  attr_weight: 0.0273
+  gamma: 0.6967
+  learning_rate: 0.0001
+  n_epochs: 3
+  n_linear_output: 234
+  test_accuracy: 0
+  val_loss: 2.22
+cbm_skip:
+  activation: sigmoid
+  attr_weight: 0.126
+  gamma: 0.7176
+  learning_rate: 0.0001
+  n_epochs: 2
+  n_hidden: 30
+  n_linear_output: 22
+  test_accuracy: 0
+  val_loss: 2.2167
+cnn:
+  gamma: 0.8968
+  learning_rate: 0.0106
+  n_epochs: 2
+  n_linear_output: 241
+  test_accuracy: 0
+  val_loss: 1.7269

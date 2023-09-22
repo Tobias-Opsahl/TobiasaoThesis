@@ -1,0 +1,36 @@
+cbm:
+  activation: sigmoid
+  attr_weight: 0.076
+  gamma: 0.5743
+  learning_rate: 0.0176
+  n_epochs: 2
+  n_linear_output: 18
+  test_acuracy: 7.3333
+  test_set_accuracy: 0
+  two_layers: false
+cbm_res:
+  activation: relu
+  attr_weight: 2.4866
+  gamma: 0.5904
+  learning_rate: 0.0322
+  n_epochs: 3
+  n_linear_output: 20
+  test_acuracy: 6.4
+  test_set_accuracy: 0
+cbm_skip:
+  activation: relu
+  attr_weight: 1.3814
+  gamma: 0.8249
+  learning_rate: 0.0482
+  n_epochs: 3
+  n_hidden: 39
+  n_linear_output: 22
+  test_acuracy: 6.1333
+  test_set_accuracy: 0
+cnn:
+  gamma: 0.7266
+  learning_rate: 0.0385
+  n_epochs: 3
+  n_linear_output: 88
+  test_acuracy: 5.7333
+  test_set_accuracy: 0

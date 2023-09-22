@@ -1,0 +1,31 @@
+cbm:
+  attr_weight: 1
+  gamma: 0.1
+  learning_rate: 0.01
+  n_epochs: 20
+  n_linear_output: 64
+  two_layers: true
+  use_relu: false
+  use_sigmoid: false
+cbm_res:
+  attr_weight: 1
+  gamma: 0.1
+  learning_rate: 0.01
+  n_epochs: 20
+  n_linear_output: 64
+  use_relu: false
+  use_sigmoid: false
+cbm_skip:
+  attr_weight: 1
+  gamma: 0.1
+  learning_rate: 0.01
+  n_epochs: 20
+  n_hidden: 16
+  n_linear_output: 64
+  use_relu: false
+  use_sigmoid: false
+cnn:
+  gamma: 0.1
+  learning_rate: 0.01
+  n_epochs: 20
+  n_linear_output: 64
