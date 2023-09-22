@@ -82,7 +82,7 @@ class ShapesCBM(ShapesBaseModel):
     No softmax or sigmoid are done to the output of forward, (altough a sigmoid or relu may be applied to the
     bottleneck-layer before it is passed to the next layers) so be sure to infer this in the loss function.
     """
-    def __init__(self, n_classes, n_attr, n_linear_output=64, use_sigmoid=False, use_relu=False, two_layers=True):
+    def __init__(self, n_classes, n_attr, n_linear_output=64, attribute_activation_function=None, two_layers=True):
         """
         Args:
             n_classes (int): The amount of classes (output nodes for this model).
@@ -90,15 +90,21 @@ class ShapesCBM(ShapesBaseModel):
                 bottleneck layer.
             n_linear_output (int, optional): The amount of output nodes from the base model's linear layer.
                 Defaults to 64.
-            use_sigmoid (bool): If True, will use a sigmoid activation function on the bottleneck layer.
-            use_relu (bool): If True, will use a ReLU activation function on the bottleneck layer.
+            attribute_activation_function (str): If and what activation function to use at the concept-bottleneck layer.
+                Should be in ["relu", "simgoid", None]. Concept outputs from `forward()` will still be without
+                activation function, but activation function may be applied before passing to next layer.
             two_layers (bool): If True, will have two linear layers after the bottleneck layer. If False, will
                 only use one (which corresponds to logistic regression on the bottleneck layer).
         """
         super(ShapesCBM, self).__init__(n_linear_output)
         self.name = "ShapesCBM"
-        self.use_sigmoid = use_sigmoid
-        self.use_relu = use_relu
+        self.use_sigmoid = False
+        self.use_relu = False
+        attribute_activation_function = attribute_activation_function.strip().lower()
+        if attribute_activation_function == "sigmoid":
+            self.use_sigmoid = True
+        elif attribute_activation_function == "relu":
+            self.use_relu = True
         self.two_layers = two_layers
 
         self.attribute_classifier = nn.Linear(n_linear_output, n_attr)
@@ -135,7 +141,7 @@ class ShapesCBMWithResidual(ShapesBaseModel):
     No softmax or sigmoid are done to the output of forward, (altough a sigmoid or relu may be applied to the
     bottleneck-layer before it is passed to the next layers) so be sure to infer this in the loss function.
     """
-    def __init__(self, n_classes, n_attr, n_linear_output=64, use_sigmoid=False, use_relu=False):
+    def __init__(self, n_classes, n_attr, n_linear_output=64, attribute_activation_function=None):
         """
         Args:
             n_classes (int): The amount of classes (output nodes for this model).
@@ -143,13 +149,19 @@ class ShapesCBMWithResidual(ShapesBaseModel):
                 bottleneck layer.
             n_linear_output (int, optional): The amount of output nodes from the base model's linear layer.
                 Defaults to 64.
-            use_sigmoid (bool): If True, will use a sigmoid activation function on the bottleneck layer.
-            use_relu (bool): If True, will use a ReLU activation function on the bottleneck layer.
+            attribute_activation_function (str): If and what activation function to use at the concept-bottleneck layer.
+                Should be in ["relu", "simgoid", None]. Concept outputs from `forward()` will still be without
+                activation function, but activation function may be applied before passing to next layer.
         """
         super(ShapesCBMWithResidual, self).__init__(n_linear_output)
         self.name = "ShapesCBMWithResidual"
-        self.use_sigmoid = use_sigmoid
-        self.use_relu = use_relu
+        self.use_sigmoid = False
+        self.use_relu = False
+        attribute_activation_function = attribute_activation_function.strip().lower()
+        if attribute_activation_function == "sigmoid":
+            self.use_sigmoid = True
+        elif attribute_activation_function == "relu":
+            self.use_relu = True
 
         self.attribute_classifier = nn.Linear(n_linear_output, n_attr)
         self.intermediary_classifier = nn.Linear(n_attr, n_linear_output)
@@ -186,7 +198,7 @@ class ShapesCBMWithSkip(ShapesBaseModel):
     No softmax or sigmoid are done to the output of forward, (altough a sigmoid or relu may be applied to the
     bottleneck-layer before it is passed to the next layers) so be sure to infer this in the loss function.
     """
-    def __init__(self, n_classes, n_attr, n_linear_output=64, n_hidden=16, use_sigmoid=False, use_relu=False):
+    def __init__(self, n_classes, n_attr, n_linear_output=64, attribute_activation_function=None, n_hidden=16):
         """
         Args:
             n_classes (int): The amount of classes (output nodes for this model).
@@ -194,15 +206,21 @@ class ShapesCBMWithSkip(ShapesBaseModel):
                 bottleneck layer.
             n_linear_output (int, optional): The amount of output nodes from the base model's linear layer.
                 Defaults to 64.
+            attribute_activation_function (str): If and what activation function to use at the concept-bottleneck layer.
+                Should be in ["relu", "simgoid", None]. Concept outputs from `forward()` will still be without
+                activation function, but activation function may be applied before passing to next layer.
             n_hidden (int): The amount of nodes used in the linear layer after the bottleneck layer.
                 This layer will be concatinated on top of the output from the base-model.
-            use_sigmoid (bool): If True, will use a sigmoid activation function on the bottleneck layer.
-            use_relu (bool): If True, will use a ReLU activation function on the bottleneck layer.
         """
         super(ShapesCBMWithSkip, self).__init__(n_linear_output)
         self.name = "ShapesCBMWithSkip"
-        self.use_sigmoid = use_sigmoid
-        self.use_relu = use_relu
+        self.use_sigmoid = False
+        self.use_relu = False
+        attribute_activation_function = attribute_activation_function.strip().lower()
+        if attribute_activation_function == "sigmoid":
+            self.use_sigmoid = True
+        elif attribute_activation_function == "relu":
+            self.use_relu = True
 
         self.attribute_classifier = nn.Linear(n_linear_output, n_attr)
         self.intermediary_classifier = nn.Linear(n_attr, n_hidden)

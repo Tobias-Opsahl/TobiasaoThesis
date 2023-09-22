@@ -129,6 +129,8 @@ def make_subset_shapes(path, n_images_class, n_classes, split_data=True, seed=57
         seed (int, optional): The seed for the rng. Defaults to 57.
     """
     random.seed(seed)
+    if not path.endswith("tables/"):
+        path = path + "tables/"
     data_list = pickle.load(open(path + "data_list.pkl", "rb"))
 
     class_dict = {}  # Sort dicts by label
@@ -175,7 +177,7 @@ def change_dataset_name(old_path, new_path):
         for filename in os.listdir(table_path):  # Loop over the files inside the folder
             if not filename.endswith(".pkl"):
                 continue
-            file_path = table_path + filename
+            file_path = table_path + "/" + filename
             data_list = pickle.load(open(file_path, "rb"))
             for i in range(len(data_list)):  # Loop over the instances in the data-list.
                 data_list[i]["img_path"] = data_list[i]["img_path"].replace(old_path, new_path)
