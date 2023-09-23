@@ -178,9 +178,12 @@ def run_models_on_subsets_and_plot(
         os.makedirs("plots/" + class_dir, exist_ok=True)
         plot_training_histories(histories=histories, names=MODEL_STRINGS, colors=colors, attributes=False,
                                 title=save_name, save_dir="plots/", save_name=save_name)
+        pickle_save_name = "history/" + class_dir + "histories_sub" + str(subset) + "_b" + str(n_bootstrap) + ".pkl"
+        with open(pickle_save_name, "wb") as outfile:
+            pickle.dump(test_accuracies_lists, outfile)
 
     plot_subset_test_accuracies(x_values=subsets, test_accuracies_lists=test_accuracies_lists, names=MODEL_STRINGS,
                                 colors=colors, title=None,
                                 save_name=class_dir + "test_accuracies_b" + str(n_bootstrap) + ".png")
-    with open("history/" + class_dir + "test_accuracies_" + str(n_bootstrap) + ".pkl", "wb") as outfile:
+    with open("history/" + class_dir + "test_accuracies_b" + str(n_bootstrap) + ".pkl", "wb") as outfile:
         pickle.dump(test_accuracies_lists, outfile)

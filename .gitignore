@@ -11,3 +11,4 @@ history/*
 saved_models/*
 plots/*
 hyperparameters/shapes/testing/**
+remote_downloads/

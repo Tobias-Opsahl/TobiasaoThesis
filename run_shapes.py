@@ -75,7 +75,7 @@ if __name__ == "__main__":
             path, args.n_classes, args.n_attr, n_trials=args.n_trials, base_dir=base_dir, subsets=subsets,
             batch_size=args.batch_size, eval_loss=True, device=device,
             num_workers=args.num_workers, pin_memory=args.pin_memory, persistent_workers=args.persistent_workers,
-            non_blocking=args.non_blocking, min_epochs=min_epochs, max_epochs=max_epochs, verbose="info")
+            non_blocking=args.non_blocking, min_epochs=min_epochs, max_epochs=max_epochs, verbose=args.verbose)
     if args.evaluate_and_plot:
         run_models_on_subsets_and_plot(
             path, args.n_classes, args.n_attr, subsets=subsets, n_bootstrap=args.n_bootstrap,
