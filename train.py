@@ -1,10 +1,11 @@
 import os
 import pickle
 import torch
+import optuna
 
 
-def train_simple(model, criterion, optimizer, train_loader, val_loader=None, n_epochs=10,
-                 scheduler=None, device=None, non_blocking=False, model_dir="saved_models/", model_save_name=None,
+def train_simple(model, criterion, optimizer, train_loader, val_loader=None, n_epochs=10, scheduler=None, trial=None,
+                 device=None, non_blocking=False, model_dir="saved_models/", model_save_name=None,
                  history_dir="history/", history_save_name=None, verbose=2):
     """
     Trains a model and calculate training and valudation stats, given the model, loader, optimizer
@@ -20,6 +21,9 @@ def train_simple(model, criterion, optimizer, train_loader, val_loader=None, n_e
             If not None, will calculate validation loss and accuracy after each epoch.
         n_epochs (int, optional): Amount of epochs to run. Defaults to 10.
         scheduler (scheduler, optional): Optional learning rate scheduler.
+        trial (optuna.trial): Pass if one runs hyperparameter optimization. If not None, this is an
+            optuna trial object. It will tell optuna how well the training goes during the epochs,
+            and may prune (cancel) a training trial.
         device (str): Use "cpu" for cpu training and "cuda:0" for gpu training.
         non_blocking (bool): If True, allows for asyncronous transfer between RAM and VRAM.
             This only works together with `pin_memory=True` to dataloader and GPU training.
@@ -96,6 +100,11 @@ def train_simple(model, criterion, optimizer, train_loader, val_loader=None, n_e
                 best_epoch_number = epoch
                 best_model = model.state_dict()
 
+            if trial is not None:
+                trial.report(average_val_loss, epoch)
+                if trial.should_prune():
+                    raise optuna.exceptions.TrialPruned()
+
         if (verbose == 2) or ((verbose == 1) and (epoch + 1 == n_epochs)):
             print(f"Epoch [{epoch + 1} / {n_epochs}]")
             print(f"Train loss: {average_train_loss:.4f}, Train Accuracy: {train_accuracy:.4f}%")
@@ -125,8 +134,8 @@ def train_simple(model, criterion, optimizer, train_loader, val_loader=None, n_e
 
 
 def train_cbm(model, criterion, attr_criterion, optimizer, train_loader, val_loader=None, n_epochs=10, attr_weight=0.01,
-              scheduler=None, device=None, non_blocking=False, model_dir="saved_models/", model_save_name=None,
-              history_dir="history/", history_save_name=None, verbose=2):
+              scheduler=None, trial=None, device=None, non_blocking=False, model_dir="saved_models/",
+              model_save_name=None, history_dir="history/", history_save_name=None, verbose=2):
     """
     Trains and evaluates a Joint Concept Bottleneck Model. This means it is both trained normal
     output cross entropy loss, but also on the intermediary attribute loss.
@@ -144,7 +153,10 @@ def train_cbm(model, criterion, attr_criterion, optimizer, train_loader, val_loa
         attr_weight (float): The weight of the attribute loss function. Equal to Lambda in
             the Concept Bottleneck Models paper.
         scheduler (scheduler, optional): Optional learning rate scheduler.
-        device (str): Use "cpu" for cpu training and "cuda:0" for gpu training.
+        trial (optuna.trial): Pass if one runs hyperparameter optimization. If not None, this is an
+            optuna trial object. It will tell optuna how well the training goes during the epochs,
+            and may prune (cancel) a training trial.
+        device (str): Use "cpu" for cpu training and "cuda" for gpu training.
         non_blocking (bool): If True, allows for asyncronous transfer between RAM and VRAM.
             This only works together with `pin_memory=True` to dataloader and GPU training.
         model_dir (str): The directory to save the best model, if `model_save_name` is not None.
@@ -252,6 +264,11 @@ def train_cbm(model, criterion, attr_criterion, optimizer, train_loader, val_loa
                 best_val_accuracy = val_class_accuracy
                 best_epoch_number = epoch
                 best_model = model.state_dict()
+
+            if trial is not None:
+                trial.report(average_val_class_loss, epoch)
+                if trial.should_prune():
+                    raise optuna.exceptions.TrialPruned()
 
         if (verbose == 2) or ((verbose == 1) and (epoch + 1 == n_epochs)):
             print(f"Epoch [{epoch + 1} / {n_epochs}]")

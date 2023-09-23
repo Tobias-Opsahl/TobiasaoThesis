@@ -90,9 +90,9 @@ class HyperparameterOptimizationShapes:
             num_workers=self.num_workers, pin_memory=self.pin_memory, persistent_workers=self.persistent_workers)
 
         hp = {}  # Hyperparameters
-        hp["learning_rate"] = trial.suggest_float("learning_rate", 1e-5, 1e-1, log=True)
+        hp["learning_rate"] = trial.suggest_float("learning_rate", 0.0002, 0.02, log=True)
         hp["gamma"] = trial.suggest_float("gamma", 0.5, 1, log=False)
-        hp["n_linear_output"] = trial.suggest_int("n_linear_output", 16, 264, log=True)
+        hp["n_linear_output"] = trial.suggest_int("n_linear_output", 32, 128, log=True)
         hp["n_epochs"] = trial.suggest_int("n_epochs", self.min_epochs, self.max_epochs, log=False)
         if self.model_type != "cnn":
             hp["activation"] = trial.suggest_categorical("activation", ["relu", "sigmoid", "none"])
@@ -100,7 +100,7 @@ class HyperparameterOptimizationShapes:
         if self.model_type == "cbm":
             hp["two_layers"] = trial.suggest_categorical("two_layers", [True, False])
         if self.model_type == "cbm_skip":
-            hp["n_hidden"] = trial.suggest_int("n_hidden", 8, 128, log=True)
+            hp["n_hidden"] = trial.suggest_int("n_hidden", 8, 32, log=True)
 
         model = load_single_model(self.model_type, n_classes=self.n_classes, n_attr=self.n_attr, hyperparameters=hp)
         criterion = nn.CrossEntropyLoss()
@@ -108,13 +108,13 @@ class HyperparameterOptimizationShapes:
         exp_lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=hp["gamma"])
         if self.model_type == "cnn":  # Train non-bottleneck model
             history = train_simple(
-                model, criterion, optimizer, train_loader, val_loader, scheduler=exp_lr_scheduler,
+                model, criterion, optimizer, train_loader, val_loader, trial=trial, scheduler=exp_lr_scheduler,
                 n_epochs=hp["n_epochs"], device=self.device, non_blocking=self.non_blocking, verbose=0)
         else:  # Concept-bottleneck model
             attr_criterion = nn.BCEWithLogitsLoss()
             history = train_cbm(
                 model, criterion, attr_criterion, optimizer, train_loader, val_loader, n_epochs=hp["n_epochs"],
-                attr_weight=hp["attr_weight"], scheduler=exp_lr_scheduler, device=self.device,
+                attr_weight=hp["attr_weight"], trial=trial, scheduler=exp_lr_scheduler, device=self.device,
                 non_blocking=self.non_blocking, verbose=0)
 
         if self.eval_loss:
@@ -146,7 +146,8 @@ class HyperparameterOptimizationShapes:
         if verbose == "error" or verbose == "0":
             optuna.logging.set_verbosity(optuna.logging.ERROR)
 
-        study = optuna.create_study(direction=direction)
+        pruner = optuna.pruners.MedianPruner(n_startup_trials=5, n_warmup_steps=0, interval_steps=1)
+        study = optuna.create_study(direction=direction, pruner=pruner)
         study.optimize(self.objective, n_trials=n_trials)
         self.study = study
         self.study_ran = True
