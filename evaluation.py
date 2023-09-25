@@ -6,7 +6,7 @@ from train import train_simple, train_cbm
 from shapes.datasets_shapes import load_data_shapes, make_subset_shapes
 from plotting import plot_training_histories, plot_subset_test_accuracies
 from utils import get_hyperparameters, load_models_shapes, add_histories
-from constants import MODEL_STRINGS
+from constants import MODEL_STRINGS, COLORS
 
 
 def evaluate_on_test_set(model, test_loader, device=None, non_blocking=False):
@@ -172,18 +172,17 @@ def run_models_on_subsets_and_plot(
         for i in range(len(MODEL_STRINGS)):
             test_accuracies_lists[i].append(histories_total[i]["test_accuracy"][0])
 
-        colors = ["y", "r", "b", "black"]
         save_name = class_dir + "c" + str(n_classes) + "_a" + str(n_attr) + "_b" + str(n_bootstrap)
         save_name += "_sub" + str(subset) + ".png"
         os.makedirs("plots/" + class_dir, exist_ok=True)
-        plot_training_histories(histories=histories, names=MODEL_STRINGS, colors=colors, attributes=False,
+        plot_training_histories(histories=histories, names=MODEL_STRINGS, colors=COLORS, attributes=False,
                                 title=save_name, save_dir="plots/", save_name=save_name)
         pickle_save_name = "history/" + class_dir + "histories_sub" + str(subset) + "_b" + str(n_bootstrap) + ".pkl"
         with open(pickle_save_name, "wb") as outfile:
             pickle.dump(test_accuracies_lists, outfile)
 
     plot_subset_test_accuracies(x_values=subsets, test_accuracies_lists=test_accuracies_lists, names=MODEL_STRINGS,
-                                colors=colors, title=None,
+                                colors=COLORS, title=None,
                                 save_name=class_dir + "test_accuracies_b" + str(n_bootstrap) + ".png")
     with open("history/" + class_dir + "test_accuracies_b" + str(n_bootstrap) + ".pkl", "wb") as outfile:
         pickle.dump(test_accuracies_lists, outfile)

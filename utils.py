@@ -5,7 +5,7 @@ import pickle
 import warnings
 import torch
 import numpy as np
-from shapes.models_shapes import ShapesCNN, ShapesCBM, ShapesCBMWithResidual, ShapesCBMWithSkip
+from shapes.models_shapes import ShapesCNN, ShapesCBM, ShapesCBMWithResidual, ShapesCBMWithSkip, ShapesSCM
 from constants import MODEL_STRINGS
 
 
@@ -107,24 +107,35 @@ def load_single_model(model_type, n_classes, n_attr, hyperparameters):
     hp = hyperparameters
 
     if model_type == "cnn":
-        cnn = ShapesCNN(n_classes=n_classes, n_linear_output=hp["n_linear_output"])
+        cnn = ShapesCNN(
+            n_classes=n_classes, n_linear_output=hp["n_linear_output"],
+            dropout_probability=hp["dropout_probability"])
         return cnn
 
     if model_type == "cbm":
-        cbm = ShapesCBM(n_classes=n_classes, n_attr=n_attr, n_linear_output=hp["n_linear_output"],
-                        attribute_activation_function=hp["activation"], two_layers=hp["two_layers"])
+        cbm = ShapesCBM(
+            n_classes=n_classes, n_attr=n_attr, n_linear_output=hp["n_linear_output"],
+            attribute_activation_function=hp["activation"], two_layers=hp["two_layers"],
+            dropout_probability=hp["dropout_probability"])
         return cbm
 
     elif model_type == "cbm_res":
-        cbm_res = ShapesCBMWithResidual(n_classes=n_classes, n_attr=n_attr, n_linear_output=hp["n_linear_output"],
-                                        attribute_activation_function=hp["activation"])
+        cbm_res = ShapesCBMWithResidual(
+            n_classes=n_classes, n_attr=n_attr, n_linear_output=hp["n_linear_output"],
+            attribute_activation_function=hp["activation"], dropout_probability=hp["dropout_probability"])
         return cbm_res
 
     elif model_type == "cbm_skip":
         cbm_skip = ShapesCBMWithSkip(
             n_classes=n_classes, n_attr=n_attr, n_hidden=hp["n_hidden"], n_linear_output=hp["n_linear_output"],
-            attribute_activation_function=hp["activation"])
+            attribute_activation_function=hp["activation"], dropout_probability=hp["dropout_probability"])
         return cbm_skip
+
+    elif model_type == "scm":
+        scm = ShapesSCM(
+            n_classes=n_classes, n_attr=n_attr, n_hidden=hp["n_hidden"], n_linear_output=hp["n_linear_output"],
+            attribute_activation_function=hp["activation"], dropout_probability=hp["dropout_probability"])
+        return scm
 
 
 def load_models_shapes(n_classes, n_attr, n_subset=None, hyperparameters=None, fast=False):
@@ -154,8 +165,10 @@ def load_models_shapes(n_classes, n_attr, n_subset=None, hyperparameters=None, f
     cbm_res = load_single_model(model_type="cbm_res", hyperparameters=hp["cbm_res"], n_classes=n_classes, n_attr=n_attr)
     cbm_skip = load_single_model(model_type="cbm_skip", hyperparameters=hp["cbm_skip"],
                                  n_classes=n_classes, n_attr=n_attr)
+    scm = load_single_model(model_type="scm", hyperparameters=hp["scm"],
+                            n_classes=n_classes, n_attr=n_attr)
 
-    models = [cnn, cbm, cbm_res, cbm_skip]
+    models = [cnn, cbm, cbm_res, cbm_skip, scm]
     return models
 
 
