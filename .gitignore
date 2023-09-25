@@ -5,10 +5,10 @@ test_file.*
 test_image.*
 **/.DS_Store
 backlog.txt
-back_log.txt
 data/*
 history/*
 saved_models/*
 plots/*
 hyperparameters/shapes/testing/**
 remote_downloads/
+testing_runs.py

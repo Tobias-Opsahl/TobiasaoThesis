@@ -60,7 +60,7 @@ if __name__ == "__main__":
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     path = args.base_dir + args.dataset_folder
-    subsets = [50, 100]  # , 150, 200, 250]
+    subsets = [50, 100, 150, 200, 250]
 
     if args.run_hyperparameters:
         if args.fast:
@@ -69,7 +69,7 @@ if __name__ == "__main__":
             base_dir = "hyperparameters/shapes/testing/"
         else:
             min_epochs = 10
-            max_epochs = 50
+            max_epochs = 30
             base_dir = "hyperparameters/shapes/"
         run_hyperparameter_optimization_all_models(
             path, args.n_classes, args.n_attr, n_trials=args.n_trials, base_dir=base_dir, subsets=subsets,

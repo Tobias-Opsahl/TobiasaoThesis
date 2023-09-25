@@ -133,7 +133,7 @@ def train_simple(model, criterion, optimizer, train_loader, val_loader=None, n_e
     return history
 
 
-def train_cbm(model, criterion, attr_criterion, optimizer, train_loader, val_loader=None, n_epochs=10, attr_weight=0.01,
+def train_cbm(model, criterion, attr_criterion, optimizer, train_loader, val_loader=None, n_epochs=10, attr_weight=1,
               scheduler=None, trial=None, device=None, non_blocking=False, model_dir="saved_models/",
               model_save_name=None, history_dir="history/", history_save_name=None, verbose=2):
     """
@@ -150,8 +150,9 @@ def train_cbm(model, criterion, attr_criterion, optimizer, train_loader, val_loa
         val_loader (dataloader, optional): Optinal validation data loader.
             If not None, will calculate validation loss and accuracy after each epoch.
         n_epochs (int, optional): Amount of epochs to run. Defaults to 10.
-        attr_weight (float): The weight of the attribute loss function. Equal to Lambda in
-            the Concept Bottleneck Models paper.
+        attr_weight (list or float): The weight of the attribute loss function. Equal to Lambda in
+            the Concept Bottleneck Models paper. This can also be a list of length `n_epochs`, in order
+            dynamically change the attribute weight during training.
         scheduler (scheduler, optional): Optional learning rate scheduler.
         trial (optuna.trial): Pass if one runs hyperparameter optimization. If not None, this is an
             optuna trial object. It will tell optuna how well the training goes during the epochs,
@@ -175,6 +176,8 @@ def train_cbm(model, criterion, attr_criterion, optimizer, train_loader, val_loa
     if device is None:
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     model = model.to(device, non_blocking=non_blocking)
+    if isinstance(attr_weight, (int, float)):
+        attr_weight = [attr_weight for _ in range(n_epochs)]
     best_model = None  # This will only be saved if `val_loader` is not None
     train_class_loss_list = []  # Initialize training history variables
     train_class_accuracy_list = []
@@ -202,7 +205,7 @@ def train_cbm(model, criterion, attr_criterion, optimizer, train_loader, val_loa
             class_outputs, attr_outputs = model(input)
 
             class_loss = criterion(class_outputs, labels)
-            attr_loss = attr_weight * attr_criterion(attr_outputs, attr_labels)
+            attr_loss = attr_weight[epoch] * attr_criterion(attr_outputs, attr_labels)
             loss = class_loss + attr_loss
             loss.backward()
             optimizer.step()
@@ -215,7 +218,7 @@ def train_cbm(model, criterion, attr_criterion, optimizer, train_loader, val_loa
             _, preds = torch.max(class_outputs, 1)
             train_class_correct += (preds == labels).sum().item()
 
-        average_train_attr_loss = train_attr_loss / len(train_loader.dataset)
+        average_train_attr_loss = train_attr_loss / (len(train_loader.dataset) * attr_weight[epoch])
         train_attr_accuracy = 100 * train_attr_correct / (len(train_loader.dataset) * attr_labels.shape[1])
         average_train_class_loss = train_class_loss / len(train_loader.dataset)
         train_class_accuracy = 100 * train_class_correct / len(train_loader.dataset)
@@ -239,7 +242,7 @@ def train_cbm(model, criterion, attr_criterion, optimizer, train_loader, val_loa
                 class_outputs, attr_outputs = model(input)
 
                 class_loss = criterion(class_outputs, labels)
-                attr_loss = attr_weight * attr_criterion(attr_outputs, attr_labels)
+                attr_loss = attr_weight[epoch] * attr_criterion(attr_outputs, attr_labels)
                 loss = class_loss + attr_loss
 
                 val_attr_loss += attr_loss.item() * input.shape[0]
@@ -250,7 +253,7 @@ def train_cbm(model, criterion, attr_criterion, optimizer, train_loader, val_loa
                 _, preds = torch.max(class_outputs, 1)
                 val_class_correct += (preds == labels).sum().item()
 
-            average_val_attr_loss = val_attr_loss / len(val_loader.dataset)
+            average_val_attr_loss = val_attr_loss / (len(val_loader.dataset) * attr_weight[epoch])
             val_attr_accuracy = 100 * val_attr_correct / (len(val_loader.dataset) * attr_labels.shape[1])
             average_val_class_loss = val_class_loss / len(val_loader.dataset)
             val_class_accuracy = 100 * val_class_correct / len(val_loader.dataset)
