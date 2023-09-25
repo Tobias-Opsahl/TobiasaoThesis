@@ -6,6 +6,7 @@ cbm:
   n_linear_output: 64
   two_layers: true
   activation: Sigmoid
+  dropout_probability: 0.1
 cbm_res:
   attr_weight: 1
   gamma: 0.7
@@ -13,16 +14,28 @@ cbm_res:
   n_epochs: 25
   n_linear_output: 64
   activation: Sigmoid
+  dropout_probability: 0.1
 cbm_skip:
   attr_weight: 1
   gamma: 0.7
   learning_rate: 0.001
   n_epochs: 25
-  n_hidden: 32
+  n_hidden: 16
   n_linear_output: 64
   activation: Sigmoid
+  dropout_probability: 0.1
+scm:
+  attr_weight: 1
+  gamma: 0.7
+  learning_rate: 0.001
+  n_epochs: 25
+  n_hidden: 16
+  n_linear_output: 64
+  activation: Sigmoid
+  dropout_probability: 0.1
 cnn:
   gamma: 0.7
   learning_rate: 0.001
   n_epochs: 25
   n_linear_output: 64
+  dropout_probability: 0.1

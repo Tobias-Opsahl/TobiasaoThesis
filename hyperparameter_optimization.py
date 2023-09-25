@@ -91,16 +91,21 @@ class HyperparameterOptimizationShapes:
 
         hp = {}  # Hyperparameters
         hp["learning_rate"] = trial.suggest_float("learning_rate", 0.0002, 0.02, log=True)
-        hp["gamma"] = trial.suggest_float("gamma", 0.5, 1, log=False)
-        hp["n_linear_output"] = trial.suggest_int("n_linear_output", 32, 128, log=True)
-        hp["n_epochs"] = trial.suggest_int("n_epochs", self.min_epochs, self.max_epochs, log=False)
+        # hp["gamma"] = trial.suggest_float("gamma", 0.5, 1, log=False)
+        hp["gamma"] = 0.7
+        # hp["n_linear_output"] = trial.suggest_int("n_linear_output", 32, 128, log=True)
+        hp["n_linear_output"] = 64
+        # hp["n_epochs"] = trial.suggest_int("n_epochs", self.min_epochs, self.max_epochs, log=False)
+        hp["n_epochs"] = self.max_epochs
+        hp["dropout_probability"] = trial.suggest_categorical("dropout_probability", [0, 0.1, 0.2, 0.3, 0.4, 0.5])
         if self.model_type != "cnn":
             hp["activation"] = trial.suggest_categorical("activation", ["relu", "sigmoid", "none"])
-            hp["attr_weight"] = trial.suggest_float("attr_weight", 0.01, 10, log=True)
+            hp["attr_weight"] = trial.suggest_float("attr_weight", 1, 10, log=True)
         if self.model_type == "cbm":
             hp["two_layers"] = trial.suggest_categorical("two_layers", [True, False])
-        if self.model_type == "cbm_skip":
-            hp["n_hidden"] = trial.suggest_int("n_hidden", 8, 32, log=True)
+        if self.model_type == "cbm_skip" or self.model_type == "scm":
+            # hp["n_hidden"] = trial.suggest_int("n_hidden", 8, 32, log=True)
+            hp["n_hidden"] = 16
 
         model = load_single_model(self.model_type, n_classes=self.n_classes, n_attr=self.n_attr, hyperparameters=hp)
         criterion = nn.CrossEntropyLoss()
@@ -185,17 +190,29 @@ class HyperparameterOptimizationShapes:
             raise Exception(f"run_optuna_hyperparameter_search must be called before write_to_yaml().")
         trial = self.study.best_trial
         # Add shared hyperparameters for every model-type
+        # hyperparameters = {
+        #     "val_loss": trial.value, "test_accuracy": self.test_accuracy,
+        #     "learning_rate": trial.params["learning_rate"], "n_epochs": trial.params["n_epochs"],
+        #     "n_linear_output": trial.params["n_linear_output"], "gamma": trial.params["gamma"]}
+        # if self.model_type != "cnn":
+        #     hyperparameters["attr_weight"] = trial.params["attr_weight"]
+        #     hyperparameters["activation"] = trial.params["activation"]
+        # if self.model_type == "cbm":
+        #     hyperparameters["two_layers"] = trial.params["two_layers"]
+        # if self.model_type == "cbm_skip":
+        #     hyperparameters["n_hidden"] = trial.params["n_hidden"]
+        # TODO: Make this generic
         hyperparameters = {
             "val_loss": trial.value, "test_accuracy": self.test_accuracy,
-            "learning_rate": trial.params["learning_rate"], "n_epochs": trial.params["n_epochs"],
-            "n_linear_output": trial.params["n_linear_output"], "gamma": trial.params["gamma"]}
+            "learning_rate": trial.params["learning_rate"], "n_epochs": self.max_epochs,
+            "n_linear_output": 64, "gamma": 0.7, "dropout_probability": trial.params["dropout_probability"]}
         if self.model_type != "cnn":
             hyperparameters["attr_weight"] = trial.params["attr_weight"]
             hyperparameters["activation"] = trial.params["activation"]
         if self.model_type == "cbm":
             hyperparameters["two_layers"] = trial.params["two_layers"]
-        if self.model_type == "cbm_skip":
-            hyperparameters["n_hidden"] = trial.params["n_hidden"]
+        if self.model_type == "cbm_skip" or self.model_type == "scm":
+            hyperparameters["n_hidden"] = 16
 
         hyperparameters = self.round_dict_values(hyperparameters)
         folder_name = "c" + str(self.n_classes) + "_a" + str(self.n_attr) + "/"
