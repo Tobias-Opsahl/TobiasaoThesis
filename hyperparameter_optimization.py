@@ -5,8 +5,12 @@ import torch
 import torch.nn as nn
 from shapes.datasets_shapes import load_data_shapes, make_subset_shapes
 from train import train_simple, train_cbm
-from utils import load_single_model
+from utils import load_single_model, get_hyperparameters
 from constants import MODEL_STRINGS
+
+# TODO: Finnish generic setup.
+#   Finish grid-search
+#   Check if uniform + search_space OR suggest categorical is best.
 
 
 class HyperparameterOptimizationShapes:
@@ -21,7 +25,7 @@ class HyperparameterOptimizationShapes:
 
     def __init__(self, model_type, dataset_path, n_classes, n_attr=None, subset_dir="", batch_size=16,
                  eval_loss=True, device=None, num_workers=0, pin_memory=False, persistent_workers=False,
-                 non_blocking=False, min_epochs=10, max_epochs=50, seed=57):
+                 non_blocking=False, fast=False, seed=57):
         """
         Args:
             model_type (str): Type of model.
@@ -42,8 +46,7 @@ class HyperparameterOptimizationShapes:
                 but also increases the amount of RAM necessary to run the job. Should only
                 be used with GPU training.
             persistent_workers (bool): If `True`, will not shut down workers between epochs.
-            min_epochs (int, optional): Minimum amount of epochs to run. Defaults to 10.
-            max_epochs (int, optional): Maximum amount of epochs to run. Defaults to 50.
+            fast (bool, optional): If True, will use hyperparameters with very low `n_epochs`. Defaults to False.
             seed (int, optional): Seed, used in case subdataset needs to be created.. Defaults to 57.
 
         Raises:
@@ -67,12 +70,202 @@ class HyperparameterOptimizationShapes:
         self.pin_memory = pin_memory
         self.persistent_workers = persistent_workers
         self.non_blocking = non_blocking
-        self.min_epochs = min_epochs
-        self.max_epochs = max_epochs
         self.study_ran = False
+        self.hyperparameter_names = self._get_hyperparameter_names()  # Names of possible hyperparameter
+        self.default_hyperparameters = get_hyperparameters(0, 0, 0, fast=fast, default=True)
 
-        if not os.path.exists(dataset_path + "tables/" + subset_dir):
+        if not os.path.exists(dataset_path + "tables/" + subset_dir):  # Make subset of dataset if it does not exist
             make_subset_shapes(dataset_path, subset_dir, n_classes, seed=seed)
+
+    def _get_hyperparameter_names(self):
+        """
+        Get the names of the possible hyperparameters. Note that this is different for the five possible
+        models, hence this function.
+
+        Returns:
+            list of str: List of the hyperparameter names.
+        """
+        # Common hyperparameters
+        hyperparameter_names = ["learning_rate", "dropout_probability", "gamma", "n_linear_output", "n_epochs"]
+        if self.model_type != "cnn":  # Hyperparameters only for concept models
+            hyperparameter_names.append("activation")
+            hyperparameter_names.append("attr_weight")
+            hyperparameter_names.append("attr_weight_decay")
+        if self.model_type == "cbm":
+            hyperparameter_names.append("two_layers")
+        elif self.model_type in ["cbm_skip", "scm"]:
+            hyperparameter_names.append("n_hidden")
+        return hyperparameter_names
+
+    def _get_default_hyperparameters_to_search(self):
+        """
+        Return a default dictionary of which hyperparameters to look for during hyperparameter optimization.
+        This function if called if this dict is not passed to the `run_hyperparameter_optimization()` method.
+
+        Returns:
+            dict: Dictionary of hyperparameter-names pointing to booleans.
+        """
+        hp = {"learning_rate": True, "dropout_probability": True, "gamma": True, "attr_schedule": True,
+              "attr_weight": False, "attr_weight_decay": False, "n_epochs": False,
+              "n_linear_output": False, "activation": False, "two_layers": False, "n_hidden": False}
+        return hp
+
+    def _check_hyperparameters_to_search(self, hyperparameters_to_search):
+        """
+        Checks that the argument `hyperparameters_to_search` is of correct format.
+        This is the argument given to `run_hyperparameter_search()` that determines which hyperparameters
+        that are searched for. It needs to be a dict that maps all hyperparameter-names to booleans.
+        Additionally, the if "attr_schedule" is True, then "attr_weight" and "attr_weight_decay" needs to be False,
+        since "attr_schedule" determines both of them.
+        The "attr_schedule" tries to either set "attr_weight" to a moderate constant and "attr_weight_decay" to 1 (no
+        decay), or to set "attr_weight" to a high value and set "attr_weight_decay" to < 1. This setup reduces the
+        complexity in the hyperparameter search by removing unecessary searches (like low "attr_weight" and high
+        "attr_weight_decay", or vice versa).
+
+        Args:
+            hyperparameters_to_search (dict): The argument to check
+
+        Raises:
+            ValueError or TypeError: If the dict is on wrong format.
+        """
+        if not isinstance(hyperparameters_to_search, dict):
+            message = f"Argument `hyperparameters_to_search` must be of type dict, and map hyperparameter-names to "
+            message += f"booleans. Was type {type(hyperparameters_to_search)} with value {hyperparameters_to_search}. "
+            raise TypeError(message)
+        if hyperparameters_to_search.get("attr_schedule") is not None:
+            attr_schedule = hyperparameters_to_search["attr_schedule"]
+            attr_weight = hyperparameters_to_search["attr_weight"]
+            attr_weight_decay = hyperparameters_to_search["attr_weight_decay"]
+            if attr_schedule and (attr_weight or attr_weight_decay):
+                message = f"Argument `hyperparameters_to_search`: When `attr_schedule` is True, `attr_weight` and "
+                message += f"`attr_weight_schedule` must be False. Was {attr_weight=}, {attr_weight_decay=}. "
+                raise ValueError(message)
+        for hyperparameter_name in self.hyperparameter_names:
+            if hyperparameters_to_search.get(hyperparameter_name) is None:
+                message = f"Argument `hyperparameters_to_search` (dict) did not include all needed arguments. "
+                message += f"Was missing argument {hyperparameter_name}. "
+                message += f"Need the following keys mapped to a boolean: {self.hyperparameter_names}. "
+                raise ValueError(message)
+
+    def _get_single_hyperparameter_for_trial(self, hp_name, trial):
+        """
+        Get a single suggestion for a hyperparameter suggested by optunas trial.
+
+        Args:
+            hp_name (str): The name of the hyperparameter to get a suggestion for.
+            trial (trial): Optuna trial.
+
+        Raises:
+            ValueError: If the hyperparameter-name is not in `self.hyperparameter_names`.
+
+        Returns:
+            object: Trial suggestion of the value to test.
+        """
+        if hp_name == "learning_rate":
+            return trial.suggest_float("learning_rate", 0.0001, 0.05, log=True)
+        elif hp_name == "dropout_probability":
+            return trial.suggest_float("dropout_probability", 0, 0.5, log=False)
+        elif hp_name == "gamma":
+            return trial.suggest_float("gamma", 0.1, 1, log=False)
+        elif hp_name == "n_epochs":
+            return trial.suggest_int("n_epochs", 15, 50, log=False)
+        elif hp_name == "n_linear_epochs":
+            return trial.suggest_int("n_linear_output", 32, 128, log=True)
+        elif hp_name == "n_hidden":
+            return trial.suggest_int("n_hidden", 8, 32, log=True)
+        elif hp_name == "activation":
+            return trial.suggest_categorical("activation", ["relu", "sigmoid", "none"])
+        elif hp_name == "two_layers":
+            return trial.suggest_categorical("two_layers", [True, False])
+        elif hp_name == "attr_weight":
+            return trial.suggest_float("attr_weight", 1, 10, log=False)
+        elif hp_name == "attr_weight_decay":
+            return trial.suggest_float("attr_weight_decay", 0.5, 1, log=False)
+        elif hp_name == "attr_schedule":
+            attr_schedule = trial.suggest_categorical("attr_schedule", [0.5, 0.7, 0.9, 1, 3, 5, 10])
+            if attr_schedule < 1:
+                attr_weight = 100
+                attr_weight_decay = attr_schedule
+            else:
+                attr_weight = attr_schedule
+                attr_weight_decay = 1
+            trial.set_user_attr("attr_weight", attr_weight)  # Set values in trial so we can find them with best_trial
+            trial.set_user_attr("attr_weight_decay", attr_weight_decay)
+            return attr_weight, attr_weight_decay
+        else:
+            raise ValueError(f"Hyperparameter name not valid, got {hp_name}")
+
+    def _get_hyperparameters_for_trial(self, trial):
+        """
+        Returns a full set of hyperparameters to use for a single trial in an optuna study.
+        Some of the values are suggested, some are set to default values. This depends on `hyperparameters_to_search`.
+
+        Args:
+            trial (trial): Optuna trial.
+
+        Returns:
+            dict: Dictionary of the hyperparameter-names pointing to the hyperparameter values.
+        """
+        hyperparameters = {}
+        for hp_name in self.hyperparameter_names:
+            if self.hyperparameters_to_search[hp_name]:  # Make trial suggest value
+                hyperparameters[hp_name] = self._get_single_hyperparameter_for_trial(hp_name, trial)
+            else:  # Set default value
+                hyperparameters[hp_name] = self.default_hyperparameters[self.model_type][hp_name]
+        if "attr_schedule" in self.hyperparameter_names and self.hyperparameters_to_search.get("attr_schedule"):
+            # This determines two arguments.
+            attr_weight, attr_weight_decay = self._get_single_hyperparameter_for_trial(hp_name, trial)
+            hyperparameters["attr_weight"] = attr_weight
+            hyperparameters["attr_weight_decay"] = attr_weight_decay
+        return hyperparameters
+
+    def _get_hyperparameters_from_best_trial(self, best_trial):
+        """
+        Get all hyperparameters from the best trial (or any trial). Note that the hyperparameters not
+        searched for will be set from the default hyperparameters.
+        Note that `attr_schedule` is handled separately, since if this is True, then both `attr_weight` and
+        `attr_weight_decay` is in trial, even though they are False in `self.hyperparameters_to_search`.
+
+        Args:
+            best_trial (trial): The best trial from a optuna study (or any trial).
+
+        Returns:
+            dict: Dictionary of the hyperparameter-names pointing to the hyperparameter values.
+        """
+        hyperparameters = {}
+        for hp_name in self.hyperparameter_names:
+            if self.hyperparameters_to_search[hp_name]:  # Get value from trial
+                hyperparameters[hp_name] = best_trial.params[hp_name]
+            else:  # Get value from default parameters
+                hyperparameters[hp_name] = self.default_hyperparameters[self.model_type][hp_name]
+        if "attr_schedule" in self.hyperparameter_names and self.hyperparameters_to_search.get("attr_schedule"):
+            # This means we search for the two values below.
+            hyperparameters["attr_weight"] = best_trial.user_attrs["attr_weight"]
+            hyperparameters["attr_weight_decay"] = best_trial.user_attrs["attr_weight_decay"]
+        return hyperparameters
+
+    def _get_search_space(self):
+        """
+        Generates the search-space that Grid-search uses. Note that only the values suggested by the trial,
+        controlled by `self.hyperparameters_to_search`, are used.
+
+        Returns:
+            dict: Dictionary of the hyperparameter-names pointing to a list of possible values to try.
+        """
+        search_space = {
+            "learning_rate": [0.05, 0.01, 0.005, 0.001, 0.0005, 0.0001],
+            "gamma": [0.1, 0.5, 1],
+            "dropout_probability": [0, 0.1, 0.2, 0.3, 0.5],
+            "n_epochs": [20, 30, 50, 100],
+            "n_linear_output": [16, 64, 128, 256],
+            "n_hidden": [16, 32, 64],
+            "activation": ["sigmoid", "relu", "none"],
+            "two_layers": [True, False],
+            "attr_weight": [1, 3, 5, 10],
+            "attr_weight_decay": [0.5, 0.7, 0.9, 1],
+            "attr_schedule": [0.5, 0.7, 0.9, 1, 3, 5, 10]
+        }
+        return search_space
 
     def objective(self, trial):
         """
@@ -89,24 +282,7 @@ class HyperparameterOptimizationShapes:
             path=self.dataset_path, subset_dir=self.subset_dir, batch_size=self.batch_size, drop_last=True,
             num_workers=self.num_workers, pin_memory=self.pin_memory, persistent_workers=self.persistent_workers)
 
-        hp = {}  # Hyperparameters
-        hp["learning_rate"] = trial.suggest_float("learning_rate", 0.0002, 0.02, log=True)
-        # hp["gamma"] = trial.suggest_float("gamma", 0.5, 1, log=False)
-        hp["gamma"] = 0.7
-        # hp["n_linear_output"] = trial.suggest_int("n_linear_output", 32, 128, log=True)
-        hp["n_linear_output"] = 64
-        # hp["n_epochs"] = trial.suggest_int("n_epochs", self.min_epochs, self.max_epochs, log=False)
-        hp["n_epochs"] = self.max_epochs
-        hp["dropout_probability"] = trial.suggest_categorical("dropout_probability", [0, 0.1, 0.2, 0.3, 0.4, 0.5])
-        if self.model_type != "cnn":
-            hp["activation"] = trial.suggest_categorical("activation", ["relu", "sigmoid", "none"])
-            hp["attr_weight"] = trial.suggest_float("attr_weight", 1, 10, log=True)
-        if self.model_type == "cbm":
-            hp["two_layers"] = trial.suggest_categorical("two_layers", [True, False])
-        if self.model_type == "cbm_skip" or self.model_type == "scm":
-            # hp["n_hidden"] = trial.suggest_int("n_hidden", 8, 32, log=True)
-            hp["n_hidden"] = 16
-
+        hp = self._get_hyperparameters_for_trial(trial)  # Get suggestions for hyperparameters
         model = load_single_model(self.model_type, n_classes=self.n_classes, n_attr=self.n_attr, hyperparameters=hp)
         criterion = nn.CrossEntropyLoss()
         optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=hp["learning_rate"])
@@ -124,20 +300,33 @@ class HyperparameterOptimizationShapes:
 
         if self.eval_loss:
             return history["val_class_loss"][-1]
+        # TODO: Make moth best-val-class-loss and a accuracy, and also best_epch in train, and use that here.
+        # Also make the hyperparam epochs use the best-epoch(val or accuracy) from here.
         else:
             return history["val_class_accuracy"][-1]
 
-    def run_optuna_hyperparameter_search(self, n_trials=50, write=True, base_dir="hyperparameters/shapes",
-                                         verbose="warning"):
+    def run_hyperparameter_search(self, hyperparameters_to_search=None, n_trials=50, write=True,
+                                  base_dir="hyperparameters/shapes", grid_search=True, verbose="warning"):
         """
         Runs a whole optuna study.
 
         Args:
             n_trials (int, optional): Amount of trials to run. Defaults to 50.
+            hyperparameters_to_search (dict): Dictionary of hyperparameter-names for keys,
+                and boolenas for values, corresponding to which hyperparameters to search for.
+                See `self._get_default_hyperparameters_to_search()` for an example, or
+                `self._check_hyperparameters_to_search()` for more info.
             write (bool, optional): If True, writes hyperparameters to file. Defaults to True.
             base_dir (str, optional): Path to hyperparameter base directory. Defaults to "hyperparameters/shapes/".
+            grid_search (bool): If True, will use standard grid-search. If not, will use default optuna
+                sampler, which will be set to TPE sampler if n_trials is less than 1000.
             verbose (str, optional): Controls the verbosity of optuna study. Defaults to "warning".
         """
+        self.hyperparameters_to_search = hyperparameters_to_search
+        if hyperparameters_to_search is None:
+            self.hyperparameters_to_search = self._get_default_hyperparameters_to_search()
+        self._check_hyperparameters_to_search(self.hyperparameters_to_search)
+
         if self.eval_loss:  # Minimize loss
             direction = "minimize"
         else:  # Maximize acccuracy
@@ -151,8 +340,12 @@ class HyperparameterOptimizationShapes:
         if verbose == "error" or verbose == "0":
             optuna.logging.set_verbosity(optuna.logging.ERROR)
 
-        pruner = optuna.pruners.MedianPruner(n_startup_trials=5, n_warmup_steps=0, interval_steps=1)
-        study = optuna.create_study(direction=direction, pruner=pruner)
+        if not grid_search:
+            pruner = optuna.pruners.MedianPruner(n_startup_trials=5, n_warmup_steps=0, interval_steps=1)
+            study = optuna.create_study(direction=direction, pruner=pruner)
+        else:  # Grid search
+            search_space = self._get_search_space()
+            study = optuna.create_study(sampler=optuna.samplers.GridSampler(search_space=search_space))
         study.optimize(self.objective, n_trials=n_trials)
         self.study = study
         self.study_ran = True
@@ -160,7 +353,7 @@ class HyperparameterOptimizationShapes:
         if write:
             self.write_to_yaml(base_dir=base_dir)
 
-    def round_dict_values(self, hyperparameters_dict, n_round=4):
+    def _round_dict_values(self, hyperparameters_dict, n_round=4):
         """
         Rounds off float values in dict.
 
@@ -187,34 +380,11 @@ class HyperparameterOptimizationShapes:
             Exception: If the hyperparameters are not yet searched for.
         """
         if not self.study_ran:
-            raise Exception(f"run_optuna_hyperparameter_search must be called before write_to_yaml().")
+            raise Exception(f"run_hyperparameter_search must be called before write_to_yaml().")
         trial = self.study.best_trial
-        # Add shared hyperparameters for every model-type
-        # hyperparameters = {
-        #     "val_loss": trial.value, "test_accuracy": self.test_accuracy,
-        #     "learning_rate": trial.params["learning_rate"], "n_epochs": trial.params["n_epochs"],
-        #     "n_linear_output": trial.params["n_linear_output"], "gamma": trial.params["gamma"]}
-        # if self.model_type != "cnn":
-        #     hyperparameters["attr_weight"] = trial.params["attr_weight"]
-        #     hyperparameters["activation"] = trial.params["activation"]
-        # if self.model_type == "cbm":
-        #     hyperparameters["two_layers"] = trial.params["two_layers"]
-        # if self.model_type == "cbm_skip":
-        #     hyperparameters["n_hidden"] = trial.params["n_hidden"]
-        # TODO: Make this generic
-        hyperparameters = {
-            "val_loss": trial.value, "test_accuracy": self.test_accuracy,
-            "learning_rate": trial.params["learning_rate"], "n_epochs": self.max_epochs,
-            "n_linear_output": 64, "gamma": 0.7, "dropout_probability": trial.params["dropout_probability"]}
-        if self.model_type != "cnn":
-            hyperparameters["attr_weight"] = trial.params["attr_weight"]
-            hyperparameters["activation"] = trial.params["activation"]
-        if self.model_type == "cbm":
-            hyperparameters["two_layers"] = trial.params["two_layers"]
-        if self.model_type == "cbm_skip" or self.model_type == "scm":
-            hyperparameters["n_hidden"] = 16
+        hyperparameters = self._get_hyperparameters_from_best_trial(trial)
+        hyperparameters = self._round_dict_values(hyperparameters)
 
-        hyperparameters = self.round_dict_values(hyperparameters)
         folder_name = "c" + str(self.n_classes) + "_a" + str(self.n_attr) + "/"
         hp_path = base_dir + folder_name
         hp_filename = "hyperparameters_" + self.subset_dir.strip("/") + ".yaml"
@@ -228,15 +398,17 @@ class HyperparameterOptimizationShapes:
         # File already exists. We have to read, overwrite only this model_type, and write again.
         with open(hp_path + hp_filename, "r") as yaml_file:
             hyperparameters_full = yaml.safe_load(yaml_file)
+        if hyperparameters_full is None:
+            hyperparameters_full = {}
         hyperparameters_full[self.model_type] = hyperparameters  # Overwrite or create new dict of model_type only
         with open(hp_path + hp_filename, "w") as yaml_file:
             yaml.dump(hyperparameters_full, yaml_file, default_flow_style=False)
 
 
 def run_hyperparameter_optimization_all_models(
-        dataset_path, n_classes, n_attr, subsets, base_dir="hyperparameters/shapes/", n_trials=10, batch_size=16,
-        eval_loss=True, device=None, num_workers=0, pin_memory=False, persistent_workers=False, non_blocking=False,
-        min_epochs=10, max_epochs=50, write=True, verbose="warning"):
+        dataset_path, n_classes, n_attr, subsets, hyperparameters_to_search=None, grid_search=False,
+        base_dir="hyperparameters/shapes/", n_trials=10, batch_size=16, eval_loss=True, device=None, num_workers=0,
+        pin_memory=False, persistent_workers=False, non_blocking=False, fast=False, write=True, verbose="warning"):
     """
     Run hyperparameter search for every model for many subsets.
 
@@ -245,6 +417,9 @@ def run_hyperparameter_optimization_all_models(
         n_classes (int): The amount of classes in the dataset.
         n_attr (int): The amount of attributes in the dataset
         subsets (list of int): List of the subsets to run on.
+        hyperparameters_to_search (dict, optinal): Determines the hyperparameters to search for. See the
+            hyperparameter-class for more doctumentation.
+        grid_search (bool, optional): If True, will run grid-search optimization. If not, uses optunas default sampler.
         base_dir (str, optional): Path to hyperparameter base directory. Defaults to "hyperparameters/shapes/".
         n_trials (int, optional): Amount of trials to run. Defaults to 10.
         batch_size (int, optional): Batch-size. Defaults to 16.
@@ -262,8 +437,14 @@ def run_hyperparameter_optimization_all_models(
         min_epochs (int, optional): Minimum amount of epochs to run. Defaults to 10.
         max_epochs (int, optional): Maximum amount of epochs to run. Defaults to 50.
         write (bool, optional): Whether to write hyperparameters to file or not.
+        fast (bool, optional): If True, will use hyperparameters with very low `n_epochs`. Defaults to False.
         verbose (str, optional): Controls the verbosity of optuna study. Defaults to "warning".
     """
+    if hyperparameters_to_search is None:
+        hyperparameters_to_search = {
+            "learning_rate": True, "dropout_probability": True, "gamma": True, "attr_schedule": True,
+            "attr_weight": False, "attr_weight_decay": False, "n_epochs": False, "n_linear_output": False,
+            "activation": False, "two_layers": False, "n_hidden": False}
 
     for subset in subsets:
         print(f"\nRunning hyperparameter search for {subset} subsets. \n")
@@ -274,8 +455,10 @@ def run_hyperparameter_optimization_all_models(
                 model_type=model_type, dataset_path=dataset_path, n_classes=n_classes, n_attr=n_attr,
                 subset_dir=subset_dir, batch_size=batch_size, eval_loss=eval_loss, device=device,
                 num_workers=num_workers, pin_memory=pin_memory, persistent_workers=persistent_workers,
-                non_blocking=non_blocking, min_epochs=min_epochs, max_epochs=max_epochs)
-            obj.run_optuna_hyperparameter_search(n_trials=n_trials, write=write, base_dir=base_dir, verbose=verbose)
+                non_blocking=non_blocking, fast=fast)
+            obj.run_hyperparameter_search(n_trials=n_trials, hyperparameters_to_search=hyperparameters_to_search,
+                                          grid_search=grid_search,
+                                          write=write, base_dir=base_dir, verbose=verbose)
             print(f"\nFinnished hyperparameter search for model{model_type} with value {obj.study.best_trial.value}.\n")
 
 

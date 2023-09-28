@@ -160,7 +160,7 @@ def run_models_on_subsets_and_plot(
             subset_dir = "sub" + str(subset) + "/"
 
             train_loader, val_loader, test_loader = load_data_shapes(
-                path=dataset_dir, subset_dir=subset_dir, batch_size=batch_size, drop_last=True,
+                path=dataset_dir, subset_dir=subset_dir, batch_size=batch_size, drop_last=False,
                 num_workers=num_workers, pin_memory=pin_memory, persistent_workers=persistent_workers)
 
             histories = train_and_evaluate_shapes(

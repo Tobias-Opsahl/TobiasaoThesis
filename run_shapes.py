@@ -22,7 +22,7 @@ def parse_arguments():
     parser.add_argument("--subset_dir", type=str, default="", help="Name of optional subset.")
 
     # Parameters
-    parser.add_argument("--batch_size", type=int, default=16, help="Batch size for training.")
+    parser.add_argument("--batch_size", type=int, default=128, help="Batch size for training.")
     parser.add_argument("--n_classes", type=int, default=4, help="Number of classes.")
     parser.add_argument("--n_attr", type=int, default=5, help="Number of attributes.")
     parser.add_argument("--n_bootstrap", type=int, default=1, help="Number of bootstrap iterations.")
@@ -60,22 +60,21 @@ if __name__ == "__main__":
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     path = args.base_dir + args.dataset_folder
-    subsets = [50, 100, 150, 200, 250]
+    if torch.cuda.is_available():
+        subsets = [50, 100, 150, 200, 250]
+    else:
+        subsets = [50]  # , 150, 200, 250]
 
     if args.run_hyperparameters:
         if args.fast:
-            min_epochs = 2
-            max_epochs = 3
             base_dir = "hyperparameters/shapes/testing/"
         else:
-            min_epochs = 10
-            max_epochs = 30
             base_dir = "hyperparameters/shapes/"
         run_hyperparameter_optimization_all_models(
             path, args.n_classes, args.n_attr, n_trials=args.n_trials, base_dir=base_dir, subsets=subsets,
             batch_size=args.batch_size, eval_loss=True, device=device,
             num_workers=args.num_workers, pin_memory=args.pin_memory, persistent_workers=args.persistent_workers,
-            non_blocking=args.non_blocking, min_epochs=min_epochs, max_epochs=max_epochs, verbose=args.verbose)
+            non_blocking=args.non_blocking, fast=args.fast, verbose=args.verbose)
     if args.evaluate_and_plot:
         run_models_on_subsets_and_plot(
             path, args.n_classes, args.n_attr, subsets=subsets, n_bootstrap=args.n_bootstrap,

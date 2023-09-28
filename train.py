@@ -134,8 +134,9 @@ def train_simple(model, criterion, optimizer, train_loader, val_loader=None, n_e
 
 
 def train_cbm(model, criterion, attr_criterion, optimizer, train_loader, val_loader=None, n_epochs=10, attr_weight=1,
-              scheduler=None, trial=None, device=None, non_blocking=False, model_dir="saved_models/",
-              model_save_name=None, history_dir="history/", history_save_name=None, verbose=2):
+              attr_weight_decay=1, scheduler=None, trial=None, device=None, non_blocking=False,
+              model_dir="saved_models/", model_save_name=None, history_dir="history/", history_save_name=None,
+              verbose=2):
     """
     Trains and evaluates a Joint Concept Bottleneck Model. This means it is both trained normal
     output cross entropy loss, but also on the intermediary attribute loss.
@@ -153,6 +154,8 @@ def train_cbm(model, criterion, attr_criterion, optimizer, train_loader, val_loa
         attr_weight (list or float): The weight of the attribute loss function. Equal to Lambda in
             the Concept Bottleneck Models paper. This can also be a list of length `n_epochs`, in order
             dynamically change the attribute weight during training.
+        attr_weight_decay (float): Use as a weight decay for the `attr_weight` after every epoch. If 1, there is no
+            weight decay. If this is not 1, `attr_weight` needs to be a float, not list.
         scheduler (scheduler, optional): Optional learning rate scheduler.
         trial (optuna.trial): Pass if one runs hyperparameter optimization. If not None, this is an
             optuna trial object. It will tell optuna how well the training goes during the epochs,
@@ -173,6 +176,13 @@ def train_cbm(model, criterion, attr_criterion, optimizer, train_loader, val_loa
             epochs, and for validation loss and accuracy if `val_loader` is not None. This is done for both the
             class and the attributes.
     """
+    if attr_weight_decay is None:
+        attr_weight_decay = 1  # This results in no weight-decay
+    if isinstance(attr_weight, list) and attr_weight_decay == 1:
+        message = f"When `attr_weight_decay` is not 1, `attr_weight` needs to be a float, not list. "
+        message += f"`attr_weight_decay` was {attr_weight_decay} and `att_weight` was {attr_weight}. "
+        raise ValueError(message)
+
     if device is None:
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     model = model.to(device, non_blocking=non_blocking)
@@ -287,6 +297,7 @@ def train_cbm(model, criterion, attr_criterion, optimizer, train_loader, val_loa
 
         if scheduler is not None:
             scheduler.step()
+        attr_weight *= attr_weight_decay
 
     history = {"train_class_loss": train_class_loss_list, "train_class_accuracy": train_class_accuracy_list,
                "val_class_loss": val_class_loss_list, "val_class_accuracy": val_class_accuracy_list,

@@ -45,7 +45,8 @@ def split_dataset(data_list, tables_dir, seed=57):
         pickle.dump(test_data, outfile)
 
 
-def get_hyperparameters(n_classes, n_attr, n_subset, fast=False, base_dir="hyperparameters/", dataset_type="shapes/"):
+def get_hyperparameters(n_classes, n_attr, n_subset, default=False, fast=False,
+                        base_dir="hyperparameters/", dataset_type="shapes/"):
     """
     Loads a set of hyperparameters. This will try to load hyperparameters specific for this combination of
     classes, attributes and subset. If this is not found, it will use default hyperparameters instead.
@@ -57,6 +58,7 @@ def get_hyperparameters(n_classes, n_attr, n_subset, fast=False, base_dir="hyper
         n_attr (int): The amount of attributes the hyperparameter was optimized with.
         n_subset (int): The amount of instances in each class the hyperparameter was optimized with.
         fast (bool, optional): If True, will use hyperparameters with very low `n_epochs`. Defaults to False.
+        default (bool, optional): If True, will use default hyperparameters, disregarding n_classe, n_attr etc.
         base_dir (str, optional): Base directory to the hyperparameters.. Defaults to "hyperparameters/".
         dataset_dir (str, optional): The dataset-directory. Defaults to "shapes/".
 
@@ -72,10 +74,13 @@ def get_hyperparameters(n_classes, n_attr, n_subset, fast=False, base_dir="hyper
     folder_name = "c" + str(n_classes) + "_a" + str(n_attr) + "/"
     filename = "hyperparameters_sub" + str(n_subset) + ".yaml"
 
-    if not os.path.exists(base_dir + folder_name + filename):  # No hyperparameter folder for this class-attr-sub
+    if (not default) and (not os.path.exists(base_dir + folder_name + filename)):  # No hp for this class-attr-sub
         message = f"No hyperparameters found for {n_classes=}, {n_attr=} and {n_subset=}. "
         message += "Falling back on default hyperparameters. "
         warnings.warn(message)
+        default = True
+
+    if default:
         with open(base_dir + "default.yaml", "r") as infile:
             hyperparameters = yaml.safe_load(infile)
         return hyperparameters
@@ -132,6 +137,7 @@ def load_single_model(model_type, n_classes, n_attr, hyperparameters):
         return cbm_skip
 
     elif model_type == "scm":
+        hp["n_hidden"] = 16  # TODO: Remove this when new hyperparameters are ran.
         scm = ShapesSCM(
             n_classes=n_classes, n_attr=n_attr, n_hidden=hp["n_hidden"], n_linear_output=hp["n_linear_output"],
             attribute_activation_function=hp["activation"], dropout_probability=hp["dropout_probability"])
