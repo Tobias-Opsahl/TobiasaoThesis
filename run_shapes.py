@@ -14,6 +14,7 @@ def parse_arguments():
     parser = argparse.ArgumentParser(description="Script for parsing command-line arguments.")
 
     parser.add_argument("--run_hyperparameters", action="store_true", help="Run hyperparameter search.")
+    parser.add_argument("--no_grid_search", action="store_true", help="Do not run grid-search, but TPEsampler.")
     parser.add_argument("--evaluate_and_plot", action="store_true", help="Evaluate models and plot.")
 
     # Path stuff
@@ -65,14 +66,16 @@ if __name__ == "__main__":
     else:
         subsets = [50]  # , 150, 200, 250]
 
+    grid_search = not args.no_grid_search
+
     if args.run_hyperparameters:
         if args.fast:
             base_dir = "hyperparameters/shapes/testing/"
         else:
             base_dir = "hyperparameters/shapes/"
         run_hyperparameter_optimization_all_models(
-            path, args.n_classes, args.n_attr, n_trials=args.n_trials, base_dir=base_dir, subsets=subsets,
-            batch_size=args.batch_size, eval_loss=True, device=device,
+            path, args.n_classes, args.n_attr, n_trials=args.n_trials, grid_search=grid_search, base_dir=base_dir,
+            subsets=subsets, batch_size=args.batch_size, eval_loss=True, device=device,
             num_workers=args.num_workers, pin_memory=args.pin_memory, persistent_workers=args.persistent_workers,
             non_blocking=args.non_blocking, fast=args.fast, verbose=args.verbose)
     if args.evaluate_and_plot:

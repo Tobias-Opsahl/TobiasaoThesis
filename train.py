@@ -5,7 +5,7 @@ import optuna
 
 
 def train_simple(model, criterion, optimizer, train_loader, val_loader=None, n_epochs=10, scheduler=None, trial=None,
-                 device=None, non_blocking=False, model_dir="saved_models/", model_save_name=None,
+                 n_early_stop=5, device=None, non_blocking=False, model_dir="saved_models/", model_save_name=None,
                  history_dir="history/", history_save_name=None, verbose=2):
     """
     Trains a model and calculate training and valudation stats, given the model, loader, optimizer
@@ -24,6 +24,8 @@ def train_simple(model, criterion, optimizer, train_loader, val_loader=None, n_e
         trial (optuna.trial): Pass if one runs hyperparameter optimization. If not None, this is an
             optuna trial object. It will tell optuna how well the training goes during the epochs,
             and may prune (cancel) a training trial.
+        n_early_stop (int): The number of consecutive iterations without validation loss improvement that
+            stops the training (early stopping). Will only work if `val_loader` is None.
         device (str): Use "cpu" for cpu training and "cuda:0" for gpu training.
         non_blocking (bool): If True, allows for asyncronous transfer between RAM and VRAM.
             This only works together with `pin_memory=True` to dataloader and GPU training.
@@ -46,9 +48,13 @@ def train_simple(model, criterion, optimizer, train_loader, val_loader=None, n_e
     train_class_accuracy_list = []
     val_class_loss_list = []  # These will remain empty if `val_loader` is None
     val_class_accuracy_list = []
-    best_epoch_number = 0
+    best_epoch_number_loss = 0
+    best_epoch_number_accuracy = 0
+    best_val_loss = 999999999
     best_val_accuracy = 0
-    best_model = None  # This will only be saved if `val_loader` is not None
+    best_model_loss = None  # This will only be saved if `val_loader` is not None
+    best_model_accuracy = None
+    n_stagnation = 0
 
     for epoch in range(n_epochs):  # Train
         train_loss = 0
@@ -95,15 +101,27 @@ def train_simple(model, criterion, optimizer, train_loader, val_loader=None, n_e
             val_class_loss_list.append(average_val_loss)
             val_class_accuracy_list.append(val_accuracy)
 
+            if average_val_loss < best_val_loss:
+                best_val_loss = average_val_loss
+                best_epoch_number_loss = epoch
+                best_model_accuracy = model.state_dict()
+
             if val_accuracy > best_val_accuracy:
                 best_val_accuracy = val_accuracy
-                best_epoch_number = epoch
-                best_model = model.state_dict()
+                best_epoch_number_accuracy = epoch
+                best_model_loss = model.state_dict()
 
             if trial is not None:
                 trial.report(average_val_loss, epoch)
                 if trial.should_prune():
                     raise optuna.exceptions.TrialPruned()
+
+            if average_val_loss >= best_val_loss:
+                n_stagnation += 1
+            else:  # Better than best loss
+                n_stagnation = 0
+            if n_stagnation == n_early_stop:
+                break
 
         if (verbose == 2) or ((verbose == 1) and (epoch + 1 == n_epochs)):
             print(f"Epoch [{epoch + 1} / {n_epochs}]")
@@ -117,14 +135,17 @@ def train_simple(model, criterion, optimizer, train_loader, val_loader=None, n_e
 
     history = {"train_class_loss": train_class_loss_list, "train_class_accuracy": train_class_accuracy_list,
                "val_class_loss": val_class_loss_list, "val_class_accuracy": val_class_accuracy_list,
-               "best_epoch": best_epoch_number, "best_val_accuracy": best_val_accuracy,
+               "best_epoch_accuracy": best_epoch_number_accuracy, "best_val_accuracy": best_val_accuracy,
+               "best_epoch_loss": best_epoch_number_loss, "best_val_loss": best_val_loss,
                "model_save_name": model_save_name}
 
     if model_save_name is not None:
-        if not model_save_name.endswith(".pth"):
-            model_save_name += ".pth"
+        model_save_name = model_save_name.replace(".pth", "")
+        model_save_name_loss = model_save_name + "_loss.pth"
+        model_save_name_accuracy = model_save_name + "_accuracy.pth"
         os.makedirs(model_dir, exist_ok=True)
-        torch.save(best_model, model_dir + model_save_name)
+        torch.save(best_model_loss, model_dir + model_save_name_loss)
+        torch.save(best_model_accuracy, model_dir + model_save_name_accuracy)
     if history_save_name is not None:
         if not history_save_name.endswith(".pkl"):
             history_save_name += ".pkl"
@@ -134,7 +155,7 @@ def train_simple(model, criterion, optimizer, train_loader, val_loader=None, n_e
 
 
 def train_cbm(model, criterion, attr_criterion, optimizer, train_loader, val_loader=None, n_epochs=10, attr_weight=1,
-              attr_weight_decay=1, scheduler=None, trial=None, device=None, non_blocking=False,
+              attr_weight_decay=1, scheduler=None, trial=None, n_early_stop=5, device=None, non_blocking=False,
               model_dir="saved_models/", model_save_name=None, history_dir="history/", history_save_name=None,
               verbose=2):
     """
@@ -160,6 +181,8 @@ def train_cbm(model, criterion, attr_criterion, optimizer, train_loader, val_loa
         trial (optuna.trial): Pass if one runs hyperparameter optimization. If not None, this is an
             optuna trial object. It will tell optuna how well the training goes during the epochs,
             and may prune (cancel) a training trial.
+        n_early_stop (int): The number of consecutive iterations without validation loss improvement that
+            stops the training (early stopping). Will only work if `val_loader` is None.
         device (str): Use "cpu" for cpu training and "cuda" for gpu training.
         non_blocking (bool): If True, allows for asyncronous transfer between RAM and VRAM.
             This only works together with `pin_memory=True` to dataloader and GPU training.
@@ -197,9 +220,13 @@ def train_cbm(model, criterion, attr_criterion, optimizer, train_loader, val_loa
     train_attr_accuracy_list = []
     val_attr_loss_list = []
     val_attr_accuracy_list = []
-    best_epoch_number = 0
+    best_epoch_number_loss = 0
+    best_epoch_number_accuracy = 0
+    best_val_loss = 999999999
     best_val_accuracy = 0
-    best_model = None  # This will only be saved if `val_loader` is not None
+    best_model_loss = None  # This will only be saved if `val_loader` is not None
+    best_model_accuracy = None
+    n_stagnation = 0
 
     for epoch in range(n_epochs):  # Train
         train_attr_loss = 0
@@ -273,15 +300,27 @@ def train_cbm(model, criterion, attr_criterion, optimizer, train_loader, val_loa
             val_class_loss_list.append(average_val_class_loss)
             val_class_accuracy_list.append(val_class_accuracy)
 
+            if average_val_class_loss < best_val_loss:
+                best_val_loss = average_val_class_loss
+                best_epoch_number_loss = epoch
+                best_model_accuracy = model.state_dict()
+
             if val_class_accuracy > best_val_accuracy:
                 best_val_accuracy = val_class_accuracy
-                best_epoch_number = epoch
-                best_model = model.state_dict()
+                best_epoch_number_accuracy = epoch
+                best_model_loss = model.state_dict()
 
             if trial is not None:
                 trial.report(average_val_class_loss, epoch)
                 if trial.should_prune():
                     raise optuna.exceptions.TrialPruned()
+
+            if average_val_class_loss >= best_val_loss:
+                n_stagnation += 1
+            else:  # Better than best loss
+                n_stagnation = 0
+            if n_stagnation == n_early_stop:
+                break
 
         if (verbose == 2) or ((verbose == 1) and (epoch + 1 == n_epochs)):
             print(f"Epoch [{epoch + 1} / {n_epochs}]")
@@ -303,14 +342,17 @@ def train_cbm(model, criterion, attr_criterion, optimizer, train_loader, val_loa
                "val_class_loss": val_class_loss_list, "val_class_accuracy": val_class_accuracy_list,
                "train_attr_loss": train_attr_loss_list, "train_attr_accuracy": train_attr_accuracy_list,
                "val_attr_loss": val_attr_loss_list, "val_attr_accuracy": val_attr_accuracy_list,
-               "best_epoch": best_epoch_number, "best_val_accuracy": best_val_accuracy,
+               "best_epoch_accuracy": best_epoch_number_accuracy, "best_val_accuracy": best_val_accuracy,
+               "best_epoch_loss": best_epoch_number_loss, "best_val_loss": best_val_loss,
                "model_save_name": model_save_name}
 
     if model_save_name is not None:
-        if not model_save_name.endswith(".pth"):
-            model_save_name += ".pth"
+        model_save_name = model_save_name.replace(".pth", "")
+        model_save_name_loss = model_save_name + "_loss.pth"
+        model_save_name_accuracy = model_save_name + "_accuracy.pth"
         os.makedirs(model_dir, exist_ok=True)
-        torch.save(best_model, model_dir + model_save_name)
+        torch.save(best_model_loss, model_dir + model_save_name_loss)
+        torch.save(best_model_accuracy, model_dir + model_save_name_accuracy)
     if history_save_name is not None:
         if not history_save_name.endswith(".pkl"):
             history_save_name += ".pkl"

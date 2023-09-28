@@ -212,9 +212,9 @@ class HyperparameterOptimizationShapes:
                 hyperparameters[hp_name] = self._get_single_hyperparameter_for_trial(hp_name, trial)
             else:  # Set default value
                 hyperparameters[hp_name] = self.default_hyperparameters[self.model_type][hp_name]
-        if "attr_schedule" in self.hyperparameter_names and self.hyperparameters_to_search.get("attr_schedule"):
+        if (self.model_type != "cnn") and self.hyperparameters_to_search.get("attr_schedule"):
             # This determines two arguments.
-            attr_weight, attr_weight_decay = self._get_single_hyperparameter_for_trial(hp_name, trial)
+            attr_weight, attr_weight_decay = self._get_single_hyperparameter_for_trial("attr_schedule", trial)
             hyperparameters["attr_weight"] = attr_weight
             hyperparameters["attr_weight_decay"] = attr_weight_decay
         return hyperparameters
@@ -238,10 +238,18 @@ class HyperparameterOptimizationShapes:
                 hyperparameters[hp_name] = best_trial.params[hp_name]
             else:  # Get value from default parameters
                 hyperparameters[hp_name] = self.default_hyperparameters[self.model_type][hp_name]
-        if "attr_schedule" in self.hyperparameter_names and self.hyperparameters_to_search.get("attr_schedule"):
+        if (self.model_type != "cnn") and self.hyperparameters_to_search.get("attr_schedule"):
             # This means we search for the two values below.
             hyperparameters["attr_weight"] = best_trial.user_attrs["attr_weight"]
             hyperparameters["attr_weight_decay"] = best_trial.user_attrs["attr_weight_decay"]
+        # Write the validation stats
+        hyperparameters["best_val_loss"] = best_trial.user_attrs["best_val_loss"]
+        hyperparameters["best_val_accuracy"] = best_trial.user_attrs["best_val_accuracy"]
+        if not self.hyperparameters_to_search["n_epochs"]:  # Overwite with best epoch-number
+            if self.eval_loss:
+                hyperparameters["n_epochs"] = best_trial.user_attrs["best_epoch_loss"]
+            else:
+                hyperparameters["n_epochs"] = best_trial.user_attrs["best_epoch_accuracy"]
         return hyperparameters
 
     def _get_search_space(self):
@@ -298,12 +306,14 @@ class HyperparameterOptimizationShapes:
                 attr_weight=hp["attr_weight"], trial=trial, scheduler=exp_lr_scheduler, device=self.device,
                 non_blocking=self.non_blocking, verbose=0)
 
+        trial.set_user_attr("best_val_loss", history["best_val_loss"])  # Save these values to write later
+        trial.set_user_attr("best_val_accuracy", history["best_val_accuracy"])
+        trial.set_user_attr("best_epoch_loss", history["best_epoch_loss"])
+        trial.set_user_attr("best_epoch_accuracy", history["best_epoch_accuracy"])
         if self.eval_loss:
-            return history["val_class_loss"][-1]
-        # TODO: Make moth best-val-class-loss and a accuracy, and also best_epch in train, and use that here.
-        # Also make the hyperparam epochs use the best-epoch(val or accuracy) from here.
+            return history["best_val_loss"]
         else:
-            return history["val_class_accuracy"][-1]
+            return history["best_val_accuracy"]
 
     def run_hyperparameter_search(self, hyperparameters_to_search=None, n_trials=50, write=True,
                                   base_dir="hyperparameters/shapes", grid_search=True, verbose="warning"):
