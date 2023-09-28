@@ -10,5 +10,6 @@ history/*
 saved_models/*
 plots/*
 hyperparameters/shapes/testing/**
+hyperparameters/remote*
 remote_downloads/
 testing_runs.py
