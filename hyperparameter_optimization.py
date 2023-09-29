@@ -256,10 +256,10 @@ class HyperparameterOptimizationShapes:
         Returns:
             dict: Dictionary of the hyperparameter-names pointing to a list of possible values to try.
         """
-        search_space = {
-            "learning_rate": [0.05, 0.01, 0.005, 0.001, 0.0005, 0.0001],
+        all_possibilities = {
+            "learning_rate": [0.01, 0.005, 0.001, 0.0005, 0.0001],
             "gamma": [0.1, 0.5, 1],
-            "dropout_probability": [0, 0.1, 0.2, 0.3, 0.5],
+            "dropout_probability": [0, 0.1, 0.2, 0.4],
             "n_epochs": [20, 30, 50, 100],
             "n_linear_output": [16, 64, 128, 256],
             "n_hidden": [16, 32, 64],
@@ -267,8 +267,16 @@ class HyperparameterOptimizationShapes:
             "two_layers": [True, False],
             "attr_weight": [1, 3, 5, 10],
             "attr_weight_decay": [0.5, 0.7, 0.9, 1],
-            "attr_schedule": [0.5, 0.7, 0.9, 1, 3, 5, 10]
+            "attr_schedule": [0.7, 0.9, 1, 5, 10]
         }
+
+        search_space = {}  # Add only the hyperparameters we are going to search for in the space
+        for hyperparameter_name in self.hyperparameter_names:
+            if self.hyperparameters_to_search[hyperparameter_name]:
+                search_space[hyperparameter_name] = all_possibilities[hyperparameter_name]
+        if (self.model_type != "cnn") and self.hyperparameters_to_search.get("attr_schedule"):
+            search_space["attr_schedule"] = all_possibilities["attr_schedule"]
+
         return search_space
 
     def objective(self, trial):
@@ -347,15 +355,16 @@ class HyperparameterOptimizationShapes:
             optuna.logging.set_verbosity(optuna.logging.ERROR)
 
         if not grid_search:
-            pruner = optuna.pruners.MedianPruner(n_startup_trials=5, n_warmup_steps=0, interval_steps=1)
+            pruner = optuna.pruners.MedianPruner(n_startup_trials=10, n_warmup_steps=0, interval_steps=1)
             study = optuna.create_study(direction=direction, pruner=pruner)
         else:  # Grid search
+            pruner = optuna.pruners.NopPruner()  # One actually have to specify no-pruner, else MedianPruner is used.
             search_space = self._get_search_space()
-            study = optuna.create_study(sampler=optuna.samplers.GridSampler(search_space=search_space))
+            study = optuna.create_study(direction=direction, pruner=pruner,
+                                        sampler=optuna.samplers.GridSampler(search_space=search_space))
         study.optimize(self.objective, n_trials=n_trials)
         self.study = study
         self.study_ran = True
-        self.test_accuracy = 0
         if write:
             self.write_to_yaml(base_dir=base_dir)
 
@@ -463,9 +472,8 @@ def run_hyperparameter_optimization_all_models(
                 num_workers=num_workers, pin_memory=pin_memory, persistent_workers=persistent_workers,
                 non_blocking=non_blocking, fast=fast)
             obj.run_hyperparameter_search(n_trials=n_trials, hyperparameters_to_search=hyperparameters_to_search,
-                                          grid_search=grid_search,
-                                          write=write, base_dir=base_dir, verbose=verbose)
-            print(f"\nFinnished hyperparameter search for model{model_type} with value {obj.study.best_trial.value}.\n")
+                                          grid_search=grid_search, write=write, base_dir=base_dir, verbose=verbose)
+            print(f"\nFinnished search for model {model_type} with value {obj.study.best_trial.value}.\n")
 
 
 if __name__ == "__main__":
