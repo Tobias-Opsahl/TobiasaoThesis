@@ -45,7 +45,7 @@ def split_dataset(data_list, tables_dir, seed=57):
         pickle.dump(test_data, outfile)
 
 
-def get_hyperparameters(n_classes, n_attr, n_subset, default=False, fast=False,
+def get_hyperparameters(n_classes=None, n_attr=None, n_subset=None, default=False, fast=False,
                         base_dir="hyperparameters/", dataset_type="shapes/"):
     """
     Loads a set of hyperparameters. This will try to load hyperparameters specific for this combination of
@@ -62,9 +62,18 @@ def get_hyperparameters(n_classes, n_attr, n_subset, default=False, fast=False,
         base_dir (str, optional): Base directory to the hyperparameters.. Defaults to "hyperparameters/".
         dataset_dir (str, optional): The dataset-directory. Defaults to "shapes/".
 
+    Raises:
+        ValueError: If `default` and `fast` are False, `n_classes`, `n_attr` and `n_subset` must be provided.
+        Raises ValueError if not.
+
     Returns:
         dict: The hyperparameters.
     """
+    if (not default and not fast) and ((n_classes is None) or (n_attr is None) or (n_subset is None)):
+        message = f"When getting non-default or non-fast hyperparameters, arguments `n_classes`, `n_attr` and "
+        message += f"`n_subset` must be provided (all of them must be int). Was {n_classes=}, {n_attr=}, {n_subset=}. "
+        raise ValueError(message)
+
     base_dir = base_dir + dataset_type
     if fast:  # Here n_epohcs = 2, for fast testing
         with open(base_dir + "fast.yaml", "r") as infile:

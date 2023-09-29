@@ -8,10 +8,6 @@ from train import train_simple, train_cbm
 from utils import load_single_model, get_hyperparameters
 from constants import MODEL_STRINGS
 
-# TODO: Finnish generic setup.
-#   Finish grid-search
-#   Check if uniform + search_space OR suggest categorical is best.
-
 
 class HyperparameterOptimizationShapes:
     """
@@ -63,7 +59,7 @@ class HyperparameterOptimizationShapes:
         self.dataset_path = dataset_path
         self.n_classes = n_classes
         self.n_attr = n_attr
-        self.subset_dir = subset_dir  # TODO: Deal with subset_dir / n_subset nicely
+        self.subset_dir = subset_dir
         self.batch_size = batch_size
         self.eval_loss = eval_loss
         self.num_workers = num_workers
@@ -452,7 +448,7 @@ def run_hyperparameter_optimization_all_models(
     """
     if hyperparameters_to_search is None:
         hyperparameters_to_search = {
-            "learning_rate": True, "dropout_probability": True, "gamma": True, "attr_schedule": True,
+            "learning_rate": True, "dropout_probability": True, "gamma": False, "attr_schedule": True,
             "attr_weight": False, "attr_weight_decay": False, "n_epochs": False, "n_linear_output": False,
             "activation": False, "two_layers": False, "n_hidden": False}
 

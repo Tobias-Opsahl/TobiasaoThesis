@@ -5,7 +5,7 @@ import optuna
 
 
 def train_simple(model, criterion, optimizer, train_loader, val_loader=None, n_epochs=10, scheduler=None, trial=None,
-                 n_early_stop=5, device=None, non_blocking=False, model_dir="saved_models/", model_save_name=None,
+                 n_early_stop=7, device=None, non_blocking=False, model_dir="saved_models/", model_save_name=None,
                  history_dir="history/", history_save_name=None, verbose=2):
     """
     Trains a model and calculate training and valudation stats, given the model, loader, optimizer
@@ -101,6 +101,15 @@ def train_simple(model, criterion, optimizer, train_loader, val_loader=None, n_e
             val_class_loss_list.append(average_val_loss)
             val_class_accuracy_list.append(val_accuracy)
 
+            if average_val_loss >= best_val_loss:  # Check for stagnation _before_ updating best_val_loss
+                n_stagnation += 1
+            else:  # Better than best loss
+                n_stagnation = 0
+            if n_stagnation == n_early_stop:
+                if verbose >= 1:
+                    print(f"Early stopping after {n_stagnation} rounds of no validation loss improvement.")
+                break
+
             if average_val_loss < best_val_loss:
                 best_val_loss = average_val_loss
                 best_epoch_number_loss = epoch
@@ -115,13 +124,6 @@ def train_simple(model, criterion, optimizer, train_loader, val_loader=None, n_e
                 trial.report(average_val_loss, epoch)
                 if trial.should_prune():
                     raise optuna.exceptions.TrialPruned()
-
-            if average_val_loss >= best_val_loss:
-                n_stagnation += 1
-            else:  # Better than best loss
-                n_stagnation = 0
-            if n_stagnation == n_early_stop:
-                break
 
         if (verbose == 2) or ((verbose == 1) and (epoch + 1 == n_epochs)):
             print(f"Epoch [{epoch + 1} / {n_epochs}]")
@@ -155,7 +157,7 @@ def train_simple(model, criterion, optimizer, train_loader, val_loader=None, n_e
 
 
 def train_cbm(model, criterion, attr_criterion, optimizer, train_loader, val_loader=None, n_epochs=10, attr_weight=1,
-              attr_weight_decay=1, scheduler=None, trial=None, n_early_stop=5, device=None, non_blocking=False,
+              attr_weight_decay=1, scheduler=None, trial=None, n_early_stop=7, device=None, non_blocking=False,
               model_dir="saved_models/", model_save_name=None, history_dir="history/", history_save_name=None,
               verbose=2):
     """
@@ -300,6 +302,15 @@ def train_cbm(model, criterion, attr_criterion, optimizer, train_loader, val_loa
             val_class_loss_list.append(average_val_class_loss)
             val_class_accuracy_list.append(val_class_accuracy)
 
+            if average_val_class_loss >= best_val_loss:  # Check for stagnation _before_ updating best_val_loss
+                n_stagnation += 1
+            else:  # Better than best loss
+                n_stagnation = 0
+            if n_stagnation == n_early_stop:
+                if verbose >= 1:
+                    print(f"Early stopping after {n_stagnation} rounds of no validation loss improvement.")
+                break
+
             if average_val_class_loss < best_val_loss:
                 best_val_loss = average_val_class_loss
                 best_epoch_number_loss = epoch
@@ -315,18 +326,12 @@ def train_cbm(model, criterion, attr_criterion, optimizer, train_loader, val_loa
                 if trial.should_prune():
                     raise optuna.exceptions.TrialPruned()
 
-            if average_val_class_loss >= best_val_loss:
-                n_stagnation += 1
-            else:  # Better than best loss
-                n_stagnation = 0
-            if n_stagnation == n_early_stop:
-                break
-
         if (verbose == 2) or ((verbose == 1) and (epoch + 1 == n_epochs)):
             print(f"Epoch [{epoch + 1} / {n_epochs}]")
             print(f"Train atribute loss: {average_train_attr_loss:.4f}, ", end="")
             print(f"Train attribute accuracy: {train_attr_accuracy:.4f}%")
-            print(f"Train class loss: {average_train_class_loss:.4f}, Train class accuracy: {train_class_accuracy:.4f}%")
+            print(
+                f"Train class loss: {average_train_class_loss:.4f}, Train class accuracy: {train_class_accuracy:.4f}%")
 
             if val_loader is not None:
                 print(f"Val atribute loss: {average_val_attr_loss:.4f}, ", end="")

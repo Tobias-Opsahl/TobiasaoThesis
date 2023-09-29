@@ -2,8 +2,8 @@ cbm:
   attr_weight: 1
   attr_weight_decay: 1
   gamma: 0.7
-  learning_rate: 0.005
-  n_epochs: 30
+  learning_rate: 0.001
+  n_epochs: 50
   n_linear_output: 64
   two_layers: true
   activation: sigmoid
@@ -12,8 +12,8 @@ cbm_res:
   attr_weight: 1
   attr_weight_decay: 1
   gamma: 0.7
-  learning_rate: 0.005
-  n_epochs: 30
+  learning_rate: 0.001
+  n_epochs: 50
   n_linear_output: 64
   activation: sigmoid
   dropout_probability: 0.2
@@ -21,8 +21,8 @@ cbm_skip:
   attr_weight: 1
   attr_weight_decay: 1
   gamma: 0.7
-  learning_rate: 0.005
-  n_epochs: 30
+  learning_rate: 0.001
+  n_epochs: 50
   n_hidden: 16
   n_linear_output: 64
   activation: sigmoid
@@ -31,15 +31,15 @@ scm:
   attr_weight: 1
   attr_weight_decay: 1
   gamma: 0.7
-  learning_rate: 0.005
-  n_epochs: 30
+  learning_rate: 0.001
+  n_epochs: 50
   n_hidden: 16
   n_linear_output: 64
   activation: sigmoid
   dropout_probability: 0.2
 cnn:
   gamma: 0.7
-  learning_rate: 0.005
+  learning_rate: 0.001
   n_epochs: 30
   n_linear_output: 64
   dropout_probability: 0.2
