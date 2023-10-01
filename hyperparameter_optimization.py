@@ -72,6 +72,7 @@ class HyperparameterOptimizationShapes:
 
         if not os.path.exists(dataset_path + "tables/" + subset_dir):  # Make subset of dataset if it does not exist
             make_subset_shapes(dataset_path, subset_dir, n_classes, seed=seed)
+        self.subset_dir = subset_dir  # Save for study-name
 
     def _get_hyperparameter_names(self):
         """
@@ -354,13 +355,14 @@ class HyperparameterOptimizationShapes:
         if verbose == "error" or verbose == "0":
             optuna.logging.set_verbosity(optuna.logging.ERROR)
 
+        study_name = "Study_" + self.subset_dir.strip("/") + "_" + self.model_type
         if not grid_search:
             pruner = optuna.pruners.MedianPruner(n_startup_trials=10, n_warmup_steps=0, interval_steps=1)
-            study = optuna.create_study(direction=direction, pruner=pruner)
+            study = optuna.create_study(direction=direction, pruner=pruner, study_name=study_name)
         else:  # Grid search
             pruner = optuna.pruners.NopPruner()  # One actually have to specify no-pruner, else MedianPruner is used.
             search_space = self._get_search_space()
-            study = optuna.create_study(direction=direction, pruner=pruner,
+            study = optuna.create_study(direction=direction, pruner=pruner, study_name=study_name,
                                         sampler=optuna.samplers.GridSampler(search_space=search_space))
         study.optimize(self.objective, n_trials=n_trials)
         self.study = study
