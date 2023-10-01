@@ -159,7 +159,7 @@ class HyperparameterOptimizationShapes:
             object: Trial suggestion of the value to test.
         """
         if hp_name == "learning_rate":
-            return trial.suggest_float("learning_rate", 0.0001, 0.05, log=True)
+            return trial.suggest_float("learning_rate", 0.0001, 0.1, log=True)
         elif hp_name == "dropout_probability":
             return trial.suggest_float("dropout_probability", 0, 0.5, log=False)
         elif hp_name == "gamma":
@@ -179,7 +179,7 @@ class HyperparameterOptimizationShapes:
         elif hp_name == "attr_weight_decay":
             return trial.suggest_float("attr_weight_decay", 0.5, 1, log=False)
         elif hp_name == "attr_schedule":
-            attr_schedule = trial.suggest_categorical("attr_schedule", [0.5, 0.7, 0.9, 1, 3, 5, 10])
+            attr_schedule = trial.suggest_categorical("attr_schedule", [0.7, 0.8, 0.9, 1, 3, 5, 10])
             if attr_schedule < 1:
                 attr_weight = 100
                 attr_weight_decay = attr_schedule
@@ -258,9 +258,9 @@ class HyperparameterOptimizationShapes:
             dict: Dictionary of the hyperparameter-names pointing to a list of possible values to try.
         """
         all_possibilities = {
-            "learning_rate": [0.01, 0.005, 0.001, 0.0005, 0.0001],
-            "gamma": [0.1, 0.5, 1],
-            "dropout_probability": [0, 0.1, 0.2, 0.4],
+            "learning_rate": [0.05, 0.01, 0.005, 0.001],
+            "gamma": [0.1, 0.5, 0.7, 0.9, 1],
+            "dropout_probability": [0, 0.2, 0.4],
             "n_epochs": [20, 30, 50, 100],
             "n_linear_output": [16, 64, 128, 256],
             "n_hidden": [16, 32, 64],
@@ -268,7 +268,7 @@ class HyperparameterOptimizationShapes:
             "two_layers": [True, False],
             "attr_weight": [1, 3, 5, 10],
             "attr_weight_decay": [0.5, 0.7, 0.9, 1],
-            "attr_schedule": [0.7, 0.9, 1, 5, 10]
+            "attr_schedule": [0.8, 0.9, 1, 5, 10]
         }
 
         search_space = {}  # Add only the hyperparameters we are going to search for in the space
@@ -348,9 +348,9 @@ class HyperparameterOptimizationShapes:
             direction = "maximize"
         verbose = str(verbose).strip().lower()
 
-        if verbose == "info" or verbose == "2":
+        if verbose == "info" or verbose == "2" or verbose == "1":
             optuna.logging.set_verbosity(optuna.logging.INFO)
-        if verbose == "warning" or verbose == "1":
+        if verbose == "warning":
             optuna.logging.set_verbosity(optuna.logging.WARNING)
         if verbose == "error" or verbose == "0":
             optuna.logging.set_verbosity(optuna.logging.ERROR)
@@ -457,16 +457,25 @@ def run_hyperparameter_optimization_all_models(
         fast (bool, optional): If True, will use hyperparameters with very low `n_epochs`. Defaults to False.
         verbose (str, optional): Controls the verbosity of optuna study. Defaults to "warning".
     """
+    set_hyperparameters_to_search = False
     if hyperparameters_to_search is None:
-        hyperparameters_to_search = {
-            "learning_rate": True, "dropout_probability": True, "gamma": False, "attr_schedule": True,
-            "attr_weight": False, "attr_weight_decay": False, "n_epochs": False, "n_linear_output": False,
-            "activation": False, "two_layers": False, "n_hidden": False}
-
+        set_hyperparameters_to_search = True
     for subset in subsets:
         print(f"\nRunning hyperparameter search for {subset} subsets. \n")
         subset_dir = "sub" + str(subset) + "/"
         for model_type in MODEL_STRINGS:
+            if set_hyperparameters_to_search:
+                if model_type == "cnn":
+                    hyperparameters_to_search = {
+                        "learning_rate": True, "dropout_probability": True, "gamma": True, "attr_schedule": False,
+                        "attr_weight": False, "attr_weight_decay": False, "n_epochs": False, "n_linear_output": False,
+                        "activation": False, "two_layers": False, "n_hidden": False}
+                else:
+                    hyperparameters_to_search = {
+                        "learning_rate": True, "dropout_probability": True, "gamma": False, "attr_schedule": True,
+                        "attr_weight": False, "attr_weight_decay": False, "n_epochs": False, "n_linear_output": False,
+                        "activation": False, "two_layers": False, "n_hidden": False}
+
             print(f"\nRunning hyperparameter optimization on model {model_type}. \n")
             obj = HyperparameterOptimizationShapes(
                 model_type=model_type, dataset_path=dataset_path, n_classes=n_classes, n_attr=n_attr,
