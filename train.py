@@ -5,7 +5,7 @@ import optuna
 
 
 def train_simple(model, criterion, optimizer, train_loader, val_loader=None, n_epochs=10, scheduler=None, trial=None,
-                 n_early_stop=7, device=None, non_blocking=False, model_dir="saved_models/", model_save_name=None,
+                 n_early_stop=12, device=None, non_blocking=False, model_dir="saved_models/", model_save_name=None,
                  history_dir="history/", history_save_name=None, verbose=2):
     """
     Trains a model and calculate training and valudation stats, given the model, loader, optimizer
@@ -41,6 +41,8 @@ def train_simple(model, criterion, optimizer, train_loader, val_loader=None, n_e
         dict: A dictionary of the training history. Will contain lists of training loss and accuracy over
             epochs, and for validation loss and accuracy if `val_loader` is not None.
     """
+    if n_early_stop is None:
+        n_early_stop = n_epochs
     if device is None:
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     model = model.to(device, non_blocking=non_blocking)
@@ -105,9 +107,13 @@ def train_simple(model, criterion, optimizer, train_loader, val_loader=None, n_e
                 n_stagnation += 1
             else:  # Better than best loss
                 n_stagnation = 0
-            if n_stagnation == n_early_stop:
-                if verbose >= 1:
-                    print(f"Early stopping after {n_stagnation} rounds of no validation loss improvement.")
+            if n_stagnation == n_early_stop:  # Early stopping, abort training
+                if verbose == 0:  # Do not print anything
+                    break
+                print(f"Epoch [{epoch + 1} / {n_epochs}]")
+                print(f"Train loss: {average_train_loss:.4f}, Train Accuracy: {train_accuracy:.4f}%")
+                print(f"Validation loss: {average_val_loss:.4f}, Validation Accuracy: {val_accuracy:.4f}%\n")
+                print(f"Early stopping after {n_stagnation} rounds of no validation loss improvement.\n")
                 break
 
             if average_val_loss < best_val_loss:
@@ -157,7 +163,7 @@ def train_simple(model, criterion, optimizer, train_loader, val_loader=None, n_e
 
 
 def train_cbm(model, criterion, attr_criterion, optimizer, train_loader, val_loader=None, n_epochs=10, attr_weight=1,
-              attr_weight_decay=1, scheduler=None, trial=None, n_early_stop=7, device=None, non_blocking=False,
+              attr_weight_decay=1, scheduler=None, trial=None, n_early_stop=12, device=None, non_blocking=False,
               model_dir="saved_models/", model_save_name=None, history_dir="history/", history_save_name=None,
               verbose=2):
     """
@@ -207,6 +213,8 @@ def train_cbm(model, criterion, attr_criterion, optimizer, train_loader, val_loa
         message = f"When `attr_weight_decay` is not 1, `attr_weight` needs to be a float, not list. "
         message += f"`attr_weight_decay` was {attr_weight_decay} and `att_weight` was {attr_weight}. "
         raise ValueError(message)
+    if n_early_stop is None:
+        n_early_stop = n_epochs
 
     if device is None:
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -306,9 +314,18 @@ def train_cbm(model, criterion, attr_criterion, optimizer, train_loader, val_loa
                 n_stagnation += 1
             else:  # Better than best loss
                 n_stagnation = 0
-            if n_stagnation == n_early_stop:
-                if verbose >= 1:
-                    print(f"Early stopping after {n_stagnation} rounds of no validation loss improvement.")
+            if n_stagnation == n_early_stop:  # Early stopping, abort training
+                if verbose == 0:  # Do not print output
+                    break
+                print(f"Epoch [{epoch + 1} / {n_epochs}]")
+                print(f"Train atribute loss: {average_train_attr_loss:.4f}, ", end="")
+                print(f"Train attribute accuracy: {train_attr_accuracy:.4f}%")
+                print(f"Train class loss: {average_train_class_loss:.4f}, ", end="")
+                print(f"Train class accuracy: {train_class_accuracy:.4f}%")
+                print(f"Val atribute loss: {average_val_attr_loss:.4f}, ", end="")
+                print(f"Val attribute accuracy: {val_attr_accuracy:.4f}%")
+                print(f"Val class loss: {average_val_class_loss:.4f}, Val class accuracy: {val_class_accuracy:.4f}%\n")
+                print(f"Early stopping after {n_stagnation} rounds of no validation loss improvement.\n")
                 break
 
             if average_val_class_loss < best_val_loss:

@@ -36,7 +36,7 @@ def parse_arguments():
     parser.add_argument("--num_workers", type=int, default=0, help="Amount of workers to load data to RAM.")
     parser.add_argument("--pin_memory", action="store_true", help="Pins the RAM memory (makes it non-pagable).")
     parser.add_argument("--persistent_workers", action="store_true", help="Do not reload workers between epochs")
-    parser.add_argument("--verbose", type=int, default=2, help="Verbosity of training (2, 1 or 0).")
+    parser.add_argument("--verbose", type=int, default=1, help="Verbosity of training (2, 1 or 0).")
 
     # Old stuff:
     parser.add_argument("--n_epochs", type=int, default=15, help="Number of epochs for training.")

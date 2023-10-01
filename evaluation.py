@@ -99,13 +99,14 @@ def train_and_evaluate_shapes(n_classes, n_attr, train_loader, val_loader, test_
         os.makedirs("history/" + class_dir + sub_dir, exist_ok=True)
         if model.name == "ShapesCNN":
             history = train_simple(model, criterion, optimizer, train_loader, val_loader, scheduler=exp_lr_scheduler,
-                                   n_epochs=hp[model_string]["n_epochs"], device=device, non_blocking=non_blocking,
-                                   verbose=verbose, model_save_name=save_name, history_save_name=save_name)
+                                   n_epochs=hp[model_string]["n_epochs"], n_early_stop=None, device=device,
+                                   non_blocking=non_blocking, verbose=verbose, model_save_name=save_name,
+                                   history_save_name=save_name)
         else:
             history = train_cbm(model, criterion, attr_criterion, optimizer, train_loader, val_loader,
                                 n_epochs=hp[model_string]["n_epochs"], attr_weight=hp[model_string]["attr_weight"],
-                                scheduler=exp_lr_scheduler, device=device, non_blocking=non_blocking, verbose=verbose,
-                                model_save_name=save_name, history_save_name=save_name)
+                                scheduler=exp_lr_scheduler, n_early_stop=None, device=device, non_blocking=non_blocking,
+                                verbose=verbose, model_save_name=save_name, history_save_name=save_name)
 
         test_accuracy = evaluate_on_test_set(model, test_loader, device=device, non_blocking=non_blocking)
         history["test_accuracy"] = [test_accuracy]
