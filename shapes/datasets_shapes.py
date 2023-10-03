@@ -62,9 +62,9 @@ def get_transforms_shapes():
     return transform
 
 
-def load_data_shapes(mode="all", path="data/shapes/shapes_testing/", subset_dir="",
-                     batch_size=4, shuffle=True, drop_last=False,
-                     num_workers=0, pin_memory=False, persistent_workers=False):
+def load_data_shapes(mode="all", path="data/shapes/shapes_testing/", subset_dir="", full_test_set=None,
+                     batch_size=4, shuffle=True, drop_last=False, num_workers=0, pin_memory=False,
+                     persistent_workers=False):
     """
     Makes dataloaders for the Shapes dataset.
 
@@ -77,6 +77,8 @@ def load_data_shapes(mode="all", path="data/shapes/shapes_testing/", subset_dir=
         path (str, optional): Path to dataset-folder.
         subset_dir (str, optional): Optional name of subset-directory, which may be created
             with `make_shapes_dataset.make_subset_shapes()`.
+        full_test_set (str): Set to name of full-test-set (made with `make_shapes_test_set`) to load full test-set,
+            instead of `mode`. If `None`, will ignore this and load normal datasets.
         batch_size (int, optional): Batch size to use. Defaults to 4.
         shuffle (bool, optional): Determines wether the sampler will shuffle or not.
             It is recommended to use `True` for training and `False` for validating.
@@ -93,14 +95,18 @@ def load_data_shapes(mode="all", path="data/shapes/shapes_testing/", subset_dir=
     Returns:
         Dataloader: The dataloader, or the list of the three dataloaders.
     """
-
+    if full_test_set is not None:  # Be sure to only load one dataset
+        mode = "test"
     if mode.lower() == "all":
         modes = ["train", "val", "test"]
     else:
         modes = [mode]
     dataloaders = []
     for mode in modes:
-        data_list = pickle.load(open(path + "tables/" + subset_dir + mode + "_data.pkl", "rb"))
+        if full_test_set is not None:
+            data_list = pickle.load(open(path + "tables/" + subset_dir + full_test_set, "rb"))
+        else:
+            data_list = pickle.load(open(path + "tables/" + subset_dir + mode + "_data.pkl", "rb"))
         transform = get_transforms_shapes()
         dataset = ShapesDataset(path, data_list, transform)
         dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, drop_last=drop_last,
@@ -131,7 +137,7 @@ def make_subset_shapes(path, n_images_class, n_classes, split_data=True, seed=57
     random.seed(seed)
     if not path.endswith("tables/"):
         path = path + "tables/"
-    data_list = pickle.load(open(path + "data_list.pkl", "rb"))
+    data_list = pickle.load(open(path + "train_data.pkl", "rb"))  # Use train data to exclude test-dataset
 
     class_dict = {}  # Sort dicts by label
     for i in range(n_classes):
@@ -139,7 +145,7 @@ def make_subset_shapes(path, n_images_class, n_classes, split_data=True, seed=57
     for i in range(len(data_list)):
         class_dict[data_list[i]["class_label"]].append(data_list[i])
 
-    new_list = []
+    new_list = []  # The sub-list of datapoints we want to create
     for i in range(n_classes):
         sub_list = random.sample(class_dict[i], n_images_class)
         new_list.extend(sub_list)
@@ -147,9 +153,61 @@ def make_subset_shapes(path, n_images_class, n_classes, split_data=True, seed=57
     tables_dir = path + "sub" + str(n_images_class) + "/"
     os.makedirs(tables_dir, exist_ok=True)
     with open(tables_dir + "data_list.pkl", "wb") as outfile:
-        pickle.dump(data_list, outfile)
+        pickle.dump(new_list, outfile)
     if split_data:
         split_dataset(new_list, tables_dir)
+
+
+def make_shapes_test_set(path, n_images_class, n_classes, n_images_class_test_set=500, split_data=True, base_seed=57):
+    """
+    This function is probably only used temporarly, at a time where `make_subset_shapes` drew from `data_list.pkl`
+    instead of `train_data.pkl`, making the need of this function for making realiable test data.
+
+    Make a big test set for a sub-list of a dataset, avoiding the images that were used to tune hyperparameters.
+    The `base_seed` should be the seed that were used to make the sub-list of data, with `make_subset_shapes`,
+    that were then used to tune hyperparameters on. We want to avoid all of those instances, to avoid overlap
+    between images used for tuning and images used in this test-set.
+    We first get the paths that were used in the original sub-list, then make a dictionary including all images in
+    the dataset *except* the paths used in the original sub-list. Finally, we make a subset of size `n_images_class_test_set`
+    of this.
+    Note that this could be computed in `make_subsets_shapes` slightly more efficient, but this function were added for
+    backwards compatibility. The operation only needs to be ran once, and takes second at most, so the inefficiency
+    is not considered significant.
+
+    Args:
+        path (str): Path to the dataset.
+        n_images_class (int): Amount of subset of data used in each class in the sub-list.
+        n_classes (int): Amount of classes in the dataset.
+        n_images_class_test_set (int, optional): Amount of images for each class in the test set. Defaults to 500.
+        split_data (bool, optional): Wether to split data in sub-list. Defaults to True.
+        base_seed (int, optional): The seed used for the original sub-list. Defaults to 57.
+    """
+    # Make the subset to be sure the seed is correct
+    make_subset_shapes(path, n_images_class, n_classes, split_data=split_data, seed=base_seed)
+    if not path.endswith("tables/"):
+        path = path + "tables/"
+    tables_dir = path + "sub" + str(n_images_class) + "/"
+    # First find all the indices used in sub data_list, so we can avoid them in the test-set
+    data_list = pickle.load(open(tables_dir + "data_list.pkl", "rb"))  # Data-list of subset
+    banned_paths = []  # Paths we do not want in our test-set
+    for i in range(len(data_list)):
+        banned_paths.append(data_list[i]["img_path"])
+
+    # Now start making the real test-dataset
+    full_data_list = pickle.load(open(path + "data_list.pkl", "rb"))  # Data-list of full dataset
+    test_class_dict = {}  # Make dict with class-labels pointing to lists of instances of that class
+    for i in range(n_classes):
+        test_class_dict[i] = []
+    for i in range(len(full_data_list)):
+        if full_data_list[i]["img_path"] not in banned_paths:
+            test_class_dict[full_data_list[i]["class_label"]].append(full_data_list[i])
+    random.seed(base_seed)
+    new_list = []  # The sub-list of datapoints we want to create
+    for i in range(n_classes):  # Make balanced list of each class
+        sub_list = random.sample(test_class_dict[i], n_images_class_test_set)
+        new_list.extend(sub_list)
+    with open(tables_dir + "full_test_data_" + str(n_images_class_test_set) + ".pkl", "wb") as outfile:
+        pickle.dump(new_list, outfile)
 
 
 def change_dataset_name(old_path, new_path):

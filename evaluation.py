@@ -122,6 +122,7 @@ def run_models_on_subsets_and_plot(
     Run all available models (from MODEL_STRINGS) on different subsets. For each subset, plots the models
     training-history together, and also plots the test error for each subset.
     To even out variance, the subsets can be bootstrapped with "n_bootstrap".
+    Note that this will only bootstrap the training and validation set, while the test-set remains the same.
 
     Args:
         dataset_dir (str): Path to the dataset_directory
@@ -152,15 +153,19 @@ def run_models_on_subsets_and_plot(
     test_accuracies_lists = [[] for _ in range(len(MODEL_STRINGS))]  # Test accuracies for every model for every subset
 
     for subset in subsets:
+        subset_dir = "sub" + str(subset) + "/"
         if verbose != 0:
-            print(f"Beggining subset {subset}:")
+            print(f"Beginning subset {subset}:")
         histories_total = None
+        # Load test-set for full dataset (not subset)
+        test_loader = load_data_shapes(
+            mode="test", path=dataset_dir, subset_dir="", batch_size=batch_size,
+            drop_last=False, num_workers=num_workers, pin_memory=pin_memory, persistent_workers=persistent_workers)
         for i in range(n_bootstrap):
             make_subset_shapes(dataset_dir, subset, n_classes, seed=seed)
             seed -= 1  # Change seed so that subset will be different for the bootstrapping
-            subset_dir = "sub" + str(subset) + "/"
 
-            train_loader, val_loader, test_loader = load_data_shapes(
+            train_loader, val_loader, _ = load_data_shapes(
                 path=dataset_dir, subset_dir=subset_dir, batch_size=batch_size, drop_last=False,
                 num_workers=num_workers, pin_memory=pin_memory, persistent_workers=persistent_workers)
 

@@ -19,7 +19,7 @@ class HyperparameterOptimizationShapes:
     One class is needed for every dataset and every model.
     """
 
-    def __init__(self, model_type, dataset_path, n_classes, n_attr=None, subset_dir="", batch_size=16,
+    def __init__(self, model_type, dataset_path, n_classes, n_attr=None, n_subset=None, batch_size=16,
                  eval_loss=True, device=None, num_workers=0, pin_memory=False, persistent_workers=False,
                  non_blocking=False, fast=False, seed=57):
         """
@@ -28,7 +28,7 @@ class HyperparameterOptimizationShapes:
             dataset_path (str): Path to the dataset_directory
             n_classes (int): The amount of classes in the dataset.
             n_attr (int): The amount of attributes in the dataset
-            subset_dir (str, optional): Directory to subset of data to use. Defaults to "".
+            n_subset (str, optional): Amount of data in each class used for subset (n_images_class).
             batch_size (int, optional): Batch-size for training. Defaults to 16.
             eval_loss (bool, optional): If `True`, will use evalulation set loss as metric for optimizing.
                 If false, will use evaluation accuracy. Defaults to True.
@@ -56,6 +56,10 @@ class HyperparameterOptimizationShapes:
         self.device = device
         if device is None or device == "":
             self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        if n_subset is None:
+            subset_dir = ""
+        else:
+            subset_dir = "sub" + str(n_subset) + "/"
         self.dataset_path = dataset_path
         self.n_classes = n_classes
         self.n_attr = n_attr
@@ -70,8 +74,9 @@ class HyperparameterOptimizationShapes:
         self.hyperparameter_names = self._get_hyperparameter_names()  # Names of possible hyperparameter
         self.default_hyperparameters = get_hyperparameters(0, 0, 0, fast=fast, default=True)
 
-        if not os.path.exists(dataset_path + "tables/" + subset_dir):  # Make subset of dataset if it does not exist
-            make_subset_shapes(dataset_path, subset_dir, n_classes, seed=seed)
+        if n_subset is not None:  # Make subset again to make sure seed is correct
+            make_subset_shapes(path=dataset_path, n_images_class=n_subset, n_classes=n_classes,
+                               split_data=True, seed=seed)
         self.subset_dir = subset_dir  # Save for study-name
 
     def _get_hyperparameter_names(self):
@@ -462,7 +467,7 @@ def run_hyperparameter_optimization_all_models(
         set_hyperparameters_to_search = True
     for subset in subsets:
         print(f"\nRunning hyperparameter search for {subset} subsets. \n")
-        subset_dir = "sub" + str(subset) + "/"
+        # subset_dir = "sub" + str(subset) + "/"
         for model_type in MODEL_STRINGS:
             if set_hyperparameters_to_search:
                 if model_type == "cnn":
@@ -479,7 +484,7 @@ def run_hyperparameter_optimization_all_models(
             print(f"\nRunning hyperparameter optimization on model {model_type}. \n")
             obj = HyperparameterOptimizationShapes(
                 model_type=model_type, dataset_path=dataset_path, n_classes=n_classes, n_attr=n_attr,
-                subset_dir=subset_dir, batch_size=batch_size, eval_loss=eval_loss, device=device,
+                n_subset=subset, batch_size=batch_size, eval_loss=eval_loss, device=device,
                 num_workers=num_workers, pin_memory=pin_memory, persistent_workers=persistent_workers,
                 non_blocking=non_blocking, fast=fast)
             obj.run_hyperparameter_search(n_trials=n_trials, hyperparameters_to_search=hyperparameters_to_search,

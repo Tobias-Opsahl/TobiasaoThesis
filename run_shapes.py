@@ -23,7 +23,7 @@ def parse_arguments():
     parser.add_argument("--subset_dir", type=str, default="", help="Name of optional subset.")
 
     # Parameters
-    parser.add_argument("--batch_size", type=int, default=128, help="Batch size for training.")
+    parser.add_argument("--batch_size", type=int, default=16, help="Batch size for training.")
     parser.add_argument("--n_classes", type=int, default=4, help="Number of classes.")
     parser.add_argument("--n_attr", type=int, default=5, help="Number of attributes.")
     parser.add_argument("--n_bootstrap", type=int, default=1, help="Number of bootstrap iterations.")
@@ -61,10 +61,10 @@ if __name__ == "__main__":
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     path = args.base_dir + args.dataset_folder
-    if torch.cuda.is_available():
+    if device != "cpu":
         subsets = [50, 100, 150, 200, 250]
     else:
-        subsets = [50]  # , 150, 200, 250]
+        subsets = [50, 100]  # , 150, 200, 250]
 
     grid_search = not args.no_grid_search
 
