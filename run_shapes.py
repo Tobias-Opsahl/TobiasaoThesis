@@ -61,7 +61,7 @@ if __name__ == "__main__":
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     path = args.base_dir + args.dataset_folder
-    if device != "cpu":
+    if not args.fast:
         subsets = [50, 100, 150, 200, 250]
     else:
         subsets = [50, 100]  # , 150, 200, 250]

@@ -567,7 +567,7 @@ def generate_shapes_dataset(class_names, shape_combinations, n_images_class=10, 
         pickle.dump(data_list, outfile)
 
     if split_data:  # Split data in train, validation and test-set.
-        split_dataset(data_list, tables_dir)
+        split_dataset(data_list, tables_dir, include_test=True)
     if verbose:
         print("Finished writing tables.")
 

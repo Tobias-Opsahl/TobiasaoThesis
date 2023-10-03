@@ -76,7 +76,7 @@ class HyperparameterOptimizationShapes:
 
         if n_subset is not None:  # Make subset again to make sure seed is correct
             make_subset_shapes(path=dataset_path, n_images_class=n_subset, n_classes=n_classes,
-                               split_data=True, seed=seed)
+                               include_test=False, split_data=True, seed=seed)
         self.subset_dir = subset_dir  # Save for study-name
 
     def _get_hyperparameter_names(self):
@@ -296,9 +296,10 @@ class HyperparameterOptimizationShapes:
         Returns:
             metric: Either the evaluation loss or the evaluation accuracy.
         """
-        train_loader, val_loader, _ = load_data_shapes(
-            path=self.dataset_path, subset_dir=self.subset_dir, batch_size=self.batch_size, drop_last=True,
-            num_workers=self.num_workers, pin_memory=self.pin_memory, persistent_workers=self.persistent_workers)
+        train_loader, val_loader = load_data_shapes(
+            mode="train-val", path=self.dataset_path, subset_dir=self.subset_dir, batch_size=self.batch_size,
+            drop_last=True, num_workers=self.num_workers, pin_memory=self.pin_memory,
+            persistent_workers=self.persistent_workers)
 
         hp = self._get_hyperparameters_for_trial(trial)  # Get suggestions for hyperparameters
         model = load_single_model(self.model_type, n_classes=self.n_classes, n_attr=self.n_attr, hyperparameters=hp)

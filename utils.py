@@ -1,5 +1,6 @@
 import os
 import yaml
+import shutil
 import random
 import pickle
 import warnings
@@ -19,30 +20,41 @@ def seed_everything(seed=57):
     torch.backends.cudnn.deterministic = True
 
 
-def split_dataset(data_list, tables_dir, seed=57):
+def split_dataset(data_list, tables_dir, include_test=True, seed=57):
     """
     Splits a dataset into "train", "validation" and "test".
 
     Args:
         data_list (list): List of rows, each element is an instance-dict.
-        tables_dir (str): The path to save the data-tables
+        tables_dir (str): The path to save the data-tables.
+        include_test (bool): If True, will split in train, val and test. If False, will split in train and val.
         seed (int, optional): Seed for the rng. Defaults to 57.
     """
     random.seed(seed)
     n_images = len(data_list)
     random.shuffle(data_list)
-    train_size = int(0.5 * n_images)
-    val_size = int(0.3 * n_images)
+    if include_test:
+        train_size = int(0.5 * n_images)
+        val_size = int(0.3 * n_images)
+    else:
+        train_size = int(0.6 * n_images)
 
     train_data = data_list[: train_size]
-    val_data = data_list[train_size: train_size + val_size]
-    test_data = data_list[train_size + val_size:]
+    if include_test:
+        val_data = data_list[train_size: train_size + val_size]
+        test_data = data_list[train_size + val_size:]
+    else:
+        val_data = data_list[train_size:]
+
+    shutil.rmtree(tables_dir)  # Delete previous folder and re-create
+    os.makedirs(tables_dir)
     with open(tables_dir + "train_data.pkl", "wb") as outfile:
         pickle.dump(train_data, outfile)
     with open(tables_dir + "val_data.pkl", "wb") as outfile:
         pickle.dump(val_data, outfile)
-    with open(tables_dir + "test_data.pkl", "wb") as outfile:
-        pickle.dump(test_data, outfile)
+    if include_test:
+        with open(tables_dir + "test_data.pkl", "wb") as outfile:
+            pickle.dump(test_data, outfile)
 
 
 def get_hyperparameters(n_classes=None, n_attr=None, n_subset=None, default=False, fast=False,

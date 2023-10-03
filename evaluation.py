@@ -162,11 +162,11 @@ def run_models_on_subsets_and_plot(
             mode="test", path=dataset_dir, subset_dir="", batch_size=batch_size,
             drop_last=False, num_workers=num_workers, pin_memory=pin_memory, persistent_workers=persistent_workers)
         for i in range(n_bootstrap):
-            make_subset_shapes(dataset_dir, subset, n_classes, seed=seed)
+            make_subset_shapes(dataset_dir, subset, n_classes, include_test=False, seed=seed)
             seed -= 1  # Change seed so that subset will be different for the bootstrapping
 
-            train_loader, val_loader, _ = load_data_shapes(
-                path=dataset_dir, subset_dir=subset_dir, batch_size=batch_size, drop_last=False,
+            train_loader, val_loader = load_data_shapes(
+                mode="train-val", path=dataset_dir, subset_dir=subset_dir, batch_size=batch_size, drop_last=False,
                 num_workers=num_workers, pin_memory=pin_memory, persistent_workers=persistent_workers)
 
             histories = train_and_evaluate_shapes(

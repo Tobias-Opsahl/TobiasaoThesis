@@ -72,8 +72,8 @@ def load_data_shapes(mode="all", path="data/shapes/shapes_testing/", subset_dir=
     or a list of all of them if `mode == "all"`.
 
     Args:
-        mode (str, optional): The datasetmode to loader. If "all", will return a
-            tuple of (train, val, test). Defaults to "all".
+        mode (str, optional): The datasetmode to loader. If "all", will return a tuple of (train, val, test).
+            if "train-val", will return a tuple of (train, val). Defaults to "all".
         path (str, optional): Path to dataset-folder.
         subset_dir (str, optional): Optional name of subset-directory, which may be created
             with `make_shapes_dataset.make_subset_shapes()`.
@@ -93,12 +93,14 @@ def load_data_shapes(mode="all", path="data/shapes/shapes_testing/", subset_dir=
         persistent_workers (bool): If `True`, will not shut down workers between epochs.
 
     Returns:
-        Dataloader: The dataloader, or the list of the three dataloaders.
+        Dataloader: The dataloader, or the list of the two or three dataloaders.
     """
     if full_test_set is not None:  # Be sure to only load one dataset
         mode = "test"
     if mode.lower() == "all":
         modes = ["train", "val", "test"]
+    elif mode.lower() in ["train-val", "train val", "train-validation" "train validation"]:
+        modes = ["train", "val"]
     else:
         modes = [mode]
     dataloaders = []
@@ -118,7 +120,7 @@ def load_data_shapes(mode="all", path="data/shapes/shapes_testing/", subset_dir=
     return dataloaders  # List of (train, val, test) dataloaders
 
 
-def make_subset_shapes(path, n_images_class, n_classes, split_data=True, seed=57):
+def make_subset_shapes(path, n_images_class, n_classes, split_data=True, include_test=False, seed=57):
     """
     Makes a subset of a data-table. This can then be split into "train", "validation" and "test".
     This makes it possible to easily train with less data for a given dataset. For example, if there are
@@ -131,7 +133,9 @@ def make_subset_shapes(path, n_images_class, n_classes, split_data=True, seed=57
         n_images_class (int): The amount of images to include for each class. Must be less than the total number
             of images in each class.
         n_classes (int): The total amount of classes in the dataset.
-        split_data (bool, optional): If True, splits into "train", "validation" and "test". Defaults to True.
+        split_data (bool, optional): If True, splits into "train", "validation" and maybe "test". Defaults to True.
+        include_test (bool, optional): If True, will incldue test-set in data-split. If False, will only include
+            "train" and "validation".
         seed (int, optional): The seed for the rng. Defaults to 57.
     """
     random.seed(seed)
@@ -155,7 +159,7 @@ def make_subset_shapes(path, n_images_class, n_classes, split_data=True, seed=57
     with open(tables_dir + "data_list.pkl", "wb") as outfile:
         pickle.dump(new_list, outfile)
     if split_data:
-        split_dataset(new_list, tables_dir)
+        split_dataset(new_list, tables_dir, include_test=include_test)
 
 
 def make_shapes_test_set(path, n_images_class, n_classes, n_images_class_test_set=500, split_data=True, base_seed=57):
