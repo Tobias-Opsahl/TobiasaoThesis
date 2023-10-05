@@ -6,7 +6,7 @@ from train import train_simple, train_cbm
 from shapes.datasets_shapes import load_data_shapes, make_subset_shapes
 from plotting import plot_training_histories, plot_subset_test_accuracies
 from utils import get_hyperparameters, load_models_shapes, add_histories
-from constants import MODEL_STRINGS, COLORS
+from constants import MODEL_STRINGS, COLORS, MAX_EPOCHS
 
 
 def evaluate_on_test_set(model, test_loader, device=None, non_blocking=False):
@@ -91,23 +91,28 @@ def train_and_evaluate_shapes(n_classes, n_attr, train_loader, val_loader, test_
                                      lr=hp[model_string]["learning_rate"])
         exp_lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=hp[model_string]["gamma"])
 
-        class_dir = "c" + str(n_classes) + "/"
+        class_dir = "c" + str(n_classes) + "_a" + str(n_attr) + "/"
+        n_epochs = MAX_EPOCHS
         if fast:  # Make sure not to overwrite in case of fast testing
             class_dir = class_dir + "testing/"
-        save_name = class_dir + sub_dir + MODEL_STRINGS[i]
-        os.makedirs("saved_models/" + class_dir + sub_dir, exist_ok=True)
-        os.makedirs("history/" + class_dir + sub_dir, exist_ok=True)
+            n_epochs = 2
+        save_model_path = "saved_models/" + class_dir + sub_dir
+        save_name = MODEL_STRINGS[i]
+        os.makedirs(save_model_path, exist_ok=True)
         if model.name == "ShapesCNN":
             history = train_simple(model, criterion, optimizer, train_loader, val_loader, scheduler=exp_lr_scheduler,
-                                   n_epochs=hp[model_string]["n_epochs"], n_early_stop=None, device=device,
-                                   non_blocking=non_blocking, verbose=verbose, model_save_name=save_name,
-                                   history_save_name=save_name)
+                                   n_epochs=n_epochs, n_early_stop=None, device=device,
+                                   non_blocking=non_blocking, verbose=verbose, model_dir=save_model_path,
+                                   model_save_name=save_name, history_save_name=None)
         else:
             history = train_cbm(model, criterion, attr_criterion, optimizer, train_loader, val_loader,
-                                n_epochs=hp[model_string]["n_epochs"], attr_weight=hp[model_string]["attr_weight"],
+                                n_epochs=n_epochs, attr_weight=hp[model_string]["attr_weight"],
                                 scheduler=exp_lr_scheduler, n_early_stop=None, device=device, non_blocking=non_blocking,
-                                verbose=verbose, model_save_name=save_name, history_save_name=save_name)
+                                verbose=verbose, model_dir=save_model_path, model_save_name=save_name,
+                                history_save_name=None)
 
+        state_dict = torch.load(save_model_path + save_name + "_loss.pth")
+        model.load_state_dict(state_dict)
         test_accuracy = evaluate_on_test_set(model, test_loader, device=device, non_blocking=non_blocking)
         history["test_accuracy"] = [test_accuracy]
         histories.append(history)
@@ -146,7 +151,7 @@ def run_models_on_subsets_and_plot(
             Defaults to 57.
         verbose (int, optional): Controls the verbosity. Defaults to 1.
     """
-    class_dir = "c" + str(n_classes) + "/"
+    class_dir = "c" + str(n_classes) + "_a" + str(n_attr) + "/"
     if fast:  # Make sure not to overwrite in case of fast testing
         class_dir = class_dir + "testing/"
     seed = base_seed + n_bootstrap - 1  # Set seed so that we end up with the base_seed
@@ -184,8 +189,9 @@ def run_models_on_subsets_and_plot(
         plot_training_histories(histories=histories, names=MODEL_STRINGS, colors=COLORS, attributes=False,
                                 title=save_name, save_dir="plots/", save_name=save_name)
         pickle_save_name = "history/" + class_dir + "histories_sub" + str(subset) + "_b" + str(n_bootstrap) + ".pkl"
+        os.makedirs("history/" + class_dir, exist_ok=True)
         with open(pickle_save_name, "wb") as outfile:
-            pickle.dump(test_accuracies_lists, outfile)
+            pickle.dump(histories, outfile)
 
     plot_subset_test_accuracies(x_values=subsets, test_accuracies_lists=test_accuracies_lists, names=MODEL_STRINGS,
                                 colors=COLORS, title=None,

@@ -157,6 +157,7 @@ def train_simple(model, criterion, optimizer, train_loader, val_loader=None, n_e
     if history_save_name is not None:
         if not history_save_name.endswith(".pkl"):
             history_save_name += ".pkl"
+        os.makedirs(history_dir, exist_ok=True)
         with open(history_dir + history_save_name, "wb") as outfile:
             pickle.dump(history, outfile)
     return history
@@ -378,6 +379,7 @@ def train_cbm(model, criterion, attr_criterion, optimizer, train_loader, val_loa
     if history_save_name is not None:
         if not history_save_name.endswith(".pkl"):
             history_save_name += ".pkl"
+        os.makedirs(history_dir, exist_ok=True)
         with open(history_dir + history_save_name, "wb") as outfile:
             pickle.dump(history, outfile)
     return history
