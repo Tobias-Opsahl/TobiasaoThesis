@@ -316,11 +316,15 @@ class ShapesSCM(nn.Module):
         self.conv3 = nn.Conv2d(16, 32, kernel_size=3, padding=1)
         self.fc1 = nn.Linear(2048, n_linear_output)  # 32 * 8 * 8 = 2048
 
-        self.concept_layer1 = nn.Linear(8192, 1)  # 8 * 32 * 32
-        self.concept_layer2 = nn.Linear(4096, 1)  # 16 * 16 * 16
-        self.concept_layer3 = nn.Linear(2048, 1)  # 32 * 8 * 8
-        self.concept_layer4 = nn.Linear(n_linear_output, 1)
-        self.concept_layer5 = nn.Linear(n_hidden, 1)
+        n_concept_output_nodes = [1, 1, 1, 1, 1]
+        for i in range(n_attr - 5):  # Gradually add concept output nodes to match the amount of attributes
+            index = i % 5
+            n_concept_output_nodes[index] += 1
+        self.concept_layer1 = nn.Linear(8192, n_concept_output_nodes[0])  # 8 * 32 * 32
+        self.concept_layer2 = nn.Linear(4096, n_concept_output_nodes[1])  # 16 * 16 * 16
+        self.concept_layer3 = nn.Linear(2048, n_concept_output_nodes[2])  # 32 * 8 * 8
+        self.concept_layer4 = nn.Linear(n_linear_output, n_concept_output_nodes[3])
+        self.concept_layer5 = nn.Linear(n_hidden, n_concept_output_nodes[4])
 
         self.dropout = nn.Dropout(dropout_probability)
         self.intermediary_classifier = nn.Linear(n_linear_output, n_hidden)
