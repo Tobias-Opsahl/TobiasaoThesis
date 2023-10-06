@@ -75,8 +75,7 @@ class HyperparameterOptimizationShapes:
         self.default_hyperparameters = get_hyperparameters(0, 0, 0, fast=fast, default=True)
 
         if n_subset is not None:  # Make subset again to make sure seed is correct
-            make_subset_shapes(path=dataset_path, n_images_class=n_subset, n_classes=n_classes,
-                               include_test=False, split_data=True, seed=seed)
+            make_subset_shapes(path=dataset_path, n_images_class=n_subset, n_classes=n_classes, seed=seed)
         self.subset_dir = subset_dir  # Save for study-name
 
     def _get_hyperparameter_names(self):
@@ -264,7 +263,7 @@ class HyperparameterOptimizationShapes:
         """
         all_possibilities = {
             "learning_rate": [0.05, 0.01, 0.005, 0.001],
-            "gamma": [0.1, 0.5, 0.7, 0.9, 1],
+            "gamma": [0.1, 0.5, 0.7, 1],
             "dropout_probability": [0, 0.2, 0.4],
             "n_epochs": [20, 30, 50, 100],
             "n_linear_output": [16, 64, 128, 256],
@@ -273,7 +272,7 @@ class HyperparameterOptimizationShapes:
             "two_layers": [True, False],
             "attr_weight": [1, 3, 5, 10],
             "attr_weight_decay": [0.5, 0.7, 0.9, 1],
-            "attr_schedule": [0.8, 0.9, 1, 5, 10]
+            "attr_schedule": [0.8, 0.9, 5, 10]
         }
 
         search_space = {}  # Add only the hyperparameters we are going to search for in the space

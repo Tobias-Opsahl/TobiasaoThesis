@@ -154,10 +154,10 @@ def run_models_on_subsets_and_plot(
     class_dir = "c" + str(n_classes) + "_a" + str(n_attr) + "/"
     if fast:  # Make sure not to overwrite in case of fast testing
         class_dir = class_dir + "testing/"
-    seed = base_seed + n_bootstrap - 1  # Set seed so that we end up with the base_seed
     test_accuracies_lists = [[] for _ in range(len(MODEL_STRINGS))]  # Test accuracies for every model for every subset
 
     for subset in subsets:
+        seed = base_seed
         subset_dir = "sub" + str(subset) + "/"
         if verbose != 0:
             print(f"Beginning subset {subset}:")
@@ -167,8 +167,8 @@ def run_models_on_subsets_and_plot(
             mode="test", path=dataset_dir, subset_dir="", batch_size=batch_size,
             drop_last=False, num_workers=num_workers, pin_memory=pin_memory, persistent_workers=persistent_workers)
         for i in range(n_bootstrap):
-            make_subset_shapes(dataset_dir, subset, n_classes, include_test=False, seed=seed)
-            seed -= 1  # Change seed so that subset will be different for the bootstrapping
+            make_subset_shapes(dataset_dir, subset, n_classes, seed=seed)
+            seed += 1  # Change seed so that subset will be different for the bootstrapping
 
             train_loader, val_loader = load_data_shapes(
                 mode="train-val", path=dataset_dir, subset_dir=subset_dir, batch_size=batch_size, drop_last=False,
@@ -192,6 +192,7 @@ def run_models_on_subsets_and_plot(
         os.makedirs("history/" + class_dir, exist_ok=True)
         with open(pickle_save_name, "wb") as outfile:
             pickle.dump(histories, outfile)
+        make_subset_shapes(dataset_dir, subset, n_classes, seed=base_seed)  # Reset subset to base-seed
 
     plot_subset_test_accuracies(x_values=subsets, test_accuracies_lists=test_accuracies_lists, names=MODEL_STRINGS,
                                 colors=COLORS, title=None,
