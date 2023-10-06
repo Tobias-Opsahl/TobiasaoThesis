@@ -5,7 +5,7 @@ import optuna
 
 
 def train_simple(model, criterion, optimizer, train_loader, val_loader=None, n_epochs=10, scheduler=None, trial=None,
-                 n_early_stop=12, device=None, non_blocking=False, model_dir="saved_models/", model_save_name=None,
+                 n_early_stop=15, device=None, non_blocking=False, model_dir="saved_models/", model_save_name=None,
                  history_dir="history/", history_save_name=None, verbose=2):
     """
     Trains a model and calculate training and valudation stats, given the model, loader, optimizer
@@ -164,7 +164,7 @@ def train_simple(model, criterion, optimizer, train_loader, val_loader=None, n_e
 
 
 def train_cbm(model, criterion, attr_criterion, optimizer, train_loader, val_loader=None, n_epochs=10, attr_weight=1,
-              attr_weight_decay=1, scheduler=None, trial=None, n_early_stop=12, device=None, non_blocking=False,
+              attr_weight_decay=1, scheduler=None, trial=None, n_early_stop=15, device=None, non_blocking=False,
               model_dir="saved_models/", model_save_name=None, history_dir="history/", history_save_name=None,
               verbose=2):
     """
