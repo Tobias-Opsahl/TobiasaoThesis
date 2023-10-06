@@ -10,6 +10,22 @@ from hyperparameter_optimization import run_hyperparameter_optimization_all_mode
 from evaluation import run_models_on_subsets_and_plot
 
 
+def parse_int_list(values):
+    """
+    Tries to parse from string with ints to list of ints. If it does not work, parses list of single int.
+
+    Args:
+        values (str): The string to pars
+
+    Returns:
+        ist of int: The list of ints
+    """
+    try:
+        return [int(val) for val in values.split(",")]
+    except ValueError:
+        return [int(values)]
+
+
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Script for parsing command-line arguments.")
 
@@ -26,7 +42,11 @@ def parse_arguments():
     parser.add_argument("--batch_size", type=int, default=16, help="Batch size for training.")
     parser.add_argument("--n_classes", type=int, default=4, help="Number of classes.")
     parser.add_argument("--n_attr", type=int, default=5, help="Number of attributes.")
-    parser.add_argument("--n_bootstrap", type=int, default=1, help="Number of bootstrap iterations.")
+    help = "Number of bootstrap iterations. Can be single int or list of int, for example `1` or `1,5,10`."
+    parser.add_argument("--n_bootstrap", type=parse_int_list, default=[1], help=help)
+    # parser.add_argument("--n_bootstrap", type=int, default=1, help="Number of bootstrap iterations.")
+    help = "Sizes of subsets to run on. Can be single int or list of int, for example `50` or `50,100,150`."
+    parser.add_argument("--subsets", type=parse_int_list, default=[50], help=help)
     parser.add_argument("--n_trials", type=int, default=100, help="Number of trials for hyperparameter search.")
     parser.add_argument("--fast", action="store_true", help="Use fast testing hyperparameters.")
 
@@ -61,11 +81,6 @@ if __name__ == "__main__":
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     path = args.base_dir + args.dataset_folder
-    if not args.fast:
-        subsets = [50, 100, 150, 200, 250]
-    else:
-        subsets = [50, 100]  # , 150, 200, 250]
-
     grid_search = not args.no_grid_search
 
     if args.run_hyperparameters:
@@ -75,11 +90,13 @@ if __name__ == "__main__":
             base_dir = "hyperparameters/shapes/"
         run_hyperparameter_optimization_all_models(
             path, args.n_classes, args.n_attr, n_trials=args.n_trials, grid_search=grid_search, base_dir=base_dir,
-            subsets=subsets, batch_size=args.batch_size, eval_loss=True, device=device,
+            subsets=args.subsets, batch_size=args.batch_size, eval_loss=True, device=device,
             num_workers=args.num_workers, pin_memory=args.pin_memory, persistent_workers=args.persistent_workers,
             non_blocking=args.non_blocking, fast=args.fast, verbose=args.verbose)
     if args.evaluate_and_plot:
-        run_models_on_subsets_and_plot(
-            path, args.n_classes, args.n_attr, subsets=subsets, n_bootstrap=args.n_bootstrap,
-            fast=args.fast, batch_size=args.batch_size, non_blocking=args.non_blocking, num_workers=args.num_workers,
-            pin_memory=args.pin_memory, persistent_workers=args.persistent_workers, verbose=args.verbose)
+        for n_boot in args.n_bootstrap:
+            print(f"\nBeginning evaluation with {n_boot} bootstrap iterations.\n")
+            run_models_on_subsets_and_plot(
+                path, args.n_classes, args.n_attr, subsets=args.subsets, n_bootstrap=n_boot, fast=args.fast,
+                batch_size=args.batch_size, non_blocking=args.non_blocking, num_workers=args.num_workers,
+                pin_memory=args.pin_memory, persistent_workers=args.persistent_workers, verbose=args.verbose)
