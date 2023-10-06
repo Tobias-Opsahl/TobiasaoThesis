@@ -1,0 +1,126 @@
+scripts to run remotely
+
+module load Python/3.9.5-GCCcore-10.3.0
+source myenv/bin/activate
+module load Python/3.9.5-GCCcore-10.3.0
+
+
+fast:
+python run_shapes.py --dataset_folder "shapes_2k_c10_a5/" --n_classes 10 --n_attr 5 --evaluate_and_plot  --fast --n_trials 3 --n_bootstrap 2
+python run_shapes.py --dataset_folder "shapes_2k_c10_a5/" --n_classes 10 --n_attr 5 --evaluate_and_plot --run_hyperparameters --fast --n_trials 3 --n_bootstrap 2
+python run_shapes.py --dataset_folder "shapes_1k_c10_a9/" --n_classes 10 --n_attr 9 --evaluate_and_plot --run_hyperparameters --fast --n_trials 3 --n_bootstrap 1,2 --subsets 50,100
+CUDA_VISIBLE_DIVICES=0 nohup python run_shapes.py --dataset_folder "shapes_2k_c10_a5/" --n_classes 10 --n_attr 5 --evaluate_and_plot --run_hyperparameters --fast --n_trials 3 --n_bootstrap 2 &> logs/c10_log.txt &
+
+
+a5:
+
+a5 only evaluate n-boot 1,5,10:
+CUDA_VISIBLE_DIVICES=0 nohup python run_shapes.py --dataset_folder "shapes_2k_c10_a5/" --n_classes 10 --n_attr 5 --evaluate_and_plot --subsets 50,100,150 --n_bootstrap 10 &> logs/c10_a5_sub1_eval.txt &
+CUDA_VISIBLE_DIVICES=0 nohup python run_shapes.py --dataset_folder "shapes_2k_c10_a5/" --n_classes 10 --n_attr 5 --evaluate_and_plot --subsets 200 --n_bootstrap 10 &> logs/c10_a5_sub2_eval.txt &
+CUDA_VISIBLE_DIVICES=0 nohup python run_shapes.py --dataset_folder "shapes_2k_c10_a5/" --n_classes 10 --n_attr 5 --evaluate_and_plot --subsets 250 --n_bootstrap 10 &> logs/c10_a5_sub3_eval.txt &
+
+CUDA_VISIBLE_DIVICES=1 nohup python run_shapes.py --dataset_folder "shapes_1k_c15_a5/" --n_classes 15 --n_attr 5 --evaluate_and_plot --subsets 50,100,150 --n_bootstrap 10 &> logs/c15_a5_sub1_eval.txt &
+CUDA_VISIBLE_DIVICES=1 nohup python run_shapes.py --dataset_folder "shapes_1k_c15_a5/" --n_classes 15 --n_attr 5 --evaluate_and_plot --subsets 200 --n_bootstrap 10 &> logs/c15_a5_sub2_eval.txt &
+CUDA_VISIBLE_DIVICES=1 nohup python run_shapes.py --dataset_folder "shapes_1k_c15_a5/" --n_classes 15 --n_attr 5 --evaluate_and_plot --subsets 250 --n_bootstrap 10 &> logs/c15_a5_sub3_eval.txt &
+
+CUDA_VISIBLE_DIVICES=2 nohup python run_shapes.py --dataset_folder "shapes_1k_c21_a5/" --n_classes 21 --n_attr 5 --evaluate_and_plot --subsets 50,100,150 --n_bootstrap 10 &> logs/c21_a5_sub1_eval.txt &
+CUDA_VISIBLE_DIVICES=2 nohup python run_shapes.py --dataset_folder "shapes_1k_c21_a5/" --n_classes 21 --n_attr 5 --evaluate_and_plot --subsets 200 --n_bootstrap 10 &> logs/c21_a5_sub2_eval.txt &
+CUDA_VISIBLE_DIVICES=2 nohup python run_shapes.py --dataset_folder "shapes_1k_c21_a5/" --n_classes 21 --n_attr 5 --evaluate_and_plot --subsets 250 --n_bootstrap 10 &> logs/c21_a5_sub3_eval.tx
+
+
+a5 only evaluate n-boot 1,5,10:
+CUDA_VISIBLE_DIVICES=0 nohup python run_shapes.py --dataset_folder "shapes_2k_c10_a5/" --n_classes 10 --n_attr 5 --evaluate_and_plot --subsets 50,100,150 --n_bootstrap 1,5,10 &> logs/c10_a5_sub1_eval.txt &
+CUDA_VISIBLE_DIVICES=0 nohup python run_shapes.py --dataset_folder "shapes_2k_c10_a5/" --n_classes 10 --n_attr 5 --evaluate_and_plot --subsets 200 --n_bootstrap 1,5,10 &> logs/c10_a5_sub2_eval.txt &
+CUDA_VISIBLE_DIVICES=0 nohup python run_shapes.py --dataset_folder "shapes_2k_c10_a5/" --n_classes 10 --n_attr 5 --evaluate_and_plot --subsets 250 --n_bootstrap 1,5,10 &> logs/c10_a5_sub3_eval.txt &
+
+CUDA_VISIBLE_DIVICES=1 nohup python run_shapes.py --dataset_folder "shapes_1k_c15_a5/" --n_classes 15 --n_attr 5 --evaluate_and_plot --subsets 50,100,150 --n_bootstrap 1,5,10 &> logs/c15_a5_sub1_eval.txt &
+CUDA_VISIBLE_DIVICES=1 nohup python run_shapes.py --dataset_folder "shapes_1k_c15_a5/" --n_classes 15 --n_attr 5 --evaluate_and_plot --subsets 200 --n_bootstrap 1,5,10 &> logs/c15_a5_sub2_eval.txt &
+CUDA_VISIBLE_DIVICES=1 nohup python run_shapes.py --dataset_folder "shapes_1k_c15_a5/" --n_classes 15 --n_attr 5 --evaluate_and_plot --subsets 250 --n_bootstrap 1,5,10 &> logs/c15_a5_sub3_eval.txt &
+
+CUDA_VISIBLE_DIVICES=2 nohup python run_shapes.py --dataset_folder "shapes_1k_c21_a5/" --n_classes 21 --n_attr 5 --evaluate_and_plot --subsets 50,100,150 --n_bootstrap 1,5,10 &> logs/c21_a5_sub1_eval.txt &
+CUDA_VISIBLE_DIVICES=2 nohup python run_shapes.py --dataset_folder "shapes_1k_c21_a5/" --n_classes 21 --n_attr 5 --evaluate_and_plot --subsets 200 --n_bootstrap 1,5,10 &> logs/c21_a5_sub2_eval.txt &
+CUDA_VISIBLE_DIVICES=2 nohup python run_shapes.py --dataset_folder "shapes_1k_c21_a5/" --n_classes 21 --n_attr 5 --evaluate_and_plot --subsets 250 --n_bootstrap 1,5,10 &> logs/c21_a5_sub3_eval.txt &
+
+
+a5 hyperparam plus evaluate n-boot 1
+CUDA_VISIBLE_DIVICES=5 nohup python run_shapes.py --dataset_folder "shapes_2k_c10_a5/" --n_classes 10 --n_attr 5 --evaluate_and_plot --run_hyperparameters --subsets 50,100,150 --n_bootstrap 1 &> logs/c10_a5_sub1_grid_search.txt &
+CUDA_VISIBLE_DIVICES=6 nohup python run_shapes.py --dataset_folder "shapes_2k_c10_a5/" --n_classes 10 --n_attr 5 --evaluate_and_plot --run_hyperparameters --subsets 200 --n_bootstrap 1 &> logs/c10_a5_sub2_grid_search.txt &
+CUDA_VISIBLE_DIVICES=5 nohup python run_shapes.py --dataset_folder "shapes_2k_c10_a5/" --n_classes 10 --n_attr 5 --evaluate_and_plot --run_hyperparameters --subsets 250 --n_bootstrap 1 &> logs/c10_a5_sub3_grid_search.txt &
+
+CUDA_VISIBLE_DIVICES=5 nohup python run_shapes.py --dataset_folder "shapes_1k_c15_a5/" --n_classes 15 --n_attr 5 --evaluate_and_plot --run_hyperparameters --subsets 50,100,150 --n_bootstrap 1 &> logs/c15_a5_sub1_grid_search.txt &
+CUDA_VISIBLE_DIVICES=6 nohup python run_shapes.py --dataset_folder "shapes_1k_c15_a5/" --n_classes 15 --n_attr 5 --evaluate_and_plot --run_hyperparameters --subsets 200 --n_bootstrap 1 &> logs/c15_a5_sub2_grid_search.txt &
+CUDA_VISIBLE_DIVICES=2 nohup python run_shapes.py --dataset_folder "shapes_1k_c15_a5/" --n_classes 15 --n_attr 5 --evaluate_and_plot --run_hyperparameters --subsets 250 --n_bootstrap 1 &> logs/c15_a5_sub3_grid_search.txt &
+
+CUDA_VISIBLE_DIVICES=3 nohup python run_shapes.py --dataset_folder "shapes_1k_c21_a5/" --n_classes 21 --n_attr 5 --evaluate_and_plot --run_hyperparameters --subsets 50,100,150 --n_bootstrap 1 &> logs/c21_a5_sub1_grid_search.txt &
+CUDA_VISIBLE_DIVICES=4 nohup python run_shapes.py --dataset_folder "shapes_1k_c21_a5/" --n_classes 21 --n_attr 5 --evaluate_and_plot --run_hyperparameters --subsets 200 --n_bootstrap 1 &> logs/c21_a5_sub2_grid_search.txt &
+CUDA_VISIBLE_DIVICES=5 nohup python run_shapes.py --dataset_folder "shapes_1k_c21_a5/" --n_classes 21 --n_attr 5 --evaluate_and_plot --run_hyperparameters --subsets 250 --n_bootstrap 1 &> logs/c21_a5_sub3_grid_search.txt &
+
+
+a5 hyperparam plus evaluate n-boot 1, 5, 10
+CUDA_VISIBLE_DIVICES=0 nohup python run_shapes.py --dataset_folder "shapes_2k_c10_a5/" --n_classes 10 --n_attr 5 --evaluate_and_plot --run_hyperparameters --subsets 50,100,150 --n_bootstrap 1,5,10 &> logs/c10_a5_sub1_grid_search.txt &
+CUDA_VISIBLE_DIVICES=0 nohup python run_shapes.py --dataset_folder "shapes_2k_c10_a5/" --n_classes 10 --n_attr 5 --evaluate_and_plot --run_hyperparameters --subsets 200 --n_bootstrap 1,5,10 &> logs/c10_a5_sub2_grid_search.txt &
+CUDA_VISIBLE_DIVICES=0 nohup python run_shapes.py --dataset_folder "shapes_2k_c10_a5/" --n_classes 10 --n_attr 5 --evaluate_and_plot --run_hyperparameters --subsets 250 --n_bootstrap 1,5,10 &> logs/c10_a5_sub3_grid_search.txt &
+
+CUDA_VISIBLE_DIVICES=1 nohup python run_shapes.py --dataset_folder "shapes_1k_c15_a5/" --n_classes 15 --n_attr 5 --evaluate_and_plot --run_hyperparameters --subsets 50,100,150 --n_bootstrap 1,5,10 &> logs/c15_a5_sub1_grid_search.txt &
+CUDA_VISIBLE_DIVICES=1 nohup python run_shapes.py --dataset_folder "shapes_1k_c15_a5/" --n_classes 15 --n_attr 5 --evaluate_and_plot --run_hyperparameters --subsets 200 --n_bootstrap 1,5,10 &> logs/c15_a5_sub2_grid_search.txt &
+CUDA_VISIBLE_DIVICES=1 nohup python run_shapes.py --dataset_folder "shapes_1k_c15_a5/" --n_classes 15 --n_attr 5 --evaluate_and_plot --run_hyperparameters --subsets 250 --n_bootstrap 1,5,10 &> logs/c15_a5_sub3_grid_search.txt &
+
+CUDA_VISIBLE_DIVICES=2 nohup python run_shapes.py --dataset_folder "shapes_1k_c21_a5/" --n_classes 21 --n_attr 5 --evaluate_and_plot --run_hyperparameters --subsets 50,100,150 --n_bootstrap 1,5,10 &> logs/c21_a5_sub1_grid_search.txt &
+CUDA_VISIBLE_DIVICES=2 nohup python run_shapes.py --dataset_folder "shapes_1k_c21_a5/" --n_classes 21 --n_attr 5 --evaluate_and_plot --run_hyperparameters --subsets 200 --n_bootstrap 1,5,10 &> logs/c21_a5_sub2_grid_search.txt &
+CUDA_VISIBLE_DIVICES=2 nohup python run_shapes.py --dataset_folder "shapes_1k_c21_a5/" --n_classes 21 --n_attr 5 --evaluate_and_plot --run_hyperparameters --subsets 250 --n_bootstrap 1,5,10 &> logs/c21_a5_sub3_grid_search.txt &
+
+a9:
+
+a9 only evaluate n-boot 10:
+CUDA_VISIBLE_DIVICES=0 nohup python run_shapes.py --dataset_folder "shapes_1k_c10_a9/" --n_classes 10 --n_attr 9 --evaluate_and_plot --subsets 50,100,150 --n_bootstrap 10 &> logs/c10_a9_sub1_eval.txt &
+CUDA_VISIBLE_DIVICES=0 nohup python run_shapes.py --dataset_folder "shapes_1k_c10_a9/" --n_classes 10 --n_attr 9 --evaluate_and_plot --subsets 200 --n_bootstrap 10 &> logs/c10_a9_sub2_eval.txt &
+CUDA_VISIBLE_DIVICES=0 nohup python run_shapes.py --dataset_folder "shapes_1k_c10_a9/" --n_classes 10 --n_attr 9 --evaluate_and_plot --subsets 250 --n_bootstrap 10 &> logs/c10_a9_sub3_eval.txt &
+
+CUDA_VISIBLE_DIVICES=1 nohup python run_shapes.py --dataset_folder "shapes_1k_c15_a9/" --n_classes 15 --n_attr 9 --evaluate_and_plot --subsets 50,100,150 --n_bootstrap 10 &> logs/c15_a9_sub1_eval.txt &
+CUDA_VISIBLE_DIVICES=1 nohup python run_shapes.py --dataset_folder "shapes_1k_c15_a9/" --n_classes 15 --n_attr 9 --evaluate_and_plot --subsets 200 --n_bootstrap 10 &> logs/c15_a9_sub2_eval.txt &
+CUDA_VISIBLE_DIVICES=1 nohup python run_shapes.py --dataset_folder "shapes_1k_c15_a9/" --n_classes 15 --n_attr 9 --evaluate_and_plot --subsets 250 --n_bootstrap 10 &> logs/c15_a9_sub3_eval.txt &
+
+CUDA_VISIBLE_DIVICES=2 nohup python run_shapes.py --dataset_folder "shapes_1k_c21_a9/" --n_classes 21 --n_attr 9 --evaluate_and_plot --subsets 50,100,150 --n_bootstrap 10 &> logs/c21_a9_sub1_eval.txt &
+CUDA_VISIBLE_DIVICES=2 nohup python run_shapes.py --dataset_folder "shapes_1k_c21_a9/" --n_classes 21 --n_attr 9 --evaluate_and_plot --subsets 200 --n_bootstrap 10 &> logs/c21_a9_sub2_eval.txt &
+CUDA_VISIBLE_DIVICES=2 nohup python run_shapes.py --dataset_folder "shapes_1k_c21_a9/" --n_classes 21 --n_attr 9 --evaluate_and_plot --subsets 250 --n_bootstrap 10 &> logs/c21_a9_sub3_eval.txt &
+
+a9 only evaluate n-boot 1, 5, 10:
+CUDA_VISIBLE_DIVICES=0 nohup python run_shapes.py --dataset_folder "shapes_1k_c10_a9/" --n_classes 10 --n_attr 9 --evaluate_and_plot --subsets 50,100,150 --n_bootstrap 1,5,10 &> logs/c10_a9_sub1_eval.txt &
+CUDA_VISIBLE_DIVICES=0 nohup python run_shapes.py --dataset_folder "shapes_1k_c10_a9/" --n_classes 10 --n_attr 9 --evaluate_and_plot --subsets 200 --n_bootstrap 1,5,10 &> logs/c10_a9_sub2_eval.txt &
+CUDA_VISIBLE_DIVICES=0 nohup python run_shapes.py --dataset_folder "shapes_1k_c10_a9/" --n_classes 10 --n_attr 9 --evaluate_and_plot --subsets 250 --n_bootstrap 1,5,10 &> logs/c10_a9_sub3_eval.txt &
+
+CUDA_VISIBLE_DIVICES=1 nohup python run_shapes.py --dataset_folder "shapes_1k_c15_a9/" --n_classes 15 --n_attr 9 --evaluate_and_plot --subsets 50,100,150 --n_bootstrap 1,5,10 &> logs/c15_a9_sub1_eval.txt &
+CUDA_VISIBLE_DIVICES=1 nohup python run_shapes.py --dataset_folder "shapes_1k_c15_a9/" --n_classes 15 --n_attr 9 --evaluate_and_plot --subsets 200 --n_bootstrap 1,5,10 &> logs/c15_a9_sub2_eval.txt &
+CUDA_VISIBLE_DIVICES=1 nohup python run_shapes.py --dataset_folder "shapes_1k_c15_a9/" --n_classes 15 --n_attr 9 --evaluate_and_plot --subsets 250 --n_bootstrap 1,5,10 &> logs/c15_a9_sub3_eval.txt &
+
+CUDA_VISIBLE_DIVICES=2 nohup python run_shapes.py --dataset_folder "shapes_1k_c21_a9/" --n_classes 21 --n_attr 9 --evaluate_and_plot --subsets 50,100,150 --n_bootstrap 1,5,10 &> logs/c21_a9_sub1_eval.txt &
+CUDA_VISIBLE_DIVICES=2 nohup python run_shapes.py --dataset_folder "shapes_1k_c21_a9/" --n_classes 21 --n_attr 9 --evaluate_and_plot --subsets 200 --n_bootstrap 1,5,10 &> logs/c21_a9_sub2_eval.txt &
+CUDA_VISIBLE_DIVICES=2 nohup python run_shapes.py --dataset_folder "shapes_1k_c21_a9/" --n_classes 21 --n_attr 9 --evaluate_and_plot --subsets 250 --n_bootstrap 1,5,10 &> logs/c21_a9_sub3_eval.txt &
+
+
+a9 hyperparam plus evaluate n-boot 1
+CUDA_VISIBLE_DIVICES=0 nohup python run_shapes.py --dataset_folder "shapes_1k_c10_a9/" --n_classes 10 --n_attr 9 --evaluate_and_plot --run_hyperparameters --subsets 50,100,150 --n_bootstrap 1 &> logs/c10_a9_sub1_grid_search.txt &
+CUDA_VISIBLE_DIVICES=0 nohup python run_shapes.py --dataset_folder "shapes_1k_c10_a9/" --n_classes 10 --n_attr 9 --evaluate_and_plot --run_hyperparameters --subsets 200 --n_bootstrap 1 &> logs/910_a9_sub2_grid_search.txt &
+CUDA_VISIBLE_DIVICES=4 nohup python run_shapes.py --dataset_folder "shapes_1k_c10_a9/" --n_classes 10 --n_attr 9 --evaluate_and_plot --run_hyperparameters --subsets 250 --n_bootstrap 1 &> logs/c10_a9_sub3_grid_search.txt &
+
+CUDA_VISIBLE_DIVICES=1 nohup python run_shapes.py --dataset_folder "shapes_1k_c15_a9/" --n_classes 15 --n_attr 9 --evaluate_and_plot --run_hyperparameters --subsets 50,100,150 --n_bootstrap 1 &> logs/c15_a9_sub1_grid_search.txt &
+CUDA_VISIBLE_DIVICES=1 nohup python run_shapes.py --dataset_folder "shapes_1k_c15_a9/" --n_classes 15 --n_attr 9 --evaluate_and_plot --run_hyperparameters --subsets 200 --n_bootstrap 1 &> logs/c15_a9_sub2_grid_search.txt &
+CUDA_VISIBLE_DIVICES=3 nohup python run_shapes.py --dataset_folder "shapes_1k_c15_a9/" --n_classes 15 --n_attr 9 --evaluate_and_plot --run_hyperparameters --subsets 250 --n_bootstrap 1 &> logs/c15_a9_sub3_grid_search.txt &
+
+CUDA_VISIBLE_DIVICES=2 nohup python run_shapes.py --dataset_folder "shapes_1k_c21_a9/" --n_classes 21 --n_attr 9 --evaluate_and_plot --run_hyperparameters --subsets 50,100,150 --n_bootstrap 1 &> logs/c21_a9_sub1_grid_search.txt &
+CUDA_VISIBLE_DIVICES=2 nohup python run_shapes.py --dataset_folder "shapes_1k_c21_a9/" --n_classes 21 --n_attr 9 --evaluate_and_plot --run_hyperparameters --subsets 200 --n_bootstrap 1 &> logs/c21_a9_sub2_grid_search.txt &
+CUDA_VISIBLE_DIVICES=4 nohup python run_shapes.py --dataset_folder "shapes_1k_c21_a9/" --n_classes 21 --n_attr 9 --evaluate_and_plot --run_hyperparameters --subsets 250 --n_bootstrap 1 &> logs/c21_a9_sub3_grid_search.txt &
+
+
+a9 hyperparam plus evaluate n-boot 1, 5, 10
+CUDA_VISIBLE_DIVICES=0 nohup python run_shapes.py --dataset_folder "shapes_1k_c10_a9/" --n_classes 10 --n_attr 9 --evaluate_and_plot --run_hyperparameters --subsets 50,100,150 --n_bootstrap 1,5,10 &> logs/c10_a9_sub1_grid_search.txt &
+CUDA_VISIBLE_DIVICES=0 nohup python run_shapes.py --dataset_folder "shapes_1k_c10_a9/" --n_classes 10 --n_attr 9 --evaluate_and_plot --run_hyperparameters --subsets 200 --n_bootstrap 1,5,10 &> logs/c10_a9_sub2_grid_search.txt &
+CUDA_VISIBLE_DIVICES=0 nohup python run_shapes.py --dataset_folder "shapes_1k_c10_a9/" --n_classes 10 --n_attr 9 --evaluate_and_plot --run_hyperparameters --subsets 250 --n_bootstrap 1,5,10 &> logs/c10_a9_sub3_grid_search.txt &
+
+CUDA_VISIBLE_DIVICES=1 nohup python run_shapes.py --dataset_folder "shapes_1k_c15_a9/" --n_classes 15 --n_attr 9 --evaluate_and_plot --run_hyperparameters --subsets 50,100,150 --n_bootstrap 1,5,10 &> logs/c15_a9_sub1_grid_search.txt &
+CUDA_VISIBLE_DIVICES=1 nohup python run_shapes.py --dataset_folder "shapes_1k_c15_a9/" --n_classes 15 --n_attr 9 --evaluate_and_plot --run_hyperparameters --subsets 200 --n_bootstrap 1,5,10 &> logs/c15_a9_sub2_grid_search.txt &
+CUDA_VISIBLE_DIVICES=1 nohup python run_shapes.py --dataset_folder "shapes_1k_c15_a9/" --n_classes 15 --n_attr 9 --evaluate_and_plot --run_hyperparameters --subsets 250 --n_bootstrap 1,5,10 &> logs/c15_a9_sub3_grid_search.txt &
+
+CUDA_VISIBLE_DIVICES=2 nohup python run_shapes.py --dataset_folder "shapes_1k_c21_a9/" --n_classes 21 --n_attr 9 --evaluate_and_plot --run_hyperparameters --subsets 50,100,150 --n_bootstrap 1,5,10 &> logs/c21_a9_sub1_grid_search.txt &
+CUDA_VISIBLE_DIVICES=2 nohup python run_shapes.py --dataset_folder "shapes_1k_c21_a9/" --n_classes 21 --n_attr 9 --evaluate_and_plot --run_hyperparameters --subsets 200 --n_bootstrap 1,5,10 &> logs/c21_a9_sub2_grid_search.txt &
+CUDA_VISIBLE_DIVICES=2 nohup python run_shapes.py --dataset_folder "shapes_1k_c21_a9/" --n_classes 21 --n_attr 9 --evaluate_and_plot --run_hyperparameters --subsets 250 --n_bootstrap 1,5,10 &> logs/c21_a9_sub3_grid_search.txt &
