@@ -46,7 +46,8 @@ def split_dataset(data_list, tables_dir, include_test=True, seed=57):
     else:
         val_data = data_list[train_size:]
 
-    shutil.rmtree(tables_dir)  # Delete previous folder and re-create
+    if os.path.exists(tables_dir):
+        shutil.rmtree(tables_dir)  # Delete previous folder and re-create
     os.makedirs(tables_dir)
     with open(tables_dir + "train_data.pkl", "wb") as outfile:
         pickle.dump(train_data, outfile)

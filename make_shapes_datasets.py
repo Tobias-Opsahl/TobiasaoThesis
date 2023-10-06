@@ -31,11 +31,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from utils import split_dataset
-from shapes.datasets_shapes import make_subset_shapes
 
 
-def draw_concept_probabilities(n_classes, class_number, signal_strength=0.98,
-                               equal_probabilities=False, use_position_concepts=True):
+def draw_concept_probabilities(n_classes, class_number, signal_strength=0.98, equal_probabilities=False,
+                               use_position_concepts=False, use_background_concepts=False):
     """
     Draws the probabilites of drawing concept-lables. Draws one probability dict for one image.
     This function returns the probability that a shape will have a concept, which is drawn in `draw_concept_labels()`.
@@ -53,13 +52,16 @@ def draw_concept_probabilities(n_classes, class_number, signal_strength=0.98,
         class_number (int): The class that are currently drawn from (between 0 and `n_classes`).
         signal_strength (float, optional): The signal between classes and the probability they
             get assigned. If `0.98`, a class will have a 98% or 2% probability of having a concept.
-        equal_probabilities (bool, optional): _description_. Defaults to False.
+        equal_probabilities (bool, optional): If True, will make dataset with no correlation. Defaults to False.
         use_position_concepts (bool, optional): If True, the position is drawn according to
             `concept_labels["right_side"]` and `concept_labels["upper_side"]`. This means that
             the concept_labels determines the quadrant the shape is made in. If False, the shape
             will be drawn randomly in the whole grid. It is recommended to set `True` when there
             is just one shape in an image (since then there are two more concepts to use), but
             `False` when there are two or more shapes (since they will heavily overlap otherwise.
+        use_background_concepts (bool, optional): If True, will use four background concepts. These are dark-color
+            upper half, dark color lower half, stripes upper half and striped lower half. If not, background will
+            be completely black.
 
     Raises:
         ValueError: If the correlation scheme is not implemented for a given `n_classes`.
@@ -79,6 +81,11 @@ def draw_concept_probabilities(n_classes, class_number, signal_strength=0.98,
         if use_position_concepts:
             right_side_prob = set_probability(class_number, [2, 3], signal_strength)
             upper_side_prob = set_probability(class_number, [0, 1], signal_strength)
+        if use_background_concepts:
+            dark_upper_background_prob = set_probability(class_number, [1, 3], signal_strength)
+            dark_lower_background_prob = set_probability(class_number, [0], signal_strength)
+            upper_background_stripes_prob = set_probability(class_number, [1, 2, 3], signal_strength)
+            lower_background_stripes_prob = set_probability(class_number, [0, 2], signal_strength)
     elif n_classes == 5:
         thick_outline_prob = set_probability(class_number, [0], signal_strength)
         big_figure_prob = set_probability(class_number, [2, 4], signal_strength)
@@ -88,6 +95,11 @@ def draw_concept_probabilities(n_classes, class_number, signal_strength=0.98,
         if use_position_concepts:
             right_side_prob = set_probability(class_number, [0, 1], signal_strength)
             upper_side_prob = set_probability(class_number, [1, 2], signal_strength)
+        if use_background_concepts:
+            dark_upper_background_prob = set_probability(class_number, [1, 3], signal_strength)
+            dark_lower_background_prob = set_probability(class_number, [2, 4], signal_strength)
+            upper_background_stripes_prob = set_probability(class_number, [1, 4], signal_strength)
+            lower_background_stripes_prob = set_probability(class_number, [0, 4], signal_strength)
     elif n_classes == 10:
         thick_outline_prob = set_probability(class_number, [0, 2, 4, 6, 8], signal_strength)
         big_figure_prob = set_probability(class_number, [0, 1, 2, 3, 4], signal_strength)
@@ -97,6 +109,11 @@ def draw_concept_probabilities(n_classes, class_number, signal_strength=0.98,
         if use_position_concepts:
             right_side_prob = set_probability(class_number, [0, 1], signal_strength)
             upper_side_prob = set_probability(class_number, [1, 2], signal_strength)
+        if use_background_concepts:
+            dark_upper_background_prob = set_probability(class_number, [1, 3, 5, 6, 7], signal_strength)
+            dark_lower_background_prob = set_probability(class_number, [0, 3, 7, 8, 9], signal_strength)
+            upper_background_stripes_prob = set_probability(class_number, [5, 6, 9], signal_strength)
+            lower_background_stripes_prob = set_probability(class_number, [2, 4, 5], signal_strength)
     elif n_classes == 15:
         thick_outline_prob = set_probability(class_number, [0, 2, 4, 6, 8, 10, 12, 14], signal_strength)
         big_figure_prob = set_probability(class_number, [0, 1, 2, 3, 4, 5, 6, 7], signal_strength)
@@ -106,6 +123,11 @@ def draw_concept_probabilities(n_classes, class_number, signal_strength=0.98,
         if use_position_concepts:
             right_side_prob = set_probability(class_number, [0, 1], signal_strength)
             upper_side_prob = set_probability(class_number, [1, 2], signal_strength)
+        if use_background_concepts:
+            dark_upper_background_prob = set_probability(class_number, [1, 5, 8, 9, 11, 14], signal_strength)
+            dark_lower_background_prob = set_probability(class_number, [1, 3, 7, 12, 13], signal_strength)
+            upper_background_stripes_prob = set_probability(class_number, [4, 7, 10, 14], signal_strength)
+            lower_background_stripes_prob = set_probability(class_number, [8, 9, 10, 13], signal_strength)
     elif n_classes == 21:
         thick_outline_prob = set_probability(class_number, [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20], signal_strength)
         big_figure_prob = set_probability(class_number, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], signal_strength)
@@ -115,6 +137,11 @@ def draw_concept_probabilities(n_classes, class_number, signal_strength=0.98,
         if use_position_concepts:
             right_side_prob = set_probability(class_number, [0, 1], signal_strength)
             upper_side_prob = set_probability(class_number, [1, 2], signal_strength)
+        if use_background_concepts:
+            dark_upper_background_prob = set_probability(class_number, [2, 7, 18, 19, 20], signal_strength)
+            dark_lower_background_prob = set_probability(class_number, [3, 6, 8, 14, 16, 19], signal_strength)
+            upper_background_stripes_prob = set_probability(class_number, [1, 4, 15, 18, 20], signal_strength)
+            lower_background_stripes_prob = set_probability(class_number, [4, 5, 10, 11, 12], signal_strength)
     else:
         message = f"Drawing probabilites not yet defined for {n_classes} classes. Only defined for [4, 5]. "
         message += f"Please use `equal_probabilities=True` or implement probabilites for {n_classes} classes. "
@@ -125,6 +152,11 @@ def draw_concept_probabilities(n_classes, class_number, signal_strength=0.98,
     if use_position_concepts:
         prob_dict["right_side_prob"] = right_side_prob
         prob_dict["upper_side_prob"] = upper_side_prob
+    if use_background_concepts:
+        prob_dict["dark_upper_background_prob"] = dark_upper_background_prob
+        prob_dict["dark_lower_background_prob"] = dark_lower_background_prob
+        prob_dict["upper_background_stripes_prob"] = upper_background_stripes_prob
+        prob_dict["lower_background_stripes_prob"] = lower_background_stripes_prob
     return prob_dict
 
 
@@ -150,12 +182,12 @@ def set_probability(class_number, in_classes, signal_strength):
     return probability
 
 
-def draw_concept_labels(probability_dict=None, use_position_concepts=True):
+def draw_concept_labels(probability_dict=None, use_position_concepts=False, use_background_concepts=False):
     """
     Draws the concept-labels, given the probabilities.
     The concepts labels are `True` and `False` for things like `big_figure` and `thick_outline`.
     The booleans are drawn according to probabilities in `probability_dict`, which is returned from
-    `draw_concepts_probabilites()`.
+    `draw_concepts_probabilities()`.
     The concepts are used to draw the actual image attributes in `draw_attributes()`.
 
     Args:
@@ -168,6 +200,9 @@ def draw_concept_labels(probability_dict=None, use_position_concepts=True):
             will be drawn randomly in the whole grid. It is recommended to set `True` when there
             is just one shape in an image (since then there are two more concepts to use), but
             `False` when there are two or more shapes (since they will heavily overlap otherwise.
+        use_background_concepts (bool, optional): If True, will use four background concepts. These are dark-color
+            upper half, dark color lower half, stripes upper half and striped lower half. If not, background will
+            be completely black.
 
     Returns:
         dict: A dictionary with concepts as keys and 1 and 0 (representing booleans) as values.
@@ -176,7 +211,9 @@ def draw_concept_labels(probability_dict=None, use_position_concepts=True):
     if probability_dict is None:  # Set all probabilites to default value 0.5
         probability_dict = {"thick_outline_prob": 0.5, "big_figure_prob": 0.5, "dark_facecolor_prob": 0.5,
                             "dark_outline_prob": 0.5, "stripes_prob": 0.5, "right_side_prob": 0.5,
-                            "upper_side_prob": 0.5}
+                            "upper_side_prob": 0.5, "dark_upper_background_prob": 0.5,
+                            "dark_lower_background_prob": 0.5, "upper_background_stripes_prob": 0.5,
+                            "lower_background_stripes_prob": 0.5}
     thick_outline = False
     big_figure = False
     dark_facecolor = False
@@ -184,6 +221,10 @@ def draw_concept_labels(probability_dict=None, use_position_concepts=True):
     stripes = False
     right_side = False
     upper_side = False
+    dark_upper_background = False
+    dark_lower_background = False
+    upper_background_stripes = False
+    lower_background_stripes = False
     if np.random.uniform() < probability_dict["thick_outline_prob"]:
         thick_outline = True
     if np.random.uniform() < probability_dict["big_figure_prob"]:
@@ -199,6 +240,15 @@ def draw_concept_labels(probability_dict=None, use_position_concepts=True):
             right_side = True
         if np.random.uniform() < probability_dict["upper_side_prob"]:
             upper_side = True
+    if use_background_concepts:
+        if np.random.uniform() < probability_dict["dark_upper_background_prob"]:
+            dark_upper_background = True
+        if np.random.uniform() < probability_dict["dark_lower_background_prob"]:
+            dark_lower_background = True
+        if np.random.uniform() < probability_dict["upper_background_stripes_prob"]:
+            upper_background_stripes = True
+        if np.random.uniform() < probability_dict["lower_background_stripes_prob"]:
+            lower_background_stripes = True
 
     # Pack all the information above into a dict
     concept_labels = {"thick_outline": int(thick_outline), "big_figure": int(big_figure),
@@ -206,6 +256,11 @@ def draw_concept_labels(probability_dict=None, use_position_concepts=True):
     if use_position_concepts:  # Add positional arguments
         concept_labels["right_side"] = int(right_side)
         concept_labels["upper_side"] = int(upper_side)
+    if use_background_concepts:
+        concept_labels["dark_upper_background"] = int(dark_upper_background)
+        concept_labels["dark_lower_background"] = int(dark_lower_background)
+        concept_labels["upper_background_stripes"] = int(upper_background_stripes)
+        concept_labels["lower_background_stripes"] = int(lower_background_stripes)
     return concept_labels
 
 
@@ -439,8 +494,38 @@ def make_single_shape(shape, concept_labels, use_position_concepts=True):
         return make_ellipse(attributes)
 
 
+def add_background_concepts(ax, concept_labels):
+    if concept_labels["dark_upper_background"]:
+        upper_background_color = "magenta"
+    else:
+        upper_background_color = "palegreen"
+    if concept_labels["upper_background_stripes"]:
+        upper_background_hatch = "////"
+    else:
+        upper_background_hatch = None
+    upper_rectangle = patches.Rectangle((0, 5), 10, 5, facecolor=upper_background_color,
+                                        edgecolor="black", hatch=upper_background_hatch,
+                                        linewidth=0.001)
+    ax.add_patch(upper_rectangle)
+
+    if concept_labels["dark_lower_background"]:
+        lower_background_color = "indigo"
+    else:
+        lower_background_color = "darkseagreen"
+    if concept_labels["lower_background_stripes"]:
+        lower_background_hatch = "////"
+    else:
+        lower_background_hatch = None
+    lower_rectangle = patches.Rectangle((0, 0), 10, 5, facecolor=lower_background_color,
+                                        edgecolor="black", hatch=lower_background_hatch,
+                                        linewidth=0.001)
+    ax.add_patch(lower_rectangle)
+    return ax
+
+
 def create_and_save_image(shapes, concept_labels=None, height=64, width=64, dpi=100, base_dir="data/shapes/",
-                          class_subdir="", fig_name="fig.png", use_position_concepts=True):
+                          class_subdir="", fig_name="fig.png",
+                          use_position_concepts=True, use_background_concepts=False):
     """
     Makes a single images and saves it in a respective folder. A single image may contain many shapes.
     This is called from `create_and_save_images()`, which will systematically call this function many times to make
@@ -469,6 +554,9 @@ def create_and_save_image(shapes, concept_labels=None, height=64, width=64, dpi=
             will be drawn randomly in the whole grid. It is recommended to set `True` when there
             is just one shape in an image (since then there are two more concepts to use), but
             `False` when there are two or more shapes (since they will heavily overlap otherwise.
+        use_background_concepts (bool, optional): If True, will use four background concepts. These are dark-color
+            upper half, dark color lower half, stripes upper half and striped lower half. If not, background will
+            be completely black.
 
     Returns:
         concept_labels: The concept labels drawn for the image.
@@ -478,6 +566,9 @@ def create_and_save_image(shapes, concept_labels=None, height=64, width=64, dpi=
     ax.set_xlim(0, 10)  # Virtual coords in image are from 0 to 10.
     ax.set_ylim(0, 10)
     ax.set_facecolor("black")
+
+    if use_background_concepts:
+        ax = add_background_concepts(ax, concept_labels)
 
     for shape in shapes:
         patch = make_single_shape(shape, concept_labels, use_position_concepts=use_position_concepts)
@@ -491,8 +582,8 @@ def create_and_save_image(shapes, concept_labels=None, height=64, width=64, dpi=
 
 
 def generate_shapes_dataset(class_names, shape_combinations, n_images_class=10, equal_probabilities=False,
-                            use_position_concepts=True, signal_strength=0.98, split_data=True,
-                            base_dir="data/shapes/shapes_testing/", seed=57, verbose=True):
+                            use_position_concepts=True, use_background_concepts=False, signal_strength=0.98,
+                            split_data=True, base_dir="data/shapes/shapes_testing/", seed=57, verbose=True):
     """
     Makes a shapes-dataset. This function makes a directory of a dataset, and calls `create_and_save_image()` many times
     to create each image.
@@ -511,6 +602,9 @@ def generate_shapes_dataset(class_names, shape_combinations, n_images_class=10, 
             will be drawn randomly in the whole grid. It is recommended to set `True` when there
             is just one shape in an image (since then there are two more concepts to use), but
             `False` when there are two or more shapes (since they will heavily overlap otherwise.
+        use_background_concepts (bool, optional): If True, will use four background concepts. These are dark-color
+            upper half, dark color lower half, stripes upper half and striped lower half. If not, background will
+            be completely black.
         signal_strength (float, optional): The probability that determines the correlation between classes
             and concepts when `equal_probabilities` is `False`. (probabilites are either `signal_strength`
             or `1 - signal_strenth`). Defaults to 0.98.
@@ -546,14 +640,17 @@ def generate_shapes_dataset(class_names, shape_combinations, n_images_class=10, 
             concept_probabilities = draw_concept_probabilities(n_classes=len(class_names), class_number=i,
                                                                signal_strength=signal_strength,
                                                                equal_probabilities=equal_probabilities,
-                                                               use_position_concepts=use_position_concepts)
+                                                               use_position_concepts=use_position_concepts,
+                                                               use_background_concepts=use_background_concepts)
             # Draw the actual probabilites for the image
             concept_labels = draw_concept_labels(probability_dict=concept_probabilities,
-                                                 use_position_concepts=use_position_concepts)
+                                                 use_position_concepts=use_position_concepts,
+                                                 use_background_concepts=use_background_concepts)
             # Create and save the image.
             create_and_save_image(shapes=shape_combination, concept_labels=concept_labels, base_dir=base_dir,
                                   class_subdir=class_subdir, fig_name=fig_name,
-                                  use_position_concepts=use_position_concepts)
+                                  use_position_concepts=use_position_concepts,
+                                  use_background_concepts=use_background_concepts)
             data_list.append({"img_path": base_dir + class_subdir + fig_name, "class_label": i,
                               "attribute_label": concept_labels, "class_name": shape_name})
 
@@ -636,8 +733,62 @@ def make_shapes_1k_c21_a5():
                             split_data=True, base_dir=base_dir, use_position_concepts=False)
 
 
+def make_shapes_1k_c10_a9_correlation():
+    """
+    Makes a dataset with 1k images of 10 classes, with concept-class correlation.
+    Use background concepts
+    """
+    class_names = ["triangle_triangle", "triangle_rectangle", "triangle_ellipse", "triangle_hexagon",
+                   "rectangle_rectangle", "rectangle_ellipse", "rectangle_hexagon",
+                   "ellipse_ellipse", "ellipse_hexagon", "hexagon_hexagon"]
+    shape_combinations = []  # Nested list structure
+    for shape_name in class_names:
+        shape_combinations.append([shape_name.split("_")[0], shape_name.split("_")[1]])
+    base_dir = "data/shapes/shapes_1k_c10_a9/"
+    generate_shapes_dataset(class_names=class_names, shape_combinations=shape_combinations, n_images_class=1000,
+                            split_data=True, base_dir=base_dir, use_position_concepts=False,
+                            use_background_concepts=True)
+
+
+def make_shapes_1k_c15_a9_correlation():
+    """
+    Makes a dataset with 1k images of 10 classes, with concept-class correlation.
+    Use background concepts
+    """
+    class_names = ["triangle_triangle", "triangle_rectangle", "triangle_hexagon", "triangle_ellipse", "triangle_wedge",
+                   "rectangle_rectangle", "rectangle_hexagon", "rectangle_ellipse", "rectangle_wedge",
+                   "hexagon_hexagon", "hexagon_ellipse", "hexagon_wedge", "ellipse_ellipse", "ellipse_wedge",
+                   "wedge_wedge"]
+    shape_combinations = []  # Nested list structure
+    for shape_name in class_names:
+        shape_combinations.append([shape_name.split("_")[0], shape_name.split("_")[1]])
+    base_dir = "data/shapes/shapes_1k_c15_a9/"
+    generate_shapes_dataset(class_names=class_names, shape_combinations=shape_combinations, n_images_class=1000,
+                            split_data=True, base_dir=base_dir, use_position_concepts=False,
+                            use_background_concepts=True)
+
+
+def make_shapes_1k_c21_a9_correlation():
+    """
+    Makes a dataset with 1k images of 10 classes, with concept-class correlation.
+    Use background concepts
+    """
+    class_names = ["triangle_triangle", "rectangle_triangle", "pentagon_triangle", "hexagon_triangle",
+                   "ellipse_triangle", "triangle_wedge", "rectangle_rectangle", "pentagon_rectangle",
+                   "hexagon_rectangle", "ellipse_rectangle", "rectangle_wedge", "pentagon_pentagon",
+                   "hexagon_pentagon", "ellipse_pentagon", "pentagon_wedge", "hexagon_hexagon", "ellipse_hexagon",
+                   "hexagon_wedge", "ellipse_ellipse", "ellipse_wedge", "wedge_wedge"]
+    shape_combinations = []  # Nested list structure
+    for shape_name in class_names:
+        shape_combinations.append([shape_name.split("_")[0], shape_name.split("_")[1]])
+    base_dir = "data/shapes/shapes_1k_c21_a9/"
+    generate_shapes_dataset(class_names=class_names, shape_combinations=shape_combinations, n_images_class=1000,
+                            split_data=True, base_dir=base_dir, use_position_concepts=False,
+                            use_background_concepts=True)
+
+
 if __name__ == "__main__":
     all_shapes = ["circle", "rectangle", "triangle", "pentagon", "hexagon", "ellipse", "wedge"]
-
-    # from IPython import embed
-    # embed()
+    make_shapes_1k_c10_a9_correlation()
+    make_shapes_1k_c15_a9_correlation()
+    make_shapes_1k_c21_a9_correlation()

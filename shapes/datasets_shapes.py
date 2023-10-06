@@ -164,7 +164,8 @@ def make_subset_shapes(path, n_images_class, n_classes, seed=57):
         new_val_list.extend(sub_list_val)
 
     tables_dir = path + "sub" + str(n_images_class) + "/"
-    shutil.rmtree(tables_dir)  # Delete previous folder and re-create
+    if os.path.exists(tables_dir):
+        shutil.rmtree(tables_dir)  # Delete previous folder and re-create
     os.makedirs(tables_dir)
     with open(tables_dir + "train_data.pkl", "wb") as outfile:
         pickle.dump(new_train_list, outfile)
