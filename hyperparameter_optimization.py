@@ -19,8 +19,8 @@ class HyperparameterOptimizationShapes:
     One class is needed for every dataset and every model.
     """
 
-    def __init__(self, model_type, dataset_path, n_classes, n_attr=None, n_subset=None, batch_size=16,
-                 eval_loss=True, device=None, num_workers=0, pin_memory=False, persistent_workers=False,
+    def __init__(self, model_type, dataset_path, n_classes, n_attr=None, n_subset=None, signal_strength=98,
+                 batch_size=16, eval_loss=True, device=None, num_workers=0, pin_memory=False, persistent_workers=False,
                  non_blocking=False, fast=False, seed=57):
         """
         Args:
@@ -29,6 +29,7 @@ class HyperparameterOptimizationShapes:
             n_classes (int): The amount of classes in the dataset.
             n_attr (int): The amount of attributes in the dataset
             n_subset (str, optional): Amount of data in each class used for subset (n_images_class).
+            signal_strength (int): The signal_strength the dataset is created with.
             batch_size (int, optional): Batch-size for training. Defaults to 16.
             eval_loss (bool, optional): If `True`, will use evalulation set loss as metric for optimizing.
                 If false, will use evaluation accuracy. Defaults to True.
@@ -52,6 +53,14 @@ class HyperparameterOptimizationShapes:
         if model_type not in MODEL_STRINGS:
             raise ValueError(f"The model type must be in {MODEL_STRINGS}. Was {model_type}. ")
         self.model_type = model_type
+
+        if signal_strength in [98, 0.98, "98", "0.98"]:
+            signal_str = ""
+        elif signal_strength in [100, 1, "100", "1"]:
+            signal_str = "_s100"
+        else:
+            raise ValueError(f"Dataset with signal_strength {signal_strength} not created")
+        self.signal_str = signal_str
 
         self.device = device
         if device is None or device == "":
@@ -170,7 +179,7 @@ class HyperparameterOptimizationShapes:
             return trial.suggest_float("gamma", 0.1, 1, log=False)
         elif hp_name == "n_epochs":
             return trial.suggest_int("n_epochs", 15, 50, log=False)
-        elif hp_name == "n_linear_epochs":
+        elif hp_name == "n_linear_output":
             return trial.suggest_int("n_linear_output", 32, 128, log=True)
         elif hp_name == "n_hidden":
             return trial.suggest_int("n_hidden", 8, 32, log=True)
@@ -296,8 +305,8 @@ class HyperparameterOptimizationShapes:
             metric: Either the evaluation loss or the evaluation accuracy.
         """
         train_loader, val_loader = load_data_shapes(
-            mode="train-val", path=self.dataset_path, subset_dir=self.subset_dir, batch_size=self.batch_size,
-            drop_last=True, num_workers=self.num_workers, pin_memory=self.pin_memory,
+            mode="train-val", path=self.dataset_path, subset_dir=self.subset_dir,
+            batch_size=self.batch_size, drop_last=True, num_workers=self.num_workers, pin_memory=self.pin_memory,
             persistent_workers=self.persistent_workers)
 
         hp = self._get_hyperparameters_for_trial(trial)  # Get suggestions for hyperparameters
@@ -407,7 +416,7 @@ class HyperparameterOptimizationShapes:
         hyperparameters = self._get_hyperparameters_from_best_trial(trial)
         hyperparameters = self._round_dict_values(hyperparameters)
 
-        folder_name = "c" + str(self.n_classes) + "_a" + str(self.n_attr) + "/"
+        folder_name = "c" + str(self.n_classes) + "_a" + str(self.n_attr) + self.signal_str + "/"
         hp_path = base_dir + folder_name
         hp_filename = "hyperparameters_" + self.subset_dir.strip("/") + ".yaml"
         if not os.path.exists(hp_path + hp_filename):  # No yaml file for this setting
@@ -428,7 +437,7 @@ class HyperparameterOptimizationShapes:
 
 
 def run_hyperparameter_optimization_all_models(
-        dataset_path, n_classes, n_attr, subsets, hyperparameters_to_search=None, grid_search=False,
+        dataset_path, n_classes, n_attr, subsets, signal_strength=98, hyperparameters_to_search=None, grid_search=False,
         base_dir="hyperparameters/shapes/", n_trials=10, batch_size=16, eval_loss=True, device=None, num_workers=0,
         pin_memory=False, persistent_workers=False, non_blocking=False, fast=False, write=True, verbose="warning"):
     """
@@ -437,7 +446,8 @@ def run_hyperparameter_optimization_all_models(
     Args:
         dataset_path (str): Path to the dataset_directory
         n_classes (int): The amount of classes in the dataset.
-        n_attr (int): The amount of attributes in the dataset
+        n_attr (int): The amount of attributes in the dataset.
+        signal_strength (int): The signal_strength the dataset is created with.
         subsets (list of int): List of the subsets to run on.
         hyperparameters_to_search (dict, optinal): Determines the hyperparameters to search for. See the
             hyperparameter-class for more doctumentation.
@@ -469,7 +479,7 @@ def run_hyperparameter_optimization_all_models(
         print(f"\nRunning hyperparameter search for {subset} subsets. \n")
         # subset_dir = "sub" + str(subset) + "/"
         for model_type in MODEL_STRINGS:
-            if set_hyperparameters_to_search:
+            if grid_search and set_hyperparameters_to_search:
                 if model_type == "cnn":
                     hyperparameters_to_search = {
                         "learning_rate": True, "dropout_probability": True, "gamma": True, "attr_schedule": False,
@@ -480,12 +490,23 @@ def run_hyperparameter_optimization_all_models(
                         "learning_rate": True, "dropout_probability": True, "gamma": False, "attr_schedule": True,
                         "attr_weight": False, "attr_weight_decay": False, "n_epochs": False, "n_linear_output": False,
                         "activation": False, "two_layers": False, "n_hidden": False}
+            if not grid_search and set_hyperparameters_to_search:
+                if model_type == "cnn":
+                    hyperparameters_to_search = {
+                        "learning_rate": True, "dropout_probability": True, "gamma": True, "attr_schedule": False,
+                        "attr_weight": False, "attr_weight_decay": False, "n_epochs": False, "n_linear_output": True,
+                        "activation": False, "two_layers": False, "n_hidden": False}
+                else:
+                    hyperparameters_to_search = {
+                        "learning_rate": True, "dropout_probability": True, "gamma": False, "attr_schedule": True,
+                        "attr_weight": False, "attr_weight_decay": False, "n_epochs": False, "n_linear_output": True,
+                        "activation": False, "two_layers": False, "n_hidden": False}
 
             print(f"\nRunning hyperparameter optimization on model {model_type}. \n")
             obj = HyperparameterOptimizationShapes(
                 model_type=model_type, dataset_path=dataset_path, n_classes=n_classes, n_attr=n_attr,
-                n_subset=subset, batch_size=batch_size, eval_loss=eval_loss, device=device,
-                num_workers=num_workers, pin_memory=pin_memory, persistent_workers=persistent_workers,
+                n_subset=subset, signal_strength=signal_strength, batch_size=batch_size, eval_loss=eval_loss,
+                device=device, num_workers=num_workers, pin_memory=pin_memory, persistent_workers=persistent_workers,
                 non_blocking=non_blocking, fast=fast)
             obj.run_hyperparameter_search(n_trials=n_trials, hyperparameters_to_search=hyperparameters_to_search,
                                           grid_search=grid_search, write=write, base_dir=base_dir, verbose=verbose)

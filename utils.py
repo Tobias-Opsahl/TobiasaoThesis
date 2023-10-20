@@ -58,7 +58,7 @@ def split_dataset(data_list, tables_dir, include_test=True, seed=57):
             pickle.dump(test_data, outfile)
 
 
-def get_hyperparameters(n_classes=None, n_attr=None, n_subset=None, default=False, fast=False,
+def get_hyperparameters(n_classes=None, n_attr=None, n_subset=None, signal_str="", default=False, fast=False,
                         base_dir="hyperparameters/", dataset_type="shapes/"):
     """
     Loads a set of hyperparameters. This will try to load hyperparameters specific for this combination of
@@ -70,6 +70,7 @@ def get_hyperparameters(n_classes=None, n_attr=None, n_subset=None, default=Fals
         n_classes (int): The amount of classes the hyperparameter was optimized with.
         n_attr (int): The amount of attributes the hyperparameter was optimized with.
         n_subset (int): The amount of instances in each class the hyperparameter was optimized with.
+        signal_str (str): String of "" or "_s100", deciding witch signal-strength to use.
         fast (bool, optional): If True, will use hyperparameters with very low `n_epochs`. Defaults to False.
         default (bool, optional): If True, will use default hyperparameters, disregarding n_classe, n_attr etc.
         base_dir (str, optional): Base directory to the hyperparameters.. Defaults to "hyperparameters/".
@@ -93,7 +94,7 @@ def get_hyperparameters(n_classes=None, n_attr=None, n_subset=None, default=Fals
             hyperparameters = yaml.safe_load(infile)
         return hyperparameters
 
-    folder_name = "c" + str(n_classes) + "_a" + str(n_attr) + "/"
+    folder_name = "c" + str(n_classes) + "_a" + str(n_attr) + signal_str + "/"
     filename = "hyperparameters_sub" + str(n_subset) + ".yaml"
 
     if (not default) and (not os.path.exists(base_dir + folder_name + filename)):  # No hp for this class-attr-sub

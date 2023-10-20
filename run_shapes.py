@@ -36,7 +36,7 @@ def parse_arguments():
     # Path stuff
     parser.add_argument("--dataset_folder", type=str, default="shapes_testing/", help="Name of dataset.")
     parser.add_argument("--base_dir", type=str, default="data/shapes/", help="Path to where dataset is.")
-    parser.add_argument("--subset_dir", type=str, default="", help="Name of optional subset.")
+    parser.add_argument("--signal_strength", type=int, default=98, help="Signal strength for dataset")
 
     # Parameters
     parser.add_argument("--batch_size", type=int, default=16, help="Batch size for training.")
@@ -89,14 +89,16 @@ if __name__ == "__main__":
         else:
             base_dir = "hyperparameters/shapes/"
         run_hyperparameter_optimization_all_models(
-            path, args.n_classes, args.n_attr, n_trials=args.n_trials, grid_search=grid_search, base_dir=base_dir,
-            subsets=args.subsets, batch_size=args.batch_size, eval_loss=True, device=device,
-            num_workers=args.num_workers, pin_memory=args.pin_memory, persistent_workers=args.persistent_workers,
-            non_blocking=args.non_blocking, fast=args.fast, verbose=args.verbose)
+            path, args.n_classes, args.n_attr, signal_strength=args.signal_strength, n_trials=args.n_trials,
+            grid_search=grid_search, base_dir=base_dir, subsets=args.subsets, batch_size=args.batch_size,
+            eval_loss=True, device=device, num_workers=args.num_workers, pin_memory=args.pin_memory,
+            persistent_workers=args.persistent_workers, non_blocking=args.non_blocking, fast=args.fast,
+            verbose=args.verbose)
     if args.evaluate_and_plot:
         for n_boot in args.n_bootstrap:
             print(f"\nBeginning evaluation with {n_boot} bootstrap iterations.\n")
             run_models_on_subsets_and_plot(
-                path, args.n_classes, args.n_attr, subsets=args.subsets, n_bootstrap=n_boot, fast=args.fast,
-                batch_size=args.batch_size, non_blocking=args.non_blocking, num_workers=args.num_workers,
-                pin_memory=args.pin_memory, persistent_workers=args.persistent_workers, verbose=args.verbose)
+                path, args.n_classes, args.n_attr, subsets=args.subsets, signal_strength=args.signal_strength,
+                n_bootstrap=n_boot, fast=args.fast, batch_size=args.batch_size, non_blocking=args.non_blocking,
+                num_workers=args.num_workers, pin_memory=args.pin_memory, persistent_workers=args.persistent_workers,
+                verbose=args.verbose)
