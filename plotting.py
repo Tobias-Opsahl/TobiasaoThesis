@@ -1,11 +1,13 @@
 """
 File for visualizing pictures form the datasets
 """
-
+import os
+import pickle
 import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
 from matplotlib import rc
+from constants import MODEL_STRINGS, COLORS
 
 
 def plot_image_single(image_path, pred=None, label=None, transformed=False, show=True, title=None):
@@ -246,4 +248,56 @@ def plot_subset_test_accuracies(x_values, test_accuracies_lists, names, colors=N
     plt.xlabel("Subset of each class")
     plt.ylabel("Accuracy")
     plt.savefig(save_dir + save_name)
+    plt.close()
+
+
+def plot_test_accuracies_pdf(n_classes, n_attr, subsets, n_bootstrap=1, history_folder="history/", model_strings=None,
+                             colors=None, save_dir="plots/", save_name="test.pdf"):
+    """
+    Plots the test-accuracies as pdf format and with minimal border, so that plot is suitable for using in LaTeX.
+    The histories file must already exist.
+
+    Args:
+        n_classes (int): The amount of classes to plot for.
+        n_attr (int): The amount of attributes.
+        subsets (list of int): The list of subsets to plot for.
+        n_bootstrap (int, optional): The amount of bootstrap iterations used, in order to access correct history.
+        history_folder (str, optional): Folder for where histories are saved. Defaults to "history/".
+        model_strings (list of str, optional): List of string name of models to use. If None,
+            will use the constants value of names. Defaults to None.
+        colors (list of str, optional): List of colors to use for the different models. Defaults to None.
+        save_dir (str, optional): Path to where the plot will be saved. Defaults to "plots/".
+        save_name (str, optional): Name of saved figure. Defaults to "test.png".
+    """
+    if model_strings is None:
+        model_strings = MODEL_STRINGS
+    class_folder = "c" + str(n_classes) + "_a" + str(n_attr) + "/"
+    test_accuracies_lists = [[] for _ in range(len(model_strings))]
+    for subset in subsets:
+        filename = "histories_sub" + str(subset) + "_b" + str(n_bootstrap) + ".pkl"
+        histories = pickle.load(open(history_folder + class_folder + filename, "rb"))
+        for i in range(len(model_strings)):
+            test_accuracies_lists[i].append(histories[i]["test_accuracy"])
+
+    x_values = subsets
+    n_models = len(test_accuracies_lists)
+    fig = plt.figure()
+    if colors is None:
+        colors = COLORS
+
+    for i in range(n_models):
+        error_list = test_accuracies_lists[i]
+        name = model_strings[i]
+        color = colors[i]
+        plt.plot(x_values, error_list, label=name, c=color)  # Lines
+        plt.scatter(x_values, error_list, marker="s", facecolor=color, edgecolor=color)  # Squares at each point
+
+    plt.subplots_adjust(left=0.05, right=0.95, top=0.95, bottom=0.1)
+    plt.legend()
+    plt.xlabel("Size of Subset for each class")
+    os.makedirs(save_dir, exist_ok=True)
+    if not save_name.endswith(".pdf"):
+        save_name += ".pdf"
+    plt.savefig(save_dir + save_name)
+    plt.tight_layout()
     plt.close()
