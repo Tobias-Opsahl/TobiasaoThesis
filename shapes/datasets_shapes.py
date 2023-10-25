@@ -63,7 +63,7 @@ def get_transforms_shapes():
     return transform
 
 
-def load_data_shapes(mode="all", path="data/shapes/shapes_testing/", subset_dir="", full_test_set=None,
+def load_data_shapes(mode="all", path="data/shapes/shapes_testing/", subset_dir="",
                      batch_size=4, shuffle=True, drop_last=False, num_workers=0, pin_memory=False,
                      persistent_workers=False):
     """
@@ -78,8 +78,6 @@ def load_data_shapes(mode="all", path="data/shapes/shapes_testing/", subset_dir=
         path (str, optional): Path to dataset-folder.
         subset_dir (str, optional): Optional name of subset-directory, which may be created
             with `make_shapes_dataset.make_subset_shapes()`.
-        full_test_set (str): Set to name of full-test-set (made with `make_shapes_test_set`) to load full test-set,
-            instead of `mode`. If `None`, will ignore this and load normal datasets.
         batch_size (int, optional): Batch size to use. Defaults to 4.
         shuffle (bool, optional): Determines wether the sampler will shuffle or not.
             It is recommended to use `True` for training and `False` for validating.
@@ -96,8 +94,6 @@ def load_data_shapes(mode="all", path="data/shapes/shapes_testing/", subset_dir=
     Returns:
         Dataloader: The dataloader, or the list of the two or three dataloaders.
     """
-    if full_test_set is not None:  # Be sure to only load one dataset
-        mode = "test"
     if mode.lower() == "all":
         modes = ["train", "val", "test"]
     elif mode.lower() in ["train-val", "train val", "train-validation" "train validation"]:
@@ -106,10 +102,7 @@ def load_data_shapes(mode="all", path="data/shapes/shapes_testing/", subset_dir=
         modes = [mode]
     dataloaders = []
     for mode in modes:
-        if full_test_set is not None:
-            data_list = pickle.load(open(path + "tables/" + subset_dir + full_test_set, "rb"))
-        else:
-            data_list = pickle.load(open(path + "tables/" + subset_dir + mode + "_data.pkl", "rb"))
+        data_list = pickle.load(open(path + "tables/" + subset_dir + mode + "_data.pkl", "rb"))
         transform = get_transforms_shapes()
         dataset = ShapesDataset(path, data_list, transform)
         dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, drop_last=drop_last,
