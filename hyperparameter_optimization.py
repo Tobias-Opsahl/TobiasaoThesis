@@ -117,7 +117,7 @@ class HyperparameterOptimizationShapes:
         """
         hp = {"learning_rate": True, "dropout_probability": True, "gamma": True, "attr_schedule": True,
               "attr_weight": False, "attr_weight_decay": False, "n_epochs": False,
-              "n_linear_output": False, "activation": False, "two_layers": False, "n_hidden": False}
+              "n_linear_output": False, "activation": False, "hard": False, "two_layers": False, "n_hidden": False}
         return hp
 
     def _check_hyperparameters_to_search(self, hyperparameters_to_search):
@@ -185,6 +185,8 @@ class HyperparameterOptimizationShapes:
             return trial.suggest_int("n_hidden", 8, 32, log=True)
         elif hp_name == "activation":
             return trial.suggest_categorical("activation", ["relu", "sigmoid", "none"])
+        elif hp_name == "hard":
+            return trial.suggest_categorical("hard", [True, False])
         elif hp_name == "two_layers":
             return trial.suggest_categorical("two_layers", [True, False])
         elif hp_name == "attr_weight":
@@ -278,6 +280,7 @@ class HyperparameterOptimizationShapes:
             "n_linear_output": [16, 64, 128, 256],
             "n_hidden": [16, 32, 64],
             "activation": ["sigmoid", "relu", "none"],
+            "hard": [True, False],
             "two_layers": [True, False],
             "attr_weight": [1, 3, 5, 10],
             "attr_weight_decay": [0.5, 0.7, 0.9, 1],

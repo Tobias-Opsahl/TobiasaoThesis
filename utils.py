@@ -7,7 +7,7 @@ import warnings
 import torch
 import numpy as np
 from shapes.models_shapes import ShapesCNN, ShapesCBM, ShapesCBMWithResidual, ShapesCBMWithSkip, ShapesSCM
-from constants import MODEL_STRINGS
+from constants import MODEL_STRINGS, FAST_HYPERPAREMETERS_FILENAME_SHAPES, DEFAULT_HYPERPAREMETERS_FILENAME_SHAPES
 
 
 def seed_everything(seed=57):
@@ -90,7 +90,7 @@ def get_hyperparameters(n_classes=None, n_attr=None, n_subset=None, signal_str="
 
     base_dir = base_dir + dataset_type
     if fast:  # Here n_epohcs = 2, for fast testing
-        with open(base_dir + "fast.yaml", "r") as infile:
+        with open(base_dir + FAST_HYPERPAREMETERS_FILENAME_SHAPES, "r") as infile:
             hyperparameters = yaml.safe_load(infile)
         return hyperparameters
 
@@ -104,7 +104,7 @@ def get_hyperparameters(n_classes=None, n_attr=None, n_subset=None, signal_str="
         default = True
 
     if default:
-        with open(base_dir + "default.yaml", "r") as infile:
+        with open(base_dir + DEFAULT_HYPERPAREMETERS_FILENAME_SHAPES, "r") as infile:
             hyperparameters = yaml.safe_load(infile)
         return hyperparameters
 
@@ -140,30 +140,35 @@ def load_single_model(model_type, n_classes, n_attr, hyperparameters):
             dropout_probability=hp["dropout_probability"])
         return cnn
 
+    if hp.get("hard") is None:  # This hp was added later, so add this for backwards compability
+        hp["hard"] = False
+
     if model_type == "cbm":
         cbm = ShapesCBM(
             n_classes=n_classes, n_attr=n_attr, n_linear_output=hp["n_linear_output"],
-            attribute_activation_function=hp["activation"], two_layers=hp["two_layers"],
+            attribute_activation_function=hp["activation"], hard=hp["hard"], two_layers=hp["two_layers"],
             dropout_probability=hp["dropout_probability"])
         return cbm
 
     elif model_type == "cbm_res":
         cbm_res = ShapesCBMWithResidual(
             n_classes=n_classes, n_attr=n_attr, n_linear_output=hp["n_linear_output"],
-            attribute_activation_function=hp["activation"], dropout_probability=hp["dropout_probability"])
+            attribute_activation_function=hp["activation"], hard=hp["hard"],
+            dropout_probability=hp["dropout_probability"])
         return cbm_res
 
     elif model_type == "cbm_skip":
         cbm_skip = ShapesCBMWithSkip(
             n_classes=n_classes, n_attr=n_attr, n_hidden=hp["n_hidden"], n_linear_output=hp["n_linear_output"],
-            attribute_activation_function=hp["activation"], dropout_probability=hp["dropout_probability"])
+            attribute_activation_function=hp["activation"], hard=hp["hard"],
+            dropout_probability=hp["dropout_probability"])
         return cbm_skip
 
     elif model_type == "scm":
-        hp["n_hidden"] = 16  # TODO: Remove this when new hyperparameters are ran.
         scm = ShapesSCM(
             n_classes=n_classes, n_attr=n_attr, n_hidden=hp["n_hidden"], n_linear_output=hp["n_linear_output"],
-            attribute_activation_function=hp["activation"], dropout_probability=hp["dropout_probability"])
+            attribute_activation_function=hp["activation"], hard=hp["hard"],
+            dropout_probability=hp["dropout_probability"])
         return scm
 
 

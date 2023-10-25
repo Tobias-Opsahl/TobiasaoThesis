@@ -89,7 +89,7 @@ class ShapesCBM(ShapesBaseModel):
     bottleneck-layer before it is passed to the next layers) so be sure to infer this in the loss function.
     """
     def __init__(self, n_classes, n_attr, n_linear_output=64, attribute_activation_function=None,
-                 two_layers=True, dropout_probability=0.2):
+                 hard=False, two_layers=True, dropout_probability=0.2):
         """
         Args:
             n_classes (int): The amount of classes (output nodes for this model).
@@ -100,6 +100,8 @@ class ShapesCBM(ShapesBaseModel):
             attribute_activation_function (str): If and what activation function to use at the concept-bottleneck layer.
                 Should be in ["relu", "simgoid", None]. Concept outputs from `forward()` will still be without
                 activation function, but activation function may be applied before passing to next layer.
+            hard (bool): If True, will pass forward hard concepts. This is concepts that are rounded off to 0 or 1.
+                Should be used only with "activation_function" equal to "sigmoid".
             two_layers (bool): If True, will have two linear layers after the bottleneck layer. If False, will
                 only use one (which corresponds to logistic regression on the bottleneck layer).
             dropout_probability (float): Probability of dropout in layer after the base-model. Probability equal to
@@ -111,10 +113,15 @@ class ShapesCBM(ShapesBaseModel):
         self.use_relu = False
         if isinstance(attribute_activation_function, str):
             attribute_activation_function = attribute_activation_function.strip().lower()
+        if hard and attribute_activation_function != "sigmoid":
+            message = f"Attribute actiation function must be `sigmoid` when `hard` is True. "
+            message += f"Was {attribute_activation_function}. "
+            raise ValueError(message)
         if attribute_activation_function == "sigmoid":
             self.use_sigmoid = True
         elif attribute_activation_function == "relu":
             self.use_relu = True
+        self.hard = hard
         self.two_layers = two_layers
 
         self.dropout = nn.Dropout(dropout_probability)
@@ -134,6 +141,8 @@ class ShapesCBM(ShapesBaseModel):
             x = F.relu(concepts)
         else:
             x = concepts
+        if self.hard:
+            x = torch.round(x)
         if self.two_layers:
             x = self.intermediary_classifier(x)  # Out: N x n_attr
             x = F.relu(x)
@@ -155,7 +164,7 @@ class ShapesCBMWithResidual(ShapesBaseModel):
     bottleneck-layer before it is passed to the next layers) so be sure to infer this in the loss function.
     """
     def __init__(self, n_classes, n_attr, n_linear_output=64, attribute_activation_function=None,
-                 dropout_probability=0.2):
+                 hard=False, dropout_probability=0.2):
         """
         Args:
             n_classes (int): The amount of classes (output nodes for this model).
@@ -166,6 +175,8 @@ class ShapesCBMWithResidual(ShapesBaseModel):
             attribute_activation_function (str): If and what activation function to use at the concept-bottleneck layer.
                 Should be in ["relu", "simgoid", None]. Concept outputs from `forward()` will still be without
                 activation function, but activation function may be applied before passing to next layer.
+            hard (bool): If True, will pass forward hard concepts. This is concepts that are rounded off to 0 or 1.
+                Should be used only with "activation_function" equal to "sigmoid".
             dropout_probability (float): Probability of dropout in layer after the base-model. Probability equal to
                 0 means no dropout.
         """
@@ -175,10 +186,15 @@ class ShapesCBMWithResidual(ShapesBaseModel):
         self.use_relu = False
         if isinstance(attribute_activation_function, str):
             attribute_activation_function = attribute_activation_function.strip().lower()
+        if hard and attribute_activation_function != "sigmoid":
+            message = f"Attribute actiation function must be `sigmoid` when `hard` is True. "
+            message += f"Was {attribute_activation_function}. "
+            raise ValueError(message)
         if attribute_activation_function == "sigmoid":
             self.use_sigmoid = True
         elif attribute_activation_function == "relu":
             self.use_relu = True
+        self.hard = hard
 
         self.dropout = nn.Dropout(dropout_probability)
 
@@ -198,6 +214,8 @@ class ShapesCBMWithResidual(ShapesBaseModel):
             x = F.relu(concepts)
         else:
             x = concepts
+        if self.hard:
+            x = torch.round(x)
         x = self.intermediary_classifier(x)  # Out: N x n_linear_output
         x = F.relu(x)
         x = x + identity  # Residual connection
@@ -219,7 +237,7 @@ class ShapesCBMWithSkip(ShapesBaseModel):
     bottleneck-layer before it is passed to the next layers) so be sure to infer this in the loss function.
     """
     def __init__(self, n_classes, n_attr, n_linear_output=64, attribute_activation_function=None, n_hidden=16,
-                 dropout_probability=0.2):
+                 hard=False, dropout_probability=0.2):
         """
         Args:
             n_classes (int): The amount of classes (output nodes for this model).
@@ -230,6 +248,8 @@ class ShapesCBMWithSkip(ShapesBaseModel):
             attribute_activation_function (str): If and what activation function to use at the concept-bottleneck layer.
                 Should be in ["relu", "simgoid", None]. Concept outputs from `forward()` will still be without
                 activation function, but activation function may be applied before passing to next layer.
+            hard (bool): If True, will pass forward hard concepts. This is concepts that are rounded off to 0 or 1.
+                Should be used only with "activation_function" equal to "sigmoid".
             n_hidden (int): The amount of nodes used in the linear layer after the bottleneck layer.
                 This layer will be concatinated on top of the output from the base-model.
             dropout_probability (float): Probability of dropout in layer after the base-model. Probability equal to
@@ -241,10 +261,15 @@ class ShapesCBMWithSkip(ShapesBaseModel):
         self.use_relu = False
         if isinstance(attribute_activation_function, str):
             attribute_activation_function = attribute_activation_function.strip().lower()
+        if hard and attribute_activation_function != "sigmoid":
+            message = f"Attribute actiation function must be `sigmoid` when `hard` is True. "
+            message += f"Was {attribute_activation_function}. "
+            raise ValueError(message)
         if attribute_activation_function == "sigmoid":
             self.use_sigmoid = True
         elif attribute_activation_function == "relu":
             self.use_relu = True
+        self.hard = hard
 
         self.dropout = nn.Dropout(dropout_probability)
 
@@ -263,6 +288,8 @@ class ShapesCBMWithSkip(ShapesBaseModel):
             x = F.relu(concepts)
         else:
             x = concepts
+        if self.hard:
+            x = torch.round(x)
         x = self.intermediary_classifier(x)  # Out: N x n_hidden
         x = F.relu(x)
         x = torch.concat((x, identity), dim=1)
@@ -282,7 +309,7 @@ class ShapesSCM(nn.Module):
     bottleneck-layer before it is passed to the next layers) so be sure to infer this in the loss function.
     """
     def __init__(self, n_classes, n_attr, n_linear_output=64, attribute_activation_function=None, n_hidden=16,
-                 dropout_probability=0.2):
+                 hard=False, dropout_probability=0.2):
         """
         Args:
             n_classes (int): The amount of classes (output nodes for this model).
@@ -293,6 +320,8 @@ class ShapesSCM(nn.Module):
             attribute_activation_function (str): If and what activation function to use at the concept-bottleneck layer.
                 Should be in ["relu", "simgoid", None]. Concept outputs from `forward()` will still be without
                 activation function, but activation function may be applied before passing to next layer.
+            hard (bool): If True, will pass forward hard concepts. This is concepts that are rounded off to 0 or 1.
+                Should be used only with "activation_function" equal to "sigmoid".
             n_hidden (int): The amount of nodes used in the linear layer after the bottleneck layer.
                 This layer will be concatinated on top of the output from the base-model.
             dropout_probability (float): Probability of dropout in layer after the base-model. Probability equal to
@@ -305,10 +334,15 @@ class ShapesSCM(nn.Module):
         self.use_relu = False
         if isinstance(attribute_activation_function, str):
             attribute_activation_function = attribute_activation_function.strip().lower()
+        if hard and attribute_activation_function != "sigmoid":
+            message = f"Attribute actiation function must be `sigmoid` when `hard` is True. "
+            message += f"Was {attribute_activation_function}. "
+            raise ValueError(message)
         if attribute_activation_function == "sigmoid":
             self.use_sigmoid = True
         elif attribute_activation_function == "relu":
             self.use_relu = True
+        self.hard = hard
 
         self.pool = nn.MaxPool2d(2, 2)
         self.conv1 = nn.Conv2d(3, 8, kernel_size=3, padding=1)
@@ -369,11 +403,15 @@ class ShapesSCM(nn.Module):
         concepts = torch.concat(concepts, dim=1)
 
         if self.use_sigmoid:
-            concepts = F.sigmoid(concepts)
+            y = F.sigmoid(concepts)
         elif self.use_relu:
-            concepts = F.relu(concepts)
+            y = F.relu(concepts)
+        else:
+            y = concepts
+        if self.hard:
+            y = torch.round(concepts)
 
-        x = torch.concat((x, concepts), dim=1)
+        x = torch.concat((x, y), dim=1)
         x = self.final_classifier(x)  # Out: N x n_classes
 
         return x, concepts
