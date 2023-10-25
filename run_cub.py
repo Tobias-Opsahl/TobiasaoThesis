@@ -6,9 +6,10 @@ import torch
 import torch.nn as nn
 import numpy as np
 from train import train_simple, train_cbm
-from cub.datasets_cub import load_data_cub
-from cub.models_cub import (make_mobilenetv3, CBMWithSkip, make_cbm, SequentialConceptModel)
-from utils import seed_everything
+
+from src.datasets.datasets_cub import load_data_cub
+from src.models.models_cub import (make_mobilenetv3, CBMWithSkip, make_cbm, SequentialConceptModel)
+from src.common.utils import seed_everything
 
 
 def parse_arguments():

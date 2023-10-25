@@ -30,7 +30,8 @@ import pickle
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
-from utils import split_dataset
+
+from src.common.utils import split_dataset
 
 
 def draw_concept_probabilities(n_classes, class_number, signal_strength=0.98, equal_probabilities=False,

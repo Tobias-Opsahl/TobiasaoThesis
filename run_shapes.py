@@ -3,27 +3,10 @@ Testing function where the code can be run.
 """
 import argparse
 import torch
-import torch.nn as nn
-import numpy as np
-from utils import seed_everything
-from hyperparameter_optimization import run_hyperparameter_optimization_all_models
-from evaluation import run_models_on_subsets_and_plot
 
-
-def parse_int_list(values):
-    """
-    Tries to parse from string with ints to list of ints. If it does not work, parses list of single int.
-
-    Args:
-        values (str): The string to pars
-
-    Returns:
-        ist of int: The list of ints
-    """
-    try:
-        return [int(val) for val in values.split(",")]
-    except ValueError:
-        return [int(values)]
+from src.common.utils import seed_everything, parse_int_list
+from src.hyperparameter_optimization import run_hyperparameter_optimization_all_models
+from src.evaluation import run_models_on_subsets_and_plot
 
 
 def parse_arguments():

@@ -3,14 +3,21 @@ import yaml
 import shutil
 import random
 import pickle
-import warnings
 import torch
 import numpy as np
-from shapes.models_shapes import ShapesCNN, ShapesCBM, ShapesCBMWithResidual, ShapesCBMWithSkip, ShapesSCM
-from constants import MODEL_STRINGS, FAST_HYPERPAREMETERS_FILENAME_SHAPES, DEFAULT_HYPERPAREMETERS_FILENAME_SHAPES
+
+from src.common.path_utils import load_hyperparameters_shapes
+from src.models.models_shapes import ShapesCNN, ShapesCBM, ShapesCBMWithResidual, ShapesCBMWithSkip, ShapesSCM
+from src.constants import MODEL_STRINGS
 
 
 def seed_everything(seed=57):
+    """
+    Set all the seeds.
+
+    Args:
+        seed (int, optional): The seed to set to. Defaults to 57.
+    """
     np.random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -18,6 +25,22 @@ def seed_everything(seed=57):
     torch.cuda.manual_seed_all(seed)
     torch.backends.cudnn.benchmark = False
     torch.backends.cudnn.deterministic = True
+
+
+def parse_int_list(values):
+    """
+    Tries to parse from string with ints to list of ints. If it does not work, parses list of single int.
+
+    Args:
+        values (str): The string to pars
+
+    Returns:
+        ist of int: The list of ints
+    """
+    try:
+        return [int(val) for val in values.split(",")]
+    except ValueError:
+        return [int(values)]
 
 
 def split_dataset(data_list, tables_dir, include_test=True, seed=57):
@@ -58,61 +81,6 @@ def split_dataset(data_list, tables_dir, include_test=True, seed=57):
             pickle.dump(test_data, outfile)
 
 
-def get_hyperparameters(n_classes=None, n_attr=None, n_subset=None, signal_str="", default=False, fast=False,
-                        base_dir="hyperparameters/", dataset_type="shapes/"):
-    """
-    Loads a set of hyperparameters. This will try to load hyperparameters specific for this combination of
-    classes, attributes and subset. If this is not found, it will use default hyperparameters instead.
-    Alternatively, if `fast` is True, it will load parameters with very low `n_epochs`, so that one can test fast.
-    Keep in mind that this returns a dict with hyperparameters for all possible models.
-
-    Args:
-        n_classes (int): The amount of classes the hyperparameter was optimized with.
-        n_attr (int): The amount of attributes the hyperparameter was optimized with.
-        n_subset (int): The amount of instances in each class the hyperparameter was optimized with.
-        signal_str (str): String of "" or "_s100", deciding witch signal-strength to use.
-        fast (bool, optional): If True, will use hyperparameters with very low `n_epochs`. Defaults to False.
-        default (bool, optional): If True, will use default hyperparameters, disregarding n_classe, n_attr etc.
-        base_dir (str, optional): Base directory to the hyperparameters.. Defaults to "hyperparameters/".
-        dataset_dir (str, optional): The dataset-directory. Defaults to "shapes/".
-
-    Raises:
-        ValueError: If `default` and `fast` are False, `n_classes`, `n_attr` and `n_subset` must be provided.
-        Raises ValueError if not.
-
-    Returns:
-        dict: The hyperparameters.
-    """
-    if (not default and not fast) and ((n_classes is None) or (n_attr is None) or (n_subset is None)):
-        message = f"When getting non-default or non-fast hyperparameters, arguments `n_classes`, `n_attr` and "
-        message += f"`n_subset` must be provided (all of them must be int). Was {n_classes=}, {n_attr=}, {n_subset=}. "
-        raise ValueError(message)
-
-    base_dir = base_dir + dataset_type
-    if fast:  # Here n_epohcs = 2, for fast testing
-        with open(base_dir + FAST_HYPERPAREMETERS_FILENAME_SHAPES, "r") as infile:
-            hyperparameters = yaml.safe_load(infile)
-        return hyperparameters
-
-    folder_name = "c" + str(n_classes) + "_a" + str(n_attr) + signal_str + "/"
-    filename = "hyperparameters_sub" + str(n_subset) + ".yaml"
-
-    if (not default) and (not os.path.exists(base_dir + folder_name + filename)):  # No hp for this class-attr-sub
-        message = f"No hyperparameters found for {n_classes=}, {n_attr=} and {n_subset=}. "
-        message += "Falling back on default hyperparameters. "
-        warnings.warn(message)
-        default = True
-
-    if default:
-        with open(base_dir + DEFAULT_HYPERPAREMETERS_FILENAME_SHAPES, "r") as infile:
-            hyperparameters = yaml.safe_load(infile)
-        return hyperparameters
-
-    with open(base_dir + folder_name + filename, "r") as infile:
-        hyperparameters = yaml.safe_load(infile)
-    return hyperparameters
-
-
 def load_single_model(model_type, n_classes, n_attr, hyperparameters):
     """
     Loads a model, given its hyperparameters.
@@ -121,7 +89,7 @@ def load_single_model(model_type, n_classes, n_attr, hyperparameters):
         model_type (str): The model to load. Must be in ["cnn", "cbm", "cbm_res", "cbm_skip"]
         n_classes (int): The amount of classes used in the dataset.
         n_attr (int): The amount of attributes used in the dataset.
-        hyperparameters (dict): The hyperparameters for the model. Can be loaded with `get_hyperparameters()`.
+        hyperparameters (dict): The hyperparameters for the model. Can be loaded with `load_hyperparameters_shapes()`.
 
     Raises:
         ValueError: If model_type is not supported
@@ -172,7 +140,7 @@ def load_single_model(model_type, n_classes, n_attr, hyperparameters):
         return scm
 
 
-def load_models_shapes(n_classes, n_attr, n_subset=None, hyperparameters=None, fast=False):
+def load_models_shapes(n_classes, n_attr, signal_strength=98, n_subset=None, hyperparameters=None, fast=False):
     """
     Loads the shapes model with respect to the hyperparameters.
     The classes and attributes must be equal for all the models, but the hyperparameters
@@ -181,6 +149,7 @@ def load_models_shapes(n_classes, n_attr, n_subset=None, hyperparameters=None, f
     Args:
         n_classes (int): Amount of classes.
         n_attr (int): Amount of attribues.
+        signal_strength (int). The signal-strength used for creating the dataset.
         n_subset (int): The amount of data used to train the model. Used for loading hyperparameters.
         hyperparameters (dict of dict, optional): Dictionary of the hyperparameter-dictionaries.
             Should be read from yaml file in "hyperparameters/". If `None`, will read
@@ -193,7 +162,7 @@ def load_models_shapes(n_classes, n_attr, n_subset=None, hyperparameters=None, f
     """
     hp = hyperparameters
     if hp is None:
-        hp = get_hyperparameters(n_classes, n_attr, n_subset, fast=fast)
+        hp = load_hyperparameters_shapes(n_classes, n_attr, signal_strength, n_subset, fast=fast)
     cnn = load_single_model(model_type="cnn", hyperparameters=hp["cnn"], n_classes=n_classes, n_attr=n_attr)
     cbm = load_single_model(model_type="cbm", hyperparameters=hp["cbm"], n_classes=n_classes, n_attr=n_attr)
     cbm_res = load_single_model(model_type="cbm_res", hyperparameters=hp["cbm_res"], n_classes=n_classes, n_attr=n_attr)

@@ -3,10 +3,12 @@ import yaml
 import optuna
 import torch
 import torch.nn as nn
-from shapes.datasets_shapes import load_data_shapes, make_subset_shapes
-from train import train_simple, train_cbm
-from utils import load_single_model, get_hyperparameters
-from constants import MODEL_STRINGS
+
+from src.datasets.datasets_shapes import load_data_shapes, make_subset_shapes
+from src.train import train_simple, train_cbm
+from src.common.utils import load_single_model
+from src.common.path_utils import load_hyperparameters_shapes
+from src.constants import MODEL_STRINGS
 
 
 class HyperparameterOptimizationShapes:
@@ -19,7 +21,7 @@ class HyperparameterOptimizationShapes:
     One class is needed for every dataset and every model.
     """
 
-    def __init__(self, model_type, dataset_path, n_classes, n_attr=None, n_subset=None, signal_strength=98,
+    def __init__(self, model_type, dataset_path, n_classes, n_attr=None, signal_strength=98, n_subset=None,
                  batch_size=16, eval_loss=True, device=None, num_workers=0, pin_memory=False, persistent_workers=False,
                  non_blocking=False, fast=False, seed=57):
         """
@@ -28,8 +30,8 @@ class HyperparameterOptimizationShapes:
             dataset_path (str): Path to the dataset_directory
             n_classes (int): The amount of classes in the dataset.
             n_attr (int): The amount of attributes in the dataset
-            n_subset (str, optional): Amount of data in each class used for subset (n_images_class).
             signal_strength (int): The signal_strength the dataset is created with.
+            n_subset (str, optional): Amount of data in each class used for subset (n_images_class).
             batch_size (int, optional): Batch-size for training. Defaults to 16.
             eval_loss (bool, optional): If `True`, will use evalulation set loss as metric for optimizing.
                 If false, will use evaluation accuracy. Defaults to True.
@@ -54,25 +56,15 @@ class HyperparameterOptimizationShapes:
             raise ValueError(f"The model type must be in {MODEL_STRINGS}. Was {model_type}. ")
         self.model_type = model_type
 
-        if signal_strength in [98, 0.98, "98", "0.98"]:
-            signal_str = ""
-        elif signal_strength in [100, 1, "100", "1"]:
-            signal_str = "_s100"
-        else:
-            raise ValueError(f"Dataset with signal_strength {signal_strength} not created")
-        self.signal_str = signal_str
-
         self.device = device
         if device is None or device == "":
             self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        if n_subset is None:
-            subset_dir = ""
-        else:
-            subset_dir = "sub" + str(n_subset) + "/"
+
         self.dataset_path = dataset_path
         self.n_classes = n_classes
         self.n_attr = n_attr
-        self.subset_dir = subset_dir
+        self.signal_strength = signal_strength
+        self.n_subset = n_subset
         self.batch_size = batch_size
         self.eval_loss = eval_loss
         self.num_workers = num_workers
@@ -81,11 +73,10 @@ class HyperparameterOptimizationShapes:
         self.non_blocking = non_blocking
         self.study_ran = False
         self.hyperparameter_names = self._get_hyperparameter_names()  # Names of possible hyperparameter
-        self.default_hyperparameters = get_hyperparameters(0, 0, 0, fast=fast, default=True)
+        self.default_hyperparameters = load_hyperparameters_shapes(fast=fast, default=True)
 
         if n_subset is not None:  # Make subset again to make sure seed is correct
-            make_subset_shapes(path=dataset_path, n_images_class=n_subset, n_classes=n_classes, seed=seed)
-        self.subset_dir = subset_dir  # Save for study-name
+            make_subset_shapes(n_classes, n_attr, signal_strength, n_subset, seed=seed)
 
     def _get_hyperparameter_names(self):
         """
@@ -308,9 +299,9 @@ class HyperparameterOptimizationShapes:
             metric: Either the evaluation loss or the evaluation accuracy.
         """
         train_loader, val_loader = load_data_shapes(
-            mode="train-val", path=self.dataset_path, subset_dir=self.subset_dir,
-            batch_size=self.batch_size, drop_last=True, num_workers=self.num_workers, pin_memory=self.pin_memory,
-            persistent_workers=self.persistent_workers)
+            n_classes=self.n_classes, n_attr=self.n_attr, signal_strength=self.signal_strength, n_subset=self.n_subset,
+            mode="train-val", batch_size=self.batch_size, drop_last=True, num_workers=self.num_workers,
+            pin_memory=self.pin_memory, persistent_workers=self.persistent_workers)
 
         hp = self._get_hyperparameters_for_trial(trial)  # Get suggestions for hyperparameters
         model = load_single_model(self.model_type, n_classes=self.n_classes, n_attr=self.n_attr, hyperparameters=hp)
@@ -338,7 +329,7 @@ class HyperparameterOptimizationShapes:
             return history["best_val_accuracy"]
 
     def run_hyperparameter_search(self, hyperparameters_to_search=None, n_trials=50, write=True,
-                                  base_dir="hyperparameters/shapes", grid_search=True, verbose="warning"):
+                                  grid_search=True, verbose="warning"):
         """
         Runs a whole optuna study.
 
@@ -349,7 +340,6 @@ class HyperparameterOptimizationShapes:
                 See `self._get_default_hyperparameters_to_search()` for an example, or
                 `self._check_hyperparameters_to_search()` for more info.
             write (bool, optional): If True, writes hyperparameters to file. Defaults to True.
-            base_dir (str, optional): Path to hyperparameter base directory. Defaults to "hyperparameters/shapes/".
             grid_search (bool): If True, will use standard grid-search. If not, will use default optuna
                 sampler, which will be set to TPE sampler if n_trials is less than 1000.
             verbose (str, optional): Controls the verbosity of optuna study. Defaults to "warning".
@@ -385,7 +375,7 @@ class HyperparameterOptimizationShapes:
         self.study = study
         self.study_ran = True
         if write:
-            self.write_to_yaml(base_dir=base_dir)
+            self.write_to_yaml()
 
     def _round_dict_values(self, hyperparameters_dict, n_round=4):
         """
@@ -403,7 +393,7 @@ class HyperparameterOptimizationShapes:
                 hyperparameters_dict[key] = round(value, n_round)
         return hyperparameters_dict
 
-    def write_to_yaml(self, base_dir="hyperparameters/shapes/"):
+    def write_to_yaml(self):
         """
         Writes discovered hyperparameters to file.
 

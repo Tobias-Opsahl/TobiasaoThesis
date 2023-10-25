@@ -7,7 +7,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
 from matplotlib import rc
-from constants import MODEL_STRINGS, COLORS
+
+from src.constants import MODEL_STRINGS, COLORS
 
 
 def plot_image_single(image_path, pred=None, label=None, transformed=False, show=True, title=None):

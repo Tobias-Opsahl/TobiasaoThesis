@@ -2,11 +2,13 @@ import os
 import pickle
 import torch
 import torch.nn as nn
-from train import train_simple, train_cbm
-from shapes.datasets_shapes import load_data_shapes, make_subset_shapes
-from plotting import plot_training_histories, plot_subset_test_accuracies
-from utils import get_hyperparameters, load_models_shapes, add_histories, seed_everything
-from constants import MODEL_STRINGS, COLORS, MAX_EPOCHS
+
+from src.train import train_simple, train_cbm
+from src.datasets.datasets_shapes import load_data_shapes, make_subset_shapes
+from src.plotting import plot_training_histories, plot_subset_test_accuracies
+from src.common.utils import load_models_shapes, add_histories, seed_everything
+from src.common.path_utils import load_hyperparameters_shapes
+from src.constants import MODEL_STRINGS, COLORS, MAX_EPOCHS
 
 
 def evaluate_on_test_set(model, test_loader, device=None, non_blocking=False):
@@ -81,7 +83,7 @@ def train_and_evaluate_shapes(
     hp = hyperparameters
     if hp is None:
         n_subset = int(sub_dir.strip("/").strip("sub"))
-        hp = get_hyperparameters(n_classes, n_attr, n_subset, signal_str, fast=fast)
+        hp = load_hyperparameters_shapes(n_classes, n_attr, signal_strength, n_subset, fast=fast)
 
     models = load_models_shapes(n_classes, n_attr, hyperparameters=hp)
     histories = []
@@ -179,14 +181,14 @@ def run_models_on_subsets_and_plot(
         histories_total = None
         # Load test-set for full dataset (not subset)
         test_loader = load_data_shapes(
-            mode="test", path=dataset_dir, subset_dir="", batch_size=batch_size,
+            n_classes, n_attr, signal_strength, n_subset=None, mode="test", batch_size=batch_size,
             drop_last=False, num_workers=num_workers, pin_memory=pin_memory, persistent_workers=persistent_workers)
         for i in range(n_bootstrap):
-            make_subset_shapes(dataset_dir, subset, n_classes, seed=seed)
+            make_subset_shapes(n_classes, n_attr, signal_strength, n_images_class=n_subset, seed=seed)
             seed += 1  # Change seed so that subset will be different for the bootstrapping
 
             train_loader, val_loader = load_data_shapes(
-                mode="train-val", path=dataset_dir, subset_dir=subset_dir, batch_size=batch_size, drop_last=False,
+                n_classes, n_attr, signal_strength, n_subset, mode="train-val", batch_size=batch_size, drop_last=False,
                 num_workers=num_workers, pin_memory=pin_memory, persistent_workers=persistent_workers)
 
             histories = train_and_evaluate_shapes(
@@ -207,7 +209,7 @@ def run_models_on_subsets_and_plot(
         os.makedirs("history/" + class_dir, exist_ok=True)
         with open(pickle_save_name, "wb") as outfile:
             pickle.dump(histories_total, outfile)
-        make_subset_shapes(dataset_dir, subset, n_classes, seed=base_seed)  # Reset subset to base-seed
+        make_subset_shapes(n_classes, n_attr, signal_strength, n_subset, seed=base_seed)  # Reset subset to base-seed
 
     plot_subset_test_accuracies(x_values=subsets, test_accuracies_lists=test_accuracies_lists, names=MODEL_STRINGS,
                                 colors=COLORS, title=None,

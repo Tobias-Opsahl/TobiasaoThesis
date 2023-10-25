@@ -1,4 +1,4 @@
-from plotting import plot_test_accuracies_pdf
+from src.plotting import plot_test_accuracies_pdf
 
 
 def make_pdf_test_accuracies_shapes():

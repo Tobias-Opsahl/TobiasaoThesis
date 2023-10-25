@@ -6,7 +6,8 @@ import torch
 import torchvision
 from torch.utils.data import Dataset, DataLoader
 from PIL import Image
-from utils import split_dataset
+
+from src.common.path_utils import load_data_list_shapes, write_data_list_shapes
 
 
 class ShapesDataset(Dataset):
@@ -14,16 +15,13 @@ class ShapesDataset(Dataset):
     Dataset for shapes dataset. The `shapes` datasets are created in `make_shapes_datasets.py`.
     """
 
-    def __init__(self, data_path, data_list, transform=None):
+    def __init__(self, data_list, transform=None):
         """
 
         Args:
-            data_path (str): Path to the directory where the dataset is stored.
-                Includes both the path and the foldername.
-            data_list (str): The path to the pickle file with table-data.
+            data_list (str): The path to the list of dictionaries with table-data.
             transform (torch.transform, optional): Optional transformation on the data.
         """
-        self.data_path = data_path
         self.data_list = data_list
         self.transform = transform
 
@@ -63,21 +61,21 @@ def get_transforms_shapes():
     return transform
 
 
-def load_data_shapes(mode="all", path="data/shapes/shapes_testing/", subset_dir="",
+def load_data_shapes(n_classes, n_attr, signal_strength, n_subset=None, mode="train-val",
                      batch_size=4, shuffle=True, drop_last=False, num_workers=0, pin_memory=False,
                      persistent_workers=False):
     """
     Makes dataloaders for the Shapes dataset.
+    Finds correct path based on `n_classes`, `n_attr`, `signal_strength` and `n_subset`.
 
     Will either just load "train", "val" or "test" loader (depending on argument `mode`),
     or a list of all of them if `mode == "all"`.
 
     Args:
+        n_classes (int): The amount of classes in the dataset.
+        n_attr (int): The amonut of attributes (concepts) in the dataset.
+        signal_strength (int, optional): Signal-strength used to make dataset.
         mode (str, optional): The datasetmode to loader. If "all", will return a tuple of (train, val, test).
-            if "train-val", will return a tuple of (train, val). Defaults to "all".
-        path (str, optional): Path to dataset-folder.
-        subset_dir (str, optional): Optional name of subset-directory, which may be created
-            with `make_shapes_dataset.make_subset_shapes()`.
         batch_size (int, optional): Batch size to use. Defaults to 4.
         shuffle (bool, optional): Determines wether the sampler will shuffle or not.
             It is recommended to use `True` for training and `False` for validating.
@@ -102,9 +100,9 @@ def load_data_shapes(mode="all", path="data/shapes/shapes_testing/", subset_dir=
         modes = [mode]
     dataloaders = []
     for mode in modes:
-        data_list = pickle.load(open(path + "tables/" + subset_dir + mode + "_data.pkl", "rb"))
+        data_list = load_data_list_shapes(n_classes, n_attr, signal_strength, n_subset, mode)
         transform = get_transforms_shapes()
-        dataset = ShapesDataset(path, data_list, transform)
+        dataset = ShapesDataset(data_list, transform)
         dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, drop_last=drop_last,
                                 num_workers=num_workers, pin_memory=pin_memory, persistent_workers=persistent_workers)
         dataloaders.append(dataloader)
@@ -114,7 +112,7 @@ def load_data_shapes(mode="all", path="data/shapes/shapes_testing/", subset_dir=
     return dataloaders  # List of (train, val, test) dataloaders
 
 
-def make_subset_shapes(path, n_images_class, n_classes, seed=57):
+def make_subset_shapes(n_classes, n_attr, signal_strength, n_images_class, seed=57):
     """
     Makes a subset of train-data and validation-data, and puts it in a sub-folder.
     This is used for all the subset-runs and tests. This assumes a dataset with train_data.pkl and val_data.pkl
@@ -122,18 +120,20 @@ def make_subset_shapes(path, n_images_class, n_classes, seed=57):
     sub100, which is a true subset of sub150, etc.
     Uses `n_images_class` images of each class, where 60% will be used for train data, and 40% validation data.
 
+    Finds correct path based on `n_classes`, `n_attr`, `signal_strength` and `n_subset`.
+
     Args:
-        path (str): Path to where the data-list lies.
+        n_classes (int): The amount of classes in the dataset.
+        n_attr (int): The amonut of attributes (concepts) in the dataset.
+        signal_strength (int, optional): Signal-strength used to make dataset.
         n_images_class (int): The amount of images to include for each class. Must be less than the total number
             of images in each class.
         n_classes (int): The total amount of classes in the dataset.
         seed (int, optional): The seed for the rng. Defaults to 57.
     """
     random.seed(seed)
-    if not path.endswith("tables/"):
-        path = path + "tables/"
-    full_train_data = pickle.load(open(path + "train_data.pkl", "rb"))
-    full_val_data = pickle.load(open(path + "val_data.pkl", "rb"))
+    full_train_data = load_data_list_shapes(n_classes, n_attr, signal_strength, n_subset=None, mode="train")
+    full_val_data = load_data_list_shapes(n_classes, n_attr, signal_strength, n_subset=None, mode="val")
     random.shuffle(full_train_data)  # Do all the randomness in these shuffles
     random.shuffle(full_val_data)
 
@@ -156,14 +156,8 @@ def make_subset_shapes(path, n_images_class, n_classes, seed=57):
         new_train_list.extend(sub_list_train)
         new_val_list.extend(sub_list_val)
 
-    tables_dir = path + "sub" + str(n_images_class) + "/"
-    if os.path.exists(tables_dir):
-        shutil.rmtree(tables_dir)  # Delete previous folder and re-create
-    os.makedirs(tables_dir)
-    with open(tables_dir + "train_data.pkl", "wb") as outfile:
-        pickle.dump(new_train_list, outfile)
-    with open(tables_dir + "val_data.pkl", "wb") as outfile:
-        pickle.dump(new_val_list, outfile)
+    write_data_list_shapes(n_classes, n_attr, signal_strength, n_subset=n_images_class,
+                           train_data=new_train_list, val_data=new_val_list)
 
 
 def change_dataset_name(old_path, new_path):
