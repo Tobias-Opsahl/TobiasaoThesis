@@ -1,13 +1,13 @@
 """
 File for visualizing pictures form the datasets
 """
-import os
-import pickle
 import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
 from matplotlib import rc
-from constants import MODEL_STRINGS, COLORS
+
+from src.constants import MODEL_STRINGS, COLORS
+from src.common.path_utils import load_history_shapes, save_test_plot_shapes, save_training_plot_shapes
 
 
 def plot_image_single(image_path, pred=None, label=None, transformed=False, show=True, title=None):
@@ -150,14 +150,19 @@ def plot_images_worst(image_paths, logits, labels,
     plot_images_random(wrong_paths, preds, labels, show, n_images, n_cols, title)
 
 
-def plot_training_histories(histories, names, colors=None, attributes=False, title=None,
-                            save_dir="plots/", save_name="test.png"):
+def plot_training_histories(n_classes, n_attr, signal_strength, n_bootstrap, n_subset, histories, names,
+                            colors=None, attributes=False, title=None):
     """
     Plots training and validation loss and accuracy, in four subplots.
     Hisotries can be a list of many training histories, which will results in the history being
     plotted together, so one can easily compare.
 
     Args:
+        n_classes (int): The amount of classes in the dataset.
+        n_attr (int): The amonut of attributes (concepts) in the dataset.
+        signal_strength (int, optional): Signal-strength used to make dataset.
+        n_bootstrap (int): The amount of bootstrap iterations that were used.
+        n_subset (int): The amount of instances in each class used in the subset.
         histories (list of dict): List of training histories, as returned or saved by the train functions
             in `train.py`.
         names (list of str): List of the names of the models. Must be of same length as histories.
@@ -211,48 +216,11 @@ def plot_training_histories(histories, names, colors=None, attributes=False, tit
         ax.legend()
 
     plt.tight_layout()  # To avoid overlap
-    plt.savefig(save_dir + save_name)
-    plt.close()
+    save_training_plot_shapes(n_classes, n_attr, signal_strength, n_bootstrap, n_subset, attr=attributes)
 
 
-def plot_subset_test_accuracies(x_values, test_accuracies_lists, names, colors=None, title=None,
-                                save_dir="plots/", save_name="test.png"):
-    """
-    Plots the test set accuracy of different models run on different subset sizes.
-    Will plot the test-set accuracy against the amount of training data.
-
-    Args:
-        x_values (list of int): Amount of data used (instances per class).
-        test_accuracies_lists (list of list): List of the models accuracy lists (respective to `x_values`).
-            Each list consist of one models test-accuracies.
-        names (list of str): List of the names of the models
-        colors (list of str, optional): List of colors to use for the different models. Defaults to None.
-        title (str, optional): Title for the plot. Defaults to None.
-        save_dir (str, optional): Path to where the plot will be saved. Defaults to "plots/".
-        save_name (str, optional): Name of saved figure. Defaults to "test.png".
-    """
-    n_models = len(test_accuracies_lists)
-    fig = plt.figure()
-    fig.suptitle(title)
-    if colors is None:
-        colors = [None] * n_models
-
-    for i in range(n_models):
-        error_list = test_accuracies_lists[i]
-        name = names[i]
-        color = colors[i]
-        plt.plot(x_values, error_list, label=name, c=color)  # Lines
-        plt.scatter(x_values, error_list, marker="s", c=color)  # Squares at each point
-
-    plt.legend()
-    plt.xlabel("Subset of each class")
-    plt.ylabel("Accuracy")
-    plt.savefig(save_dir + save_name)
-    plt.close()
-
-
-def plot_test_accuracies_pdf(n_classes, n_attr, subsets, n_bootstrap=1, history_folder="history/", model_strings=None,
-                             colors=None, save_dir="plots/", save_name="test.pdf"):
+def plot_test_accuracies(n_classes, n_attr, signal_strength, subsets, n_bootstrap=1,
+                         model_strings=None, colors=None):
     """
     Plots the test-accuracies as pdf format and with minimal border, so that plot is suitable for using in LaTeX.
     The histories file must already exist.
@@ -260,22 +228,19 @@ def plot_test_accuracies_pdf(n_classes, n_attr, subsets, n_bootstrap=1, history_
     Args:
         n_classes (int): The amount of classes to plot for.
         n_attr (int): The amount of attributes.
+        signal_strength (int): The signal strength used for the dataset.
         subsets (list of int): The list of subsets to plot for.
         n_bootstrap (int, optional): The amount of bootstrap iterations used, in order to access correct history.
         history_folder (str, optional): Folder for where histories are saved. Defaults to "history/".
         model_strings (list of str, optional): List of string name of models to use. If None,
             will use the constants value of names. Defaults to None.
         colors (list of str, optional): List of colors to use for the different models. Defaults to None.
-        save_dir (str, optional): Path to where the plot will be saved. Defaults to "plots/".
-        save_name (str, optional): Name of saved figure. Defaults to "test.png".
     """
     if model_strings is None:
         model_strings = MODEL_STRINGS
-    class_folder = "c" + str(n_classes) + "_a" + str(n_attr) + "/"
     test_accuracies_lists = [[] for _ in range(len(model_strings))]
-    for subset in subsets:
-        filename = "histories_sub" + str(subset) + "_b" + str(n_bootstrap) + ".pkl"
-        histories = pickle.load(open(history_folder + class_folder + filename, "rb"))
+    for n_subset in subsets:
+        histories = load_history_shapes(n_classes, n_attr, signal_strength, n_bootstrap, n_subset)
         for i in range(len(model_strings)):
             test_accuracies_lists[i].append(histories[i]["test_accuracy"])
 
@@ -295,9 +260,4 @@ def plot_test_accuracies_pdf(n_classes, n_attr, subsets, n_bootstrap=1, history_
     plt.subplots_adjust(left=0.05, right=0.95, top=0.95, bottom=0.1)
     plt.legend()
     plt.xlabel("Size of Subset for each class")
-    os.makedirs(save_dir, exist_ok=True)
-    if not save_name.endswith(".pdf"):
-        save_name += ".pdf"
-    plt.savefig(save_dir + save_name)
-    plt.tight_layout()
-    plt.close()
+    save_test_plot_shapes(n_classes, n_attr, signal_strength, n_bootstrap)

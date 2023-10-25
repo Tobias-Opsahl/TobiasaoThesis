@@ -60,6 +60,7 @@ class ShapesCNN(ShapesBaseModel):
         """
         super(ShapesCNN, self).__init__(n_linear_output)
         self.name = "ShapesCNN"
+        self.short_name = "cnn"
 
         self.dropout = nn.Dropout(dropout_probability)
 
@@ -109,6 +110,8 @@ class ShapesCBM(ShapesBaseModel):
         """
         super(ShapesCBM, self).__init__(n_linear_output)
         self.name = "ShapesCBM"
+        self.short_name = "cbm"
+
         self.use_sigmoid = False
         self.use_relu = False
         if isinstance(attribute_activation_function, str):
@@ -182,6 +185,8 @@ class ShapesCBMWithResidual(ShapesBaseModel):
         """
         super(ShapesCBMWithResidual, self).__init__(n_linear_output)
         self.name = "ShapesCBMWithResidual"
+        self.short_name = "cbm_res"
+
         self.use_sigmoid = False
         self.use_relu = False
         if isinstance(attribute_activation_function, str):
@@ -257,6 +262,8 @@ class ShapesCBMWithSkip(ShapesBaseModel):
         """
         super(ShapesCBMWithSkip, self).__init__(n_linear_output)
         self.name = "ShapesCBMWithSkip"
+        self.short_name = "cbm_skip"
+
         self.use_sigmoid = False
         self.use_relu = False
         if isinstance(attribute_activation_function, str):
@@ -329,6 +336,7 @@ class ShapesSCM(nn.Module):
         """
         super(ShapesSCM, self).__init__()
         self.name = "ShapesSCM"
+        self.short_name = "scm"
 
         self.use_sigmoid = False
         self.use_relu = False

@@ -5,8 +5,7 @@ import optuna
 
 
 def train_simple(model, criterion, optimizer, train_loader, val_loader=None, n_epochs=10, scheduler=None, trial=None,
-                 n_early_stop=15, device=None, non_blocking=False, model_dir="saved_models/", model_save_name=None,
-                 history_dir="history/", history_save_name=None, verbose=2):
+                 n_early_stop=15, device=None, non_blocking=False, verbose=2):
     """
     Trains a model and calculate training and valudation stats, given the model, loader, optimizer
     and some hyperparameters.
@@ -29,17 +28,14 @@ def train_simple(model, criterion, optimizer, train_loader, val_loader=None, n_e
         device (str): Use "cpu" for cpu training and "cuda:0" for gpu training.
         non_blocking (bool): If True, allows for asyncronous transfer between RAM and VRAM.
             This only works together with `pin_memory=True` to dataloader and GPU training.
-        model_dir (str): The directory to save the best model, if `model_save_name` is not None.
-        model_save_name (str): If not None, will be the name of the saved best model.
-        history_dir (str): The directory to save the pickled file of the training history, if
-            `history_save_name` is not None.
-        history_save_name (str): If not None, will save the training history as this name.
         verbose (int): Determines how much output is printed. If 2, will print stats after every epoch.
             If 1, will print after last epoch only. If 0, will not print anything.
 
     Returns:
         dict: A dictionary of the training history. Will contain lists of training loss and accuracy over
             epochs, and for validation loss and accuracy if `val_loader` is not None.
+        dict: A dictionary with trained model, and optional best-model state-dicts if `val_loader` is not None.
+            On the form: {"final_model": model, "best_model_accuracy_state_dict": a, "best_model_loss_state_dict": b}
     """
     if n_early_stop is None:
         n_early_stop = n_epochs
@@ -144,28 +140,18 @@ def train_simple(model, criterion, optimizer, train_loader, val_loader=None, n_e
     history = {"train_class_loss": train_class_loss_list, "train_class_accuracy": train_class_accuracy_list,
                "val_class_loss": val_class_loss_list, "val_class_accuracy": val_class_accuracy_list,
                "best_epoch_accuracy": best_epoch_number_accuracy, "best_val_accuracy": best_val_accuracy,
-               "best_epoch_loss": best_epoch_number_loss, "best_val_loss": best_val_loss,
-               "model_save_name": model_save_name}
+               "best_epoch_loss": best_epoch_number_loss, "best_val_loss": best_val_loss, "model_name": model.name}
 
-    if model_save_name is not None:
-        model_save_name = model_save_name.replace(".pth", "")
-        model_save_name_loss = model_save_name + "_loss.pth"
-        model_save_name_accuracy = model_save_name + "_accuracy.pth"
-        os.makedirs(model_dir, exist_ok=True)
-        torch.save(best_model_loss, model_dir + model_save_name_loss)
-        torch.save(best_model_accuracy, model_dir + model_save_name_accuracy)
-    if history_save_name is not None:
-        if not history_save_name.endswith(".pkl"):
-            history_save_name += ".pkl"
-        os.makedirs(history_dir, exist_ok=True)
-        with open(history_dir + history_save_name, "wb") as outfile:
-            pickle.dump(history, outfile)
-    return history
+    models_dict = {"final_model": model}
+    if val_loader is not None:
+        models_dict["best_model_accuracy_state_dict"] = best_model_accuracy
+        models_dict["best_model_loss_state_dict"] = best_model_loss
+
+    return history, models_dict
 
 
 def train_cbm(model, criterion, attr_criterion, optimizer, train_loader, val_loader=None, n_epochs=10, attr_weight=1,
               attr_weight_decay=1, scheduler=None, trial=None, n_early_stop=15, device=None, non_blocking=False,
-              model_dir="saved_models/", model_save_name=None, history_dir="history/", history_save_name=None,
               verbose=2):
     """
     Trains and evaluates a Joint Concept Bottleneck Model. This means it is both trained normal
@@ -195,11 +181,6 @@ def train_cbm(model, criterion, attr_criterion, optimizer, train_loader, val_loa
         device (str): Use "cpu" for cpu training and "cuda" for gpu training.
         non_blocking (bool): If True, allows for asyncronous transfer between RAM and VRAM.
             This only works together with `pin_memory=True` to dataloader and GPU training.
-        model_dir (str): The directory to save the best model, if `model_save_name` is not None.
-        model_save_name (str): If not None, will be the name of the saved best model.
-        history_dir (str): The directory to save the pickled file of the training history, if
-            `history_save_name` is not None.
-        history_save_name (str): If not None, will save the training history as this name.
         verbose (int): Determines how much output is printed. If 2, will print stats after every epoch.
             If 1, will print after last epoch only. If 0, will not print anything.
 
@@ -207,6 +188,8 @@ def train_cbm(model, criterion, attr_criterion, optimizer, train_loader, val_loa
         dict: A dictionary of the training history. Will contain lists of training loss and accuracy over
             epochs, and for validation loss and accuracy if `val_loader` is not None. This is done for both the
             class and the attributes.
+        dict: A dictionary with trained model, and optional best-model state-dicts if `val_loader` is not None.
+            On the form: {"final_model": model, "best_model_accuracy_state_dict": a, "best_model_loss_state_dict": b}
     """
     if attr_weight_decay is None:
         attr_weight_decay = 1  # This results in no weight-decay
@@ -222,7 +205,6 @@ def train_cbm(model, criterion, attr_criterion, optimizer, train_loader, val_loa
     model = model.to(device, non_blocking=non_blocking)
     if isinstance(attr_weight, (int, float)):
         attr_weight = [attr_weight for _ in range(n_epochs)]
-    best_model = None  # This will only be saved if `val_loader` is not None
     train_class_loss_list = []  # Initialize training history variables
     train_class_accuracy_list = []
     val_class_loss_list = []  # These will remain empty if `val_loader` is None
@@ -367,19 +349,11 @@ def train_cbm(model, criterion, attr_criterion, optimizer, train_loader, val_loa
                "val_attr_loss": val_attr_loss_list, "val_attr_accuracy": val_attr_accuracy_list,
                "best_epoch_accuracy": best_epoch_number_accuracy, "best_val_accuracy": best_val_accuracy,
                "best_epoch_loss": best_epoch_number_loss, "best_val_loss": best_val_loss,
-               "model_save_name": model_save_name}
+               "model_name": model.name}
 
-    if model_save_name is not None:
-        model_save_name = model_save_name.replace(".pth", "")
-        model_save_name_loss = model_save_name + "_loss.pth"
-        model_save_name_accuracy = model_save_name + "_accuracy.pth"
-        os.makedirs(model_dir, exist_ok=True)
-        torch.save(best_model_loss, model_dir + model_save_name_loss)
-        torch.save(best_model_accuracy, model_dir + model_save_name_accuracy)
-    if history_save_name is not None:
-        if not history_save_name.endswith(".pkl"):
-            history_save_name += ".pkl"
-        os.makedirs(history_dir, exist_ok=True)
-        with open(history_dir + history_save_name, "wb") as outfile:
-            pickle.dump(history, outfile)
-    return history
+    models_dict = {"final_model": model}
+    if val_loader is not None:
+        models_dict["best_model_accuracy_state_dict"] = best_model_accuracy
+        models_dict["best_model_loss_state_dict"] = best_model_loss
+
+    return history, models_dict

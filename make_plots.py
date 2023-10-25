@@ -1,4 +1,4 @@
-from plotting import plot_test_accuracies_pdf
+from src.plotting import plot_test_accuracies
 
 
 def make_pdf_test_accuracies_shapes():
@@ -10,9 +10,9 @@ def make_pdf_test_accuracies_shapes():
     for n_attr in [5, 9]:
         for n_classes in [10, 15, 21]:
             save_name = "c" + str(n_classes) + "_a" + str(n_attr) + "_b" + str(n_bootstrap) + ".pdf"
-            plot_test_accuracies_pdf(n_classes=n_classes, n_attr=n_attr, subsets=subsets, n_bootstrap=n_bootstrap,
-                                     history_folder="history/remote_grid_search/",
-                                     save_dir="plots/pdf_testing_accuracies/", save_name=save_name)
+            plot_test_accuracies(n_classes=n_classes, n_attr=n_attr, subsets=subsets, n_bootstrap=n_bootstrap,
+                                 history_folder="history/remote_grid_search/",
+                                 save_dir="plots/pdf_testing_accuracies/", save_name=save_name)
 
 
 if __name__ == "__main__":
