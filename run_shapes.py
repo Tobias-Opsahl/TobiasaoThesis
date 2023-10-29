@@ -28,6 +28,7 @@ def parse_arguments():
     parser.add_argument("--subsets", type=parse_int_list, default=[29, 31], help=help)
     parser.add_argument("--n_trials", type=int, default=100, help="Number of trials for hyperparameter search.")
     parser.add_argument("--fast", action="store_true", help="Use fast testing hyperparameters.")
+    parser.add_argument("--hard_bottleneck", action="store_true", help="If True, will use hard bottleneck")
 
     # Hardware and div stuff:
     parser.add_argument("--batch_size", type=int, default=16, help="Batch size for training.")
@@ -55,15 +56,16 @@ if __name__ == "__main__":
     if args.run_hyperparameters:
         run_hyperparameter_optimization_all_models(
             args.n_classes, args.n_attr, signal_strength=args.signal_strength, n_trials=args.n_trials,
-            grid_search=grid_search, subsets=args.subsets, batch_size=args.batch_size,
-            eval_loss=True, device=device, num_workers=args.num_workers, pin_memory=args.pin_memory,
-            persistent_workers=args.persistent_workers, non_blocking=args.non_blocking, fast=args.fast,
-            verbose=args.verbose)
+            grid_search=grid_search, subsets=args.subsets, batch_size=args.batch_size, eval_loss=True,
+            hard_bottleneck=args.hard_bottleneck, device=device, num_workers=args.num_workers,
+            pin_memory=args.pin_memory, persistent_workers=args.persistent_workers, non_blocking=args.non_blocking,
+            fast=args.fast, verbose=args.verbose)
 
     if args.evaluate_and_plot:
         print(f"\nBeginning evaluation with {args.n_bootstrap} bootstrap iterations.\n")
         run_models_on_subsets_and_plot(
             args.n_classes, args.n_attr, signal_strength=args.signal_strength, subsets=args.subsets,
             n_bootstrap=args.n_bootstrap, bootstrap_checkpoints=args.bootstrap_checkpoints, fast=args.fast,
-            batch_size=args.batch_size, non_blocking=args.non_blocking, num_workers=args.num_workers,
-            pin_memory=args.pin_memory, persistent_workers=args.persistent_workers, verbose=args.verbose)
+            batch_size=args.batch_size, hard_bottleneck=args.hard_bottleneck,
+            non_blocking=args.non_blocking, num_workers=args.num_workers, pin_memory=args.pin_memory,
+            persistent_workers=args.persistent_workers, verbose=args.verbose)

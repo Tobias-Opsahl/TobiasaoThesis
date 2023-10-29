@@ -20,8 +20,8 @@ class HyperparameterOptimizationShapes:
     """
 
     def __init__(self, model_type, n_classes, n_attr=None, signal_strength=98, n_subset=None,
-                 batch_size=16, eval_loss=True, device=None, num_workers=0, pin_memory=False, persistent_workers=False,
-                 non_blocking=False, fast=False, seed=57):
+                 batch_size=16, eval_loss=True, hard_bottleneck=None, device=None, num_workers=0,
+                 pin_memory=False, persistent_workers=False, non_blocking=False, fast=False, seed=57):
         """
         Args:
             model_type (str): Type of model.
@@ -32,6 +32,8 @@ class HyperparameterOptimizationShapes:
             batch_size (int, optional): Batch-size for training. Defaults to 16.
             eval_loss (bool, optional): If `True`, will use evalulation set loss as metric for optimizing.
                 If false, will use evaluation accuracy. Defaults to True.
+            hard_bottleneck (bool): If True, will load hard-bottleneck concept layer for the concept models.
+                If not, will use what is in the hyperparameters.
             device (str): Use "cpu" for cpu training and "cuda" for gpu training.
             non_blocking (bool): If True, allows for asyncronous transfer between RAM and VRAM.
                 This only works together with `pin_memory=True` to dataloader and GPU training.
@@ -63,6 +65,7 @@ class HyperparameterOptimizationShapes:
         self.n_subset = n_subset
         self.batch_size = batch_size
         self.eval_loss = eval_loss
+        self.hard_bottleneck = hard_bottleneck
         self.num_workers = num_workers
         self.pin_memory = pin_memory
         self.persistent_workers = persistent_workers
@@ -300,7 +303,8 @@ class HyperparameterOptimizationShapes:
             pin_memory=self.pin_memory, persistent_workers=self.persistent_workers)
 
         hp = self._get_hyperparameters_for_trial(trial)  # Get suggestions for hyperparameters
-        model = load_single_model(self.model_type, n_classes=self.n_classes, n_attr=self.n_attr, hyperparameters=hp)
+        model = load_single_model(self.model_type, n_classes=self.n_classes, n_attr=self.n_attr,
+                                  hyperparameters=hp, hard_bottleneck=self.hard_bottleneck)
         criterion = nn.CrossEntropyLoss()
         optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=hp["learning_rate"])
         exp_lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=hp["gamma"])
@@ -408,7 +412,7 @@ class HyperparameterOptimizationShapes:
 
 def run_hyperparameter_optimization_all_models(
         n_classes, n_attr, signal_strength, subsets, hyperparameters_to_search=None, grid_search=False,
-        n_trials=10, batch_size=16, eval_loss=True, device=None, num_workers=0,
+        n_trials=10, batch_size=16, eval_loss=True, hard_bottleneck=None, device=None, num_workers=0,
         pin_memory=False, persistent_workers=False, non_blocking=False, fast=False, write=True, verbose="warning"):
     """
     Run hyperparameter search for every model for many subsets.
@@ -425,6 +429,8 @@ def run_hyperparameter_optimization_all_models(
         batch_size (int, optional): Batch-size. Defaults to 16.
         eval_loss (bool, optional): If `True`, will use evalulation set loss as metric for optimizing.
             If false, will use evaluation accuracy. Defaults to True.
+        hard_bottleneck (bool): If True, will load hard-bottleneck concept layer for the concept models.
+            If not, will use what is in the hyperparameters.
         device (str): Use "cpu" for cpu training and "cuda" for gpu training.
         non_blocking (bool): If True, allows for asyncronous transfer between RAM and VRAM.
             This only works together with `pin_memory=True` to dataloader and GPU training.
@@ -473,8 +479,8 @@ def run_hyperparameter_optimization_all_models(
             obj = HyperparameterOptimizationShapes(
                 model_type=model_type, n_classes=n_classes, n_attr=n_attr, signal_strength=signal_strength,
                 n_subset=n_subset, batch_size=batch_size, eval_loss=eval_loss,
-                device=device, num_workers=num_workers, pin_memory=pin_memory, persistent_workers=persistent_workers,
-                non_blocking=non_blocking, fast=fast)
+                hard_bottleneck=hard_bottleneck, device=device, num_workers=num_workers,
+                pin_memory=pin_memory, persistent_workers=persistent_workers, non_blocking=non_blocking, fast=fast)
             obj.run_hyperparameter_search(n_trials=n_trials, hyperparameters_to_search=hyperparameters_to_search,
                                           grid_search=grid_search, write=write, verbose=verbose)
             print(f"\nFinnished search for model {model_type} with value {obj.study.best_trial.value}.\n")
