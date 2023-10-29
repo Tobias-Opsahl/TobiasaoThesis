@@ -12,3 +12,5 @@ results/hyperparameters/cub/*/
 !results/hyperparameters/cub/*.yaml
 results/plots/*
 graveyard.py
+make_plots.py
+project_files.tar.gz
