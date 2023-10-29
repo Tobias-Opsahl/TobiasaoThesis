@@ -1,7 +1,8 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import numpy as np
+
+from src.constants import USE_XAVIER_INIT_IN_BOTTLENECK
 
 
 class ShapesBaseModel(nn.Module):
@@ -134,6 +135,11 @@ class ShapesCBM(ShapesBaseModel):
             self.intermediary_classifier = nn.Linear(n_attr, n_attr)
         self.final_classifier = nn.Linear(n_attr, n_classes)
 
+        if self.use_sigmoid and USE_XAVIER_INIT_IN_BOTTLENECK:  # Use xavier / glorot intialization for bottlneck
+            nn.init.xavier_uniform_(self.attribute_classifier.weight)
+            if self.attribute_classifier.bias is not None:
+                nn.init.zeros_(self.attribute_classifier.bias)
+
     def forward(self, x):
         x = super(ShapesCBM, self).forward(x)  # Base model, Out: N x n_linear_output
         x = self.dropout(x)
@@ -206,6 +212,11 @@ class ShapesCBMWithResidual(ShapesBaseModel):
         self.attribute_classifier = nn.Linear(n_linear_output, n_attr)
         self.intermediary_classifier = nn.Linear(n_attr, n_linear_output)
         self.final_classifier = nn.Linear(n_linear_output, n_classes)
+
+        if self.use_sigmoid and USE_XAVIER_INIT_IN_BOTTLENECK:  # Use xavier / glorot intialization for bottlneck
+            nn.init.xavier_uniform_(self.attribute_classifier.weight)
+            if self.attribute_classifier.bias is not None:
+                nn.init.zeros_(self.attribute_classifier.bias)
 
     def forward(self, x):
         # Input size: [batch_size, channels, height, width],  N x 3 x 64 x 64
@@ -282,7 +293,12 @@ class ShapesCBMWithSkip(ShapesBaseModel):
 
         self.attribute_classifier = nn.Linear(n_linear_output, n_attr)
         self.intermediary_classifier = nn.Linear(n_attr, n_hidden)
+
         self.final_classifier = nn.Linear(n_hidden + n_linear_output, n_classes)
+        if self.use_sigmoid and USE_XAVIER_INIT_IN_BOTTLENECK:  # Use xavier / glorot intialization for bottlneck
+            nn.init.xavier_uniform_(self.attribute_classifier.weight)
+            if self.attribute_classifier.bias is not None:
+                nn.init.zeros_(self.attribute_classifier.bias)
 
     def forward(self, x):
         x = super(ShapesCBMWithSkip, self).forward(x)  # Base model, Out: N x n_linear_output
@@ -371,6 +387,14 @@ class ShapesSCM(nn.Module):
         self.dropout = nn.Dropout(dropout_probability)
         self.intermediary_classifier = nn.Linear(n_linear_output, n_hidden)
         self.final_classifier = nn.Linear(n_hidden + n_attr, n_classes)
+
+        if self.use_sigmoid and USE_XAVIER_INIT_IN_BOTTLENECK:  # Use xavier / glorot intialization for bottlneck
+            concept_layers = [self.concept_layer1, self.concept_layer2, self.concept_layer3,
+                              self.concept_layer4, self.concept_layer5]
+            for concept_layer in concept_layers:
+                nn.init.xavier_uniform_(concept_layer.weight)
+                if concept_layer.bias is not None:
+                    nn.init.zeros_(concept_layer.bias)
 
     def forward(self, x):
         # Input size: [batch_size, channels, height, width],  N x 3 x 64 x 64

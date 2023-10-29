@@ -6,6 +6,7 @@ DEFAULT_HYPERPARAMETERS_FILENAME_SHAPES = "default.yaml"
 FAST_HYPERPARAMETERS_FILENAME_SHAPES = "fast.yaml"
 
 BOOTSTRAP_CHECKPOINTS = [1, 3, 5, 10]
+USE_XAVIER_INIT_IN_BOTTLENECK = False
 
 # Folder paths. Should not need to be edited, unless you for some reason want to save results somewhere else.
 # RESULTS_FOLDER gets added to the beginning of the other folders, and it can be an absolute path. It will
