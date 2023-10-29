@@ -201,6 +201,7 @@ def load_data_list_shapes(n_classes, n_attr, signal_strength, n_subset=None, mod
 def write_data_list_shapes(n_classes, n_attr, signal_strength, n_subset, train_data, val_data):
     """
     Given a train and validation data-list for a subset of a shapes-dataset, saves or overwrites the data-lists.
+
     Args:
         n_classes (int): The amount of classes in the dataset.
         n_attr (int): The amonut of attributes (concepts) in the dataset.
