@@ -2,8 +2,11 @@ MODEL_STRINGS = ["cnn", "cbm", "cbm_res", "cbm_skip", "scm"]
 COLORS = ["y", "r", "blueviolet", "black", "skyblue"]
 MAX_EPOCHS = 50
 FAST_MAX_EPOCHS = 2  # Use in order to quickly test if implementations work
+N_EARLY_STOP_DEFAULT = 7
 DEFAULT_HYPERPARAMETERS_FILENAME_SHAPES = "default.yaml"
 FAST_HYPERPARAMETERS_FILENAME_SHAPES = "fast.yaml"
+DEFAULT_HYPERPARAMETERS_FILENAME_SHAPES_HARD = "default_hard.yaml"
+FAST_HYPERPARAMETERS_FILENAME_SHAPES_HARD = "fast_hard.yaml"
 
 BOOTSTRAP_CHECKPOINTS = [1, 3, 5, 10]
 USE_XAVIER_INIT_IN_BOTTLENECK = False

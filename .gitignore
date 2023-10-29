@@ -6,9 +6,8 @@ backlog.txt
 data/*
 results/history/*
 results/saved_models/*
-results/hyperparameters/shapes/*/
+results/hyperparameters/*/
 !results/hyperparameters/shapes/*.yaml
-results/hyperparameters/cub/*/
 !results/hyperparameters/cub/*.yaml
 results/plots/*
 graveyard.py

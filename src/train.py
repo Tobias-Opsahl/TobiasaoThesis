@@ -1,11 +1,11 @@
-import os
-import pickle
 import torch
 import optuna
 
+from src.constants import N_EARLY_STOP_DEFAULT
+
 
 def train_simple(model, criterion, optimizer, train_loader, val_loader=None, n_epochs=10, scheduler=None, trial=None,
-                 n_early_stop=15, device=None, non_blocking=False, verbose=2):
+                 n_early_stop=None, device=None, non_blocking=False, verbose=2):
     """
     Trains a model and calculate training and valudation stats, given the model, loader, optimizer
     and some hyperparameters.
@@ -25,6 +25,7 @@ def train_simple(model, criterion, optimizer, train_loader, val_loader=None, n_e
             and may prune (cancel) a training trial.
         n_early_stop (int): The number of consecutive iterations without validation loss improvement that
             stops the training (early stopping). Will only work if `val_loader` is None.
+            Set to `False` for deactivating it, and `None` for default value from `constants.py`.
         device (str): Use "cpu" for cpu training and "cuda:0" for gpu training.
         non_blocking (bool): If True, allows for asyncronous transfer between RAM and VRAM.
             This only works together with `pin_memory=True` to dataloader and GPU training.
@@ -38,6 +39,8 @@ def train_simple(model, criterion, optimizer, train_loader, val_loader=None, n_e
             On the form: {"final_model": model, "best_model_accuracy_state_dict": a, "best_model_loss_state_dict": b}
     """
     if n_early_stop is None:
+        n_early_stop = N_EARLY_STOP_DEFAULT
+    elif not n_early_stop:
         n_early_stop = n_epochs
     if device is None:
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -178,6 +181,7 @@ def train_cbm(model, criterion, attr_criterion, optimizer, train_loader, val_loa
             and may prune (cancel) a training trial.
         n_early_stop (int): The number of consecutive iterations without validation loss improvement that
             stops the training (early stopping). Will only work if `val_loader` is None.
+            Set to `False` for deactivating it, and `None` for default value from `constants.py`.
         device (str): Use "cpu" for cpu training and "cuda" for gpu training.
         non_blocking (bool): If True, allows for asyncronous transfer between RAM and VRAM.
             This only works together with `pin_memory=True` to dataloader and GPU training.
@@ -198,6 +202,8 @@ def train_cbm(model, criterion, attr_criterion, optimizer, train_loader, val_loa
         message += f"`attr_weight_decay` was {attr_weight_decay} and `att_weight` was {attr_weight}. "
         raise ValueError(message)
     if n_early_stop is None:
+        n_early_stop = N_EARLY_STOP_DEFAULT
+    elif not n_early_stop:
         n_early_stop = n_epochs
 
     if device is None:
