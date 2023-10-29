@@ -20,8 +20,9 @@ def parse_arguments():
     parser.add_argument("--n_classes", type=int, default=10, help="Number of classes.")
     parser.add_argument("--signal_strength", type=int, default=98, help="Signal strength for dataset")
     parser.add_argument("--n_attr", type=int, default=5, help="Number of attributes.")
-    help = "Number of bootstrap iterations. Can be single int or list of int, for example `1` or `1,5,10`."
-    parser.add_argument("--n_bootstrap", type=parse_int_list, default=[1], help=help)
+    parser.add_argument("--n_bootstrap", type=int, default=1, help="number of bootstrap iterations to run")
+    help = "Number of bootstrap iterations to save at. Can be single int or list of int, for example `1` or `1,5,10`."
+    parser.add_argument("--bootstrap_checkpoints", type=parse_int_list, help=help)
     # parser.add_argument("--n_bootstrap", type=int, default=1, help="Number of bootstrap iterations.")
     help = "Sizes of subsets to run on. Can be single int or list of int, for example `50` or `50,100,150`."
     parser.add_argument("--subsets", type=parse_int_list, default=[29, 31], help=help)
@@ -60,10 +61,9 @@ if __name__ == "__main__":
             verbose=args.verbose)
 
     if args.evaluate_and_plot:
-        for n_boot in args.n_bootstrap:
-            print(f"\nBeginning evaluation with {n_boot} bootstrap iterations.\n")
-            run_models_on_subsets_and_plot(
-                args.n_classes, args.n_attr, signal_strength=args.signal_strength, subsets=args.subsets,
-                n_bootstrap=n_boot, fast=args.fast, batch_size=args.batch_size, non_blocking=args.non_blocking,
-                num_workers=args.num_workers, pin_memory=args.pin_memory, persistent_workers=args.persistent_workers,
-                verbose=args.verbose)
+        print(f"\nBeginning evaluation with {args.n_bootstrap} bootstrap iterations.\n")
+        run_models_on_subsets_and_plot(
+            args.n_classes, args.n_attr, signal_strength=args.signal_strength, subsets=args.subsets,
+            n_bootstrap=args.n_bootstrap, bootstrap_checkpoints=args.bootstrap_checkpoints, fast=args.fast,
+            batch_size=args.batch_size, non_blocking=args.non_blocking, num_workers=args.num_workers,
+            pin_memory=args.pin_memory, persistent_workers=args.persistent_workers, verbose=args.verbose)

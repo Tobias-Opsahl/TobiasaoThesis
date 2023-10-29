@@ -6,7 +6,7 @@ from src.datasets.datasets_shapes import load_data_shapes, make_subset_shapes
 from src.plotting import plot_training_histories, plot_test_accuracies
 from src.common.utils import load_models_shapes, add_histories, seed_everything
 from src.common.path_utils import load_hyperparameters_shapes, save_history_shapes, save_model_shapes
-from src.constants import MODEL_STRINGS, COLORS, MAX_EPOCHS, FAST_MAX_EPOCHS
+from src.constants import MODEL_STRINGS, COLORS, MAX_EPOCHS, FAST_MAX_EPOCHS, BOOTSTRAP_CHECKPOINTS
 
 
 def evaluate_on_test_set(model, test_loader, device=None, non_blocking=False):
@@ -122,8 +122,9 @@ def train_and_evaluate_shapes(
 
 
 def run_models_on_subsets_and_plot(
-        n_classes, n_attr, signal_strength, subsets, n_bootstrap=1, fast=False, batch_size=16, device=None,
-        non_blocking=False, num_workers=0, pin_memory=False, persistent_workers=False, base_seed=57, verbose=1):
+        n_classes, n_attr, signal_strength, subsets, n_bootstrap=1, bootstrap_checkpoints=None, fast=False,
+        batch_size=16, device=None, non_blocking=False, num_workers=0, pin_memory=False, persistent_workers=False,
+        base_seed=57, verbose=1):
     """
     Run all available models (from MODEL_STRINGS) on different subsets. For each subset, plots the models
     training-history together, and also plots the test error for each subset.
@@ -136,6 +137,7 @@ def run_models_on_subsets_and_plot(
         subsets (list of int): List of the subsets to run on.
         signal_strength (int): The signal_strength the dataset is created with.
         n_bootstrap (int, optional): The amount of times to draw new subset and run models. Defaults to 1.
+        bootstrap_checkpoints (list of int): List of bootstrap iterations to save and plot after.
         fast (bool, optional): If True, will load hyperparameters with low `n_epochs`. Defaults to False.
         batch_size (int, optional): Batch-size of the training. Defaults to 16.
         device (str): Use "cpu" for cpu training and "cuda" for gpu training.
@@ -152,7 +154,8 @@ def run_models_on_subsets_and_plot(
             Defaults to 57.
         verbose (int, optional): Controls the verbosity. Defaults to 1.
     """
-    test_accuracies_lists = [[] for _ in range(len(MODEL_STRINGS))]  # Test accuracies for every model for every subset
+    if bootstrap_checkpoints is None:
+        bootstrap_checkpoints = BOOTSTRAP_CHECKPOINTS
 
     for n_subset in subsets:
         seed = base_seed
@@ -177,15 +180,18 @@ def run_models_on_subsets_and_plot(
                 seed=base_seed, verbose=verbose)
             histories_total = add_histories(histories_total, histories, n_bootstrap)
 
-        for i in range(len(MODEL_STRINGS)):
-            test_accuracies_lists[i].append(histories_total[i]["test_accuracy"][0])
+            n_boot = i + 1
+            if n_boot in bootstrap_checkpoints:
 
-        save_history_shapes(n_classes, n_attr, signal_strength, n_bootstrap, n_subset, histories_total)
-        plot_training_histories(n_classes, n_attr, signal_strength, n_bootstrap, n_subset,
-                                histories=histories_total, names=MODEL_STRINGS, colors=COLORS, attributes=False)
-        # Exclude cnn model when plotting attributes / concept training
-        plot_training_histories(n_classes, n_attr, signal_strength, n_bootstrap, n_subset,
-                                histories=histories_total[1:], names=["cbm", "cbm_res", "cbm_skip", "scm"],
-                                colors=COLORS[1:], attributes=True)
+                save_history_shapes(n_classes, n_attr, signal_strength, n_boot, n_subset, histories_total)
+                plot_training_histories(n_classes, n_attr, signal_strength, n_boot, n_subset,
+                                        histories=histories_total, names=MODEL_STRINGS, colors=COLORS, attributes=False)
+                # Exclude cnn model when plotting attributes / concept training
+                plot_training_histories(n_classes, n_attr, signal_strength, n_boot, n_subset,
+                                        histories=histories_total[1:], names=["cbm", "cbm_res", "cbm_skip", "scm"],
+                                        colors=COLORS[1:], attributes=True)
 
-    plot_test_accuracies(n_classes, n_attr, signal_strength, subsets=subsets, n_bootstrap=n_bootstrap)
+    for n_boot in bootstrap_checkpoints:
+        if n_boot > n_bootstrap:  # Incase a checkpoint is higher than the actual iterations ran
+            break
+        plot_test_accuracies(n_classes, n_attr, signal_strength, subsets=subsets, n_bootstrap=n_boot)
