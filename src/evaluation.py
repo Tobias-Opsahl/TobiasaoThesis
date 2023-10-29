@@ -83,9 +83,9 @@ def train_and_evaluate_shapes(
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     hp = hyperparameters
     if hp is None:
-        hp = load_hyperparameters_shapes(n_classes, n_attr, signal_strength, n_subset)
+        hp = load_hyperparameters_shapes(n_classes, n_attr, signal_strength, n_subset, hard_bottleneck=hard_bottleneck)
 
-    models = load_models_shapes(n_classes, n_attr, hyperparameters=hp, hard_bottleneck=hard_bottleneck)
+    models = load_models_shapes(n_classes, n_attr, hyperparameters=hp)
     histories = []
     criterion = nn.CrossEntropyLoss()
     attr_criterion = nn.BCEWithLogitsLoss()
@@ -115,7 +115,7 @@ def train_and_evaluate_shapes(
 
         state_dict = models_dict["best_model_loss_state_dict"]
         save_model_shapes(n_classes, n_attr, signal_strength, n_subset, state_dict,
-                          model_type=model.short_name, metric="loss")
+                          model_type=model.short_name, metric="loss", hard_bottleneck=hard_bottleneck)
         model.load_state_dict(state_dict)
         test_accuracy = evaluate_on_test_set(model, test_loader, device=device, non_blocking=non_blocking)
         history["test_accuracy"] = [test_accuracy]
@@ -188,15 +188,18 @@ def run_models_on_subsets_and_plot(
             n_boot = i + 1
             if n_boot in bootstrap_checkpoints:
 
-                save_history_shapes(n_classes, n_attr, signal_strength, n_boot, n_subset, histories_total)
+                save_history_shapes(n_classes, n_attr, signal_strength, n_boot, n_subset, histories_total,
+                                    hard_bottleneck=hard_bottleneck)
                 plot_training_histories(n_classes, n_attr, signal_strength, n_boot, n_subset,
-                                        histories=histories_total, names=MODEL_STRINGS, colors=COLORS, attributes=False)
+                                        histories=histories_total, names=MODEL_STRINGS, hard_bottleneck=hard_bottleneck,
+                                        colors=COLORS, attributes=False)
                 # Exclude cnn model when plotting attributes / concept training
                 plot_training_histories(n_classes, n_attr, signal_strength, n_boot, n_subset,
                                         histories=histories_total[1:], names=["cbm", "cbm_res", "cbm_skip", "scm"],
-                                        colors=COLORS[1:], attributes=True)
+                                        hard_bottleneck=hard_bottleneck, colors=COLORS[1:], attributes=True)
 
     for n_boot in bootstrap_checkpoints:
         if n_boot > n_bootstrap:  # Incase a checkpoint is higher than the actual iterations ran
             break
-        plot_test_accuracies(n_classes, n_attr, signal_strength, subsets=subsets, n_bootstrap=n_boot)
+        plot_test_accuracies(n_classes, n_attr, signal_strength, subsets=subsets, n_bootstrap=n_boot,
+                             hard_bottleneck=hard_bottleneck)

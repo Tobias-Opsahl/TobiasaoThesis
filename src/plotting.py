@@ -150,8 +150,8 @@ def plot_images_worst(image_paths, logits, labels,
     plot_images_random(wrong_paths, preds, labels, show, n_images, n_cols, title)
 
 
-def plot_training_histories(n_classes, n_attr, signal_strength, n_bootstrap, n_subset, histories, names,
-                            colors=None, attributes=False, title=None):
+def plot_training_histories(n_classes, n_attr, signal_strength, n_bootstrap, n_subset, histories=None, names=None,
+                            hard_bottleneck=False, colors=None, attributes=False, title=None):
     """
     Plots training and validation loss and accuracy, in four subplots.
     Hisotries can be a list of many training histories, which will results in the history being
@@ -166,15 +166,20 @@ def plot_training_histories(n_classes, n_attr, signal_strength, n_bootstrap, n_s
         histories (list of dict): List of training histories, as returned or saved by the train functions
             in `train.py`.
         names (list of str): List of the names of the models. Must be of same length as histories.
+        hard_bottleneck (bool): If True, will load histories with hard-bottleneck, and save with "_hard" in name.
         colors (list of str, optional): List of colors to use for the different models. Defaults to None.
         attributes (bool, optional): If True, will plot the attribute stats. Must be a concept-model.
             Defaults to False.
         title (str, optional): Title for the plot. Defaults to None.
-        save_dir (str, optional): Path to where the plot will be saved. Defaults to "plots/".
-        save_name (str, optional): Name of saved figure. Defaults to "test.png".
     """
     fig = plt.figure()
     fig.suptitle(title)  # Main title
+    if histories is None:
+        histories = load_history_shapes(n_classes, n_attr, signal_strength, n_bootstrap, n_subset,
+                                        hard_bottleneck=hard_bottleneck)
+    if names is None:
+        names = MODEL_STRINGS
+
     n_hist = len(histories)
     if colors is None:  # Matplotlib will chose colors for us
         colors = [None] * n_hist
@@ -216,10 +221,11 @@ def plot_training_histories(n_classes, n_attr, signal_strength, n_bootstrap, n_s
         ax.legend()
 
     plt.tight_layout()  # To avoid overlap
-    save_training_plot_shapes(n_classes, n_attr, signal_strength, n_bootstrap, n_subset, attr=attributes)
+    save_training_plot_shapes(n_classes, n_attr, signal_strength, n_bootstrap, n_subset, attr=attributes,
+                              hard_bottleneck=hard_bottleneck)
 
 
-def plot_test_accuracies(n_classes, n_attr, signal_strength, subsets, n_bootstrap=1,
+def plot_test_accuracies(n_classes, n_attr, signal_strength, subsets, n_bootstrap=1, hard_bottleneck=False,
                          model_strings=None, colors=None):
     """
     Plots the test-accuracies as pdf format and with minimal border, so that plot is suitable for using in LaTeX.
@@ -232,6 +238,7 @@ def plot_test_accuracies(n_classes, n_attr, signal_strength, subsets, n_bootstra
         subsets (list of int): The list of subsets to plot for.
         n_bootstrap (int, optional): The amount of bootstrap iterations used, in order to access correct history.
         history_folder (str, optional): Folder for where histories are saved. Defaults to "history/".
+        hard_bottleneck (bool): If True, will load histories with hard-bottleneck, and save with "_hard" in name.
         model_strings (list of str, optional): List of string name of models to use. If None,
             will use the constants value of names. Defaults to None.
         colors (list of str, optional): List of colors to use for the different models. Defaults to None.
@@ -240,7 +247,8 @@ def plot_test_accuracies(n_classes, n_attr, signal_strength, subsets, n_bootstra
         model_strings = MODEL_STRINGS
     test_accuracies_lists = [[] for _ in range(len(model_strings))]
     for n_subset in subsets:
-        histories = load_history_shapes(n_classes, n_attr, signal_strength, n_bootstrap, n_subset)
+        histories = load_history_shapes(n_classes, n_attr, signal_strength, n_bootstrap, n_subset,
+                                        hard_bottleneck=hard_bottleneck)
         for i in range(len(model_strings)):
             test_accuracies_lists[i].append(histories[i]["test_accuracy"])
 
@@ -260,4 +268,4 @@ def plot_test_accuracies(n_classes, n_attr, signal_strength, subsets, n_bootstra
     plt.subplots_adjust(left=0.05, right=0.95, top=0.95, bottom=0.1)
     plt.legend()
     plt.xlabel("Size of Subset for each class")
-    save_test_plot_shapes(n_classes, n_attr, signal_strength, n_bootstrap)
+    save_test_plot_shapes(n_classes, n_attr, signal_strength, n_bootstrap, hard_bottleneck=hard_bottleneck)

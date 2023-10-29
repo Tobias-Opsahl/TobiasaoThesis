@@ -1,5 +1,4 @@
 import os
-import yaml
 import shutil
 import random
 import pickle
@@ -81,7 +80,7 @@ def split_dataset(data_list, tables_dir, include_test=True, seed=57):
             pickle.dump(test_data, outfile)
 
 
-def load_single_model(model_type, n_classes, n_attr, hyperparameters, hard_bottleneck=None):
+def load_single_model(model_type, n_classes, n_attr, hyperparameters):
     """
     Loads a model, given its hyperparameters.
 
@@ -90,8 +89,6 @@ def load_single_model(model_type, n_classes, n_attr, hyperparameters, hard_bottl
         n_classes (int): The amount of classes used in the dataset.
         n_attr (int): The amount of attributes used in the dataset.
         hyperparameters (dict): The hyperparameters for the model. Can be loaded with `load_hyperparameters_shapes()`.
-        hard_bottleneck (bool): If True, will load hard-bottleneck concept layer for the concept models.
-            If not, will use what is in the hyperparameters.
 
     Raises:
         ValueError: If model_type is not supported
@@ -112,11 +109,6 @@ def load_single_model(model_type, n_classes, n_attr, hyperparameters, hard_bottl
 
     if hp.get("hard") is None:  # This hp was added later, so add this for backwards compability
         hp["hard"] = False
-    if hard_bottleneck is not None:  # Override bottleneck-setting
-        if hard_bottleneck:
-            hp["hard"] = True  # Make all concepts "hard".
-        else:
-            hp["hard"] = False
 
     if model_type == "cbm":
         cbm = ShapesCBM(
@@ -174,19 +166,12 @@ def load_models_shapes(n_classes, n_attr, signal_strength=98, n_subset=None, hyp
     if hp is None:
         hp = load_hyperparameters_shapes(n_classes, n_attr, signal_strength, n_subset,
                                          fast=fast, hard_bottleneck=hard_bottleneck)
-    cnn = load_single_model(
-        model_type="cnn", hyperparameters=hp["cnn"],
-        n_classes=n_classes, n_attr=n_attr, hard_bottleneck=hard_bottleneck)
-    cbm = load_single_model(
-        model_type="cbm", hyperparameters=hp["cbm"],
-        n_classes=n_classes, n_attr=n_attr, hard_bottleneck=hard_bottleneck)
-    cbm_res = load_single_model(
-        model_type="cbm_res", hyperparameters=hp["cbm_res"],
-        n_classes=n_classes, n_attr=n_attr, hard_bottleneck=hard_bottleneck)
+    cnn = load_single_model(model_type="cnn", hyperparameters=hp["cnn"], n_classes=n_classes, n_attr=n_attr)
+    cbm = load_single_model(model_type="cbm", hyperparameters=hp["cbm"], n_classes=n_classes, n_attr=n_attr)
+    cbm_res = load_single_model(model_type="cbm_res", hyperparameters=hp["cbm_res"], n_classes=n_classes, n_attr=n_attr)
     cbm_skip = load_single_model(model_type="cbm_skip", hyperparameters=hp["cbm_skip"],
-                                 n_classes=n_classes, n_attr=n_attr, hard_bottleneck=hard_bottleneck)
-    scm = load_single_model(model_type="scm", hyperparameters=hp["scm"],
-                            n_classes=n_classes, n_attr=n_attr, hard_bottleneck=hard_bottleneck)
+                                 n_classes=n_classes, n_attr=n_attr)
+    scm = load_single_model(model_type="scm", hyperparameters=hp["scm"], n_classes=n_classes, n_attr=n_attr)
 
     models = [cnn, cbm, cbm_res, cbm_skip, scm]
     return models

@@ -9,7 +9,8 @@ from pathlib import Path
 
 from src.constants import (RESULTS_FOLDER, HYPERPARAMETERS_FOLDER, HISTORY_FOLDER, PLOTS_FOLDER, SAVED_MODELS_FOLDER,
                            DATA_FOLDER, SHAPES_FOLDER, CUB_FOLDER, FAST_HYPERPARAMETERS_FILENAME_SHAPES,
-                           DEFAULT_HYPERPARAMETERS_FILENAME_SHAPES)
+                           DEFAULT_HYPERPARAMETERS_FILENAME_SHAPES, FAST_HYPERPARAMETERS_FILENAME_SHAPES_HARD,
+                           DEFAULT_HYPERPARAMETERS_FILENAME_SHAPES_HARD)
 
 
 def _check_just_file(filename):
@@ -226,7 +227,7 @@ def write_data_list_shapes(n_classes, n_attr, signal_strength, n_subset, train_d
         pickle.dump(val_data, outfile)
 
 
-def load_history_shapes(n_classes, n_attr, signal_strength, n_bootstrap, n_subset):
+def load_history_shapes(n_classes, n_attr, signal_strength, n_bootstrap, n_subset, hard_bottleneck=False):
     """
     Load models history, made by `src/evaluation.py`.
 
@@ -236,18 +237,20 @@ def load_history_shapes(n_classes, n_attr, signal_strength, n_bootstrap, n_subse
         signal_strength (int, optional): Signal-strength used to make dataset.
         n_bootstrap (int): The amount of bootstrap iterations that were used.
         n_subset (int): The amount of instances in each class used in the subset.
+        hard_bottleneck (bool): Set to `True` if hard bottleneck was used. This will alter the name to end with `_hard`.
 
     Returns:
         dict: Dictionary of histories.
     """
     folder_name = get_full_shapes_folder_path(n_classes, n_attr, signal_strength, relative_folder=HISTORY_FOLDER)
-    filename = Path(f"histories_sub{n_subset}_b{n_bootstrap}.pkl")
+    bottleneck = "" if not hard_bottleneck else "_hard"
+    filename = Path(f"histories_sub{n_subset}_b{n_bootstrap}{bottleneck}.pkl")
     file_path = make_file_path(folder_name, filename, check_folder_exists=False)
     history = pickle.load(open(file_path, "rb"))
     return history
 
 
-def save_history_shapes(n_classes, n_attr, signal_strength, n_bootstrap, n_subset, history):
+def save_history_shapes(n_classes, n_attr, signal_strength, n_bootstrap, n_subset, history, hard_bottleneck=False):
     """
     Save a history dictionary, made by `src/evaluation.py`.
 
@@ -258,15 +261,17 @@ def save_history_shapes(n_classes, n_attr, signal_strength, n_bootstrap, n_subse
         n_bootstrap (int): The amount of bootstrap iterations that were used.
         n_subset (int): The amount of instances in each class used in the subset.
         history (dict): The histories to save.
+        hard_bottleneck (bool): Set to `True` if hard bottleneck was used. This will alter the name to end with `_hard`.
     """
     folder_name = get_full_shapes_folder_path(n_classes, n_attr, signal_strength, relative_folder=HISTORY_FOLDER)
-    filename = Path(f"histories_sub{n_subset}_b{n_bootstrap}.pkl")
+    bottleneck = "" if not hard_bottleneck else "_hard"
+    filename = Path(f"histories_sub{n_subset}_b{n_bootstrap}{bottleneck}.pkl")
     file_path = make_file_path(folder_name, filename, check_folder_exists=True)
     with open(file_path, "wb") as outfile:
         pickle.dump(history, outfile)
 
 
-def load_model_shapes(n_classes, n_attr, signal_strength, n_subset, model_type, metric="loss"):
+def load_model_shapes(n_classes, n_attr, signal_strength, n_subset, model_type, metric="loss", hard_bottleneck=False):
     """
     Load a state_dict for a model.
 
@@ -278,6 +283,7 @@ def load_model_shapes(n_classes, n_attr, signal_strength, n_subset, model_type, 
         model_type (str): Model to load. Must be in ["cnn", "cbm", "cbm_res", "cbm_skip", "scm"].
         metric (str, optional): Should be in ["loss", "accuracy"]. Determines if one loads the best
             validation loss model or best validation accuracy loss. Defaults to "loss".
+        hard_bottleneck (bool): Set to `True` if hard bottleneck was used. This will alter the name to end with `_hard`.
 
     Returns:
         dict: The state-dict to the model.
@@ -289,13 +295,15 @@ def load_model_shapes(n_classes, n_attr, signal_strength, n_subset, model_type, 
         raise ValueError(message)
 
     folder_name = get_full_shapes_folder_path(n_classes, n_attr, signal_strength, relative_folder=SAVED_MODELS_FOLDER)
-    filename = Path(f"{model_type}_sub{n_subset}_{metric}.pth")
+    bottleneck = "" if not hard_bottleneck else "_hard"
+    filename = Path(f"{model_type}_sub{n_subset}_{metric}{bottleneck}.pth")
     file_path = make_file_path(folder_name, filename, check_folder_exists=False)
     state_dict = torch.load(file_path)
     return state_dict
 
 
-def save_model_shapes(n_classes, n_attr, signal_strength, n_subset, state_dict, model_type, metric="loss"):
+def save_model_shapes(n_classes, n_attr, signal_strength, n_subset, state_dict, model_type, metric="loss",
+                      hard_bottleneck=False):
     """
     Saves a models state_dict.
 
@@ -307,6 +315,7 @@ def save_model_shapes(n_classes, n_attr, signal_strength, n_subset, state_dict, 
         state_dict (dict): The state-dict of the model to save.
         model_type (str): String name of the model to save. Must be in ["cnn", "cbm", "cbm_res", "cbm_skip", "scm"].
         metric (str, optional): Nam. Defaults to "loss".
+        hard_bottleneck (bool): Set to `True` if hard bottleneck was used. This will alter the name to end with `_hard`.
     """
     model_type = model_type.strip().lower()
     if model_type not in ["cnn", "cbm", "cbm_res", "cbm_skip", "scm"]:
@@ -315,12 +324,14 @@ def save_model_shapes(n_classes, n_attr, signal_strength, n_subset, state_dict, 
         raise ValueError(message)
 
     folder_name = get_full_shapes_folder_path(n_classes, n_attr, signal_strength, relative_folder=SAVED_MODELS_FOLDER)
-    filename = Path(f"{model_type}_sub{n_subset}_{metric}.pth")
+    bottleneck = "" if (model_type == "cnn") or not hard_bottleneck else "_hard"
+    filename = Path(f"{model_type}_sub{n_subset}_{metric}{bottleneck}.pth")
     file_path = make_file_path(folder_name, filename, check_folder_exists=True)
     torch.save(state_dict, file_path)
 
 
-def save_training_plot_shapes(n_classes, n_attr, signal_strength, n_bootstrap, n_subset, attr=False):
+def save_training_plot_shapes(n_classes, n_attr, signal_strength, n_bootstrap, n_subset,
+                              hard_bottleneck=False, attr=False):
     """
     Save a training history plot.
 
@@ -330,17 +341,19 @@ def save_training_plot_shapes(n_classes, n_attr, signal_strength, n_bootstrap, n
         signal_strength (int, optional): Signal-strength used to make dataset.
         n_bootstrap (int): The amount of bootstrap iterations that were used.
         n_subset (int): The amount of instances in each class used in the subset.
+        hard_bottleneck (bool): Set to `True` if hard bottleneck was used. This will alter the name to end with `_hard`.
         attr (bool, optional): Set to True if the training plot is of the attributes / concepts. Defaults to False.
     """
     folder_name = get_full_shapes_folder_path(n_classes, n_attr, signal_strength, relative_folder=PLOTS_FOLDER)
     attr_string = "" if not attr else "attr_"
-    filename = Path(f"training_history_{attr_string}sub{n_subset}_b{n_bootstrap}.pdf")
+    bottleneck = "" if not hard_bottleneck else "_hard"
+    filename = Path(f"training_history_{attr_string}sub{n_subset}_b{n_bootstrap}{bottleneck}.pdf")
     file_path = make_file_path(folder_name, filename, check_folder_exists=True)
     plt.savefig(file_path)
     plt.close()
 
 
-def save_test_plot_shapes(n_classes, n_attr, signal_strength, n_bootstrap):
+def save_test_plot_shapes(n_classes, n_attr, signal_strength, n_bootstrap, hard_bottleneck=False):
     """
     Saves a test-accuracies plot.
 
@@ -349,16 +362,18 @@ def save_test_plot_shapes(n_classes, n_attr, signal_strength, n_bootstrap):
         n_attr (int): The amonut of attributes (concepts) in the dataset.
         signal_strength (int, optional): Signal-strength used to make dataset.
         n_bootstrap (int): The amount of bootstrap iterations that were used.
+        hard_bottleneck (bool): Set to `True` if hard bottleneck was used. This will alter the name to end with `_hard`.
     """
     folder_name = get_full_shapes_folder_path(n_classes, n_attr, signal_strength, relative_folder=PLOTS_FOLDER)
-    filename = Path(f"test_accuracies_b{n_bootstrap}.pdf")
+    bottleneck = "" if not hard_bottleneck else "_hard"
+    filename = Path(f"test_accuracies_b{n_bootstrap}{bottleneck}.pdf")
     file_path = make_file_path(folder_name, filename, check_folder_exists=True)
     plt.savefig(file_path)
     plt.close()
 
 
-def load_hyperparameters_shapes(n_classes=None, n_attr=None, signal_strength=None, n_subset=None,
-                                fast=False, default=False, hard=False):
+def load_hyperparameters_shapes(n_classes=None, n_attr=None, signal_strength=None, n_subset=None, hard_bottleneck=False,
+                                fast=False, default=False):
     """
     Loads a set of hyperparameters. This will try to load hyperparameters specific for this combination of
     classes, attributes and n_subset. If this is not found, it will use default hyperparameters instead.
@@ -370,6 +385,8 @@ def load_hyperparameters_shapes(n_classes=None, n_attr=None, signal_strength=Non
         n_attr (int): The amonut of attributes (concepts) in the dataset.
         signal_strength (int, optional): Signal-strength used to make dataset.
         n_subset (int): The amount of instances in each class used in the subset.
+        hard_bottleneck (bool): Set to `True` if hard bottleneck was used. This will alter the name to end with `_hard`.
+            Note that this requires a hyperparameter optimization to be ran with `hard_bottleneck`.
         fast (bool, optional): If True, will use hyperparameters with very low `n_epochs`. Defaults to False.
         default (bool, optional): If True, will use default hyperparameters, disregarding n_classe, n_attr etc.
 
@@ -388,24 +405,46 @@ def load_hyperparameters_shapes(n_classes=None, n_attr=None, signal_strength=Non
     results_folder = Path(RESULTS_FOLDER)
     base_folder = results_folder / HYPERPARAMETERS_FOLDER / SHAPES_FOLDER
     if fast:  # Here n_epohcs = 2, for fast testing
-        fast_path = make_file_path(base_folder, FAST_HYPERPARAMETERS_FILENAME_SHAPES)
+        if hard_bottleneck:
+            fast_file = FAST_HYPERPARAMETERS_FILENAME_SHAPES_HARD
+        else:
+            fast_file = FAST_HYPERPARAMETERS_FILENAME_SHAPES
+        fast_path = make_file_path(base_folder, fast_file, check_folder_exists=False)
         with open(fast_path, "r") as infile:
             hyperparameters = yaml.safe_load(infile)
         return hyperparameters
 
     folder_name = get_full_shapes_folder_path(
         n_classes, n_attr, signal_strength, relative_folder=HYPERPARAMETERS_FOLDER)
-    filename = Path(f"hyperparameters_sub{n_subset}.yaml")
+    bottleneck = "" if not hard_bottleneck else "_hard"
+    filename = Path(f"hyperparameters_sub{n_subset}{bottleneck}.yaml")
     file_path = make_file_path(folder_name, filename, check_folder_exists=False)
 
     if (not default) and (not os.path.exists(file_path)):  # No hp for this class-attr-sub
+        if hard_bottleneck:  # Check for soft-hyperparameters existing for this setting.
+            alt_filename = Path(f"hyperparameters_sub{n_subset}.yaml")
+            alt_file_path = file_path = make_file_path(folder_name, alt_filename, check_folder_exists=False)
+            if os.path.exists(alt_file_path):  # Use soft hyperparams for hard-setting.
+                message = f"No hard hyperparameters found for {n_classes=}, {n_attr=} and {n_subset=}. "
+                message += f"Tried path {file_path}. "
+                message += "Using soft hyperparameters with hard set to `True`. "
+                warnings.warn(message)
+                with open(alt_file_path, "r") as infile:
+                    hyperparameters = yaml.safe_load(infile)
+                hyperparameters["hard"] = True
+                return hyperparameters
         message = f"No hyperparameters found for {n_classes=}, {n_attr=} and {n_subset=}. "
+        message += f"Tried path {file_path}. "
         message += "Falling back on default hyperparameters. "
         warnings.warn(message)
         default = True
 
     if default:
-        default_path = base_folder / DEFAULT_HYPERPARAMETERS_FILENAME_SHAPES
+        if hard_bottleneck:
+            default_file = DEFAULT_HYPERPARAMETERS_FILENAME_SHAPES_HARD
+        else:
+            default_file = DEFAULT_HYPERPARAMETERS_FILENAME_SHAPES
+        default_path = make_file_path(base_folder, default_file, check_folder_exists=False)
         with open(default_path, "r") as infile:
             hyperparameters = yaml.safe_load(infile)
         return hyperparameters
@@ -415,7 +454,8 @@ def load_hyperparameters_shapes(n_classes=None, n_attr=None, signal_strength=Non
     return hyperparameters
 
 
-def save_hyperparameters_shapes(n_classes, n_attr, signal_strength, n_subset, hyperparameters_dict, model_type):
+def save_hyperparameters_shapes(n_classes, n_attr, signal_strength, n_subset, hyperparameters_dict, model_type,
+                                hard_bottleneck=False):
     """
     Saves a set of hyperparameters. Hyperparameters should be of single model, with name `model_type`.
 
@@ -426,6 +466,7 @@ def save_hyperparameters_shapes(n_classes, n_attr, signal_strength, n_subset, hy
         n_subset (int): The amount of instances in each class used in the subset.
         hyperparameters_dict (dict): The hyperparameters to save.
         model_type (str): The name of the model with the given hyperparameters
+        hard_bottleneck (bool): Set to `True` if hard bottleneck was used. This will alter the name to end with `_hard`.
     """
     if model_type not in ["cnn", "cbm", "cbm_res", "cbm_skip", "scm"]:
         message = f"Argument `model_type` must be in [\"cnn\", \"cbm\", \"cbm_res\", \"cbm_skip\", \"scm\"]. "
@@ -433,7 +474,8 @@ def save_hyperparameters_shapes(n_classes, n_attr, signal_strength, n_subset, hy
         raise ValueError(message)
     folder_name = get_full_shapes_folder_path(
         n_classes, n_attr, signal_strength, relative_folder=HYPERPARAMETERS_FOLDER)
-    filename = Path(f"hyperparameters_sub{n_subset}.yaml")
+    bottleneck = "" if not hard_bottleneck else "_hard"
+    filename = Path(f"hyperparameters_sub{n_subset}{bottleneck}.yaml")
     file_path = make_file_path(folder_name, filename, check_folder_exists=False)
     if not os.path.exists(file_path):  # No yaml file for this setting
         os.makedirs(folder_name, exist_ok=True)

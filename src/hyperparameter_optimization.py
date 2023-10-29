@@ -72,7 +72,8 @@ class HyperparameterOptimizationShapes:
         self.non_blocking = non_blocking
         self.study_ran = False
         self.hyperparameter_names = self._get_hyperparameter_names()  # Names of possible hyperparameter
-        self.default_hyperparameters = load_hyperparameters_shapes(fast=fast, default=True)
+        self.default_hyperparameters = load_hyperparameters_shapes(fast=fast, default=True,
+                                                                   hard_bottleneck=hard_bottleneck)
 
         if n_subset is not None:  # Make subset again to make sure seed is correct
             make_subset_shapes(n_classes, n_attr, signal_strength, n_subset, seed=seed)
@@ -91,6 +92,7 @@ class HyperparameterOptimizationShapes:
             hyperparameter_names.append("activation")
             hyperparameter_names.append("attr_weight")
             hyperparameter_names.append("attr_weight_decay")
+            hyperparameter_names.append("hard")
         if self.model_type == "cbm":
             hyperparameter_names.append("two_layers")
         elif self.model_type in ["cbm_skip", "scm"]:
@@ -303,8 +305,7 @@ class HyperparameterOptimizationShapes:
             pin_memory=self.pin_memory, persistent_workers=self.persistent_workers)
 
         hp = self._get_hyperparameters_for_trial(trial)  # Get suggestions for hyperparameters
-        model = load_single_model(self.model_type, n_classes=self.n_classes, n_attr=self.n_attr,
-                                  hyperparameters=hp, hard_bottleneck=self.hard_bottleneck)
+        model = load_single_model(self.model_type, n_classes=self.n_classes, n_attr=self.n_attr, hyperparameters=hp)
         criterion = nn.CrossEntropyLoss()
         optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=hp["learning_rate"])
         exp_lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=hp["gamma"])
@@ -407,7 +408,8 @@ class HyperparameterOptimizationShapes:
         hyperparameters = self._round_dict_values(hyperparameters)
 
         save_hyperparameters_shapes(self.n_classes, self.n_attr, self.signal_strength, self.n_subset,
-                                    hyperparameters_dict=hyperparameters, model_type=self.model_type)
+                                    hyperparameters_dict=hyperparameters, model_type=self.model_type,
+                                    hard_bottleneck=self.hard_bottleneck)
 
 
 def run_hyperparameter_optimization_all_models(
@@ -457,23 +459,23 @@ def run_hyperparameter_optimization_all_models(
                     hyperparameters_to_search = {
                         "learning_rate": True, "dropout_probability": True, "gamma": True, "attr_schedule": False,
                         "attr_weight": False, "attr_weight_decay": False, "n_epochs": False, "n_linear_output": False,
-                        "activation": False, "two_layers": False, "n_hidden": False}
+                        "activation": False, "two_layers": False, "n_hidden": False, "hard": False}
                 else:
                     hyperparameters_to_search = {
                         "learning_rate": True, "dropout_probability": True, "gamma": False, "attr_schedule": True,
                         "attr_weight": False, "attr_weight_decay": False, "n_epochs": False, "n_linear_output": False,
-                        "activation": False, "two_layers": False, "n_hidden": False}
+                        "activation": False, "two_layers": False, "n_hidden": False, "hard": False}
             if not grid_search and set_hyperparameters_to_search:
                 if model_type == "cnn":
                     hyperparameters_to_search = {
                         "learning_rate": True, "dropout_probability": True, "gamma": True, "attr_schedule": False,
                         "attr_weight": False, "attr_weight_decay": False, "n_epochs": False, "n_linear_output": True,
-                        "activation": False, "two_layers": False, "n_hidden": False}
+                        "activation": False, "two_layers": False, "n_hidden": False, "hard": False}
                 else:
                     hyperparameters_to_search = {
                         "learning_rate": True, "dropout_probability": True, "gamma": False, "attr_schedule": True,
                         "attr_weight": False, "attr_weight_decay": False, "n_epochs": False, "n_linear_output": True,
-                        "activation": False, "two_layers": False, "n_hidden": False}
+                        "activation": False, "two_layers": False, "n_hidden": False, "hard": False}
 
             print(f"\nRunning hyperparameter optimization on model {model_type}. \n")
             obj = HyperparameterOptimizationShapes(
