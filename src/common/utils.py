@@ -1,13 +1,58 @@
 import os
+import torch
 import shutil
 import random
 import pickle
-import torch
+import logging
 import numpy as np
 
 from src.common.path_utils import load_hyperparameters_shapes
 from src.models.models_shapes import ShapesCNN, ShapesCBM, ShapesCBMWithResidual, ShapesCBMWithSkip, ShapesSCM
-from src.constants import MODEL_STRINGS
+from src.constants import MODEL_STRINGS, DEFAULT_LOG_LEVEL
+
+
+_CURRENT_LOG_LEVEL = DEFAULT_LOG_LEVEL
+
+
+# def set_global_log_level(level):
+#     global _CURRENT_LOG_LEVEL
+#     _CURRENT_LOG_LEVEL = level
+
+
+def set_global_log_level(level):
+    LOG_LEVEL_MAP = {
+        "debug": logging.DEBUG,
+        "info": logging.INFO,
+        "warning": logging.WARNING,
+        "error": logging.ERROR,
+        "critical": logging.CRITICAL
+    }
+    if isinstance(level, str):
+        level = level.strip().lower()
+        level = LOG_LEVEL_MAP[level]
+    logging.getLogger().setLevel(level)
+    logging.StreamHandler().setLevel(level)
+
+
+def get_logger(name):
+    """
+    Get a logger with the given name.
+
+    Args:
+        name (str): Name of the logger.
+
+    Returns:
+        logging.Logger: Configured logger instance.
+    """
+    logger = logging.getLogger(name)
+
+    if not logger.hasHandlers():  # Only if logger has not been set up before
+        ch = logging.StreamHandler()
+        formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+        ch.setFormatter(formatter)
+        logger.addHandler(ch)
+
+    return logger
 
 
 def seed_everything(seed=57):

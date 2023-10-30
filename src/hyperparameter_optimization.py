@@ -4,9 +4,12 @@ import torch.nn as nn
 
 from src.datasets.datasets_shapes import load_data_shapes, make_subset_shapes
 from src.train import train_simple, train_cbm
-from src.common.utils import load_single_model
+from src.common.utils import load_single_model, get_logger
 from src.common.path_utils import load_hyperparameters_shapes, save_hyperparameters_shapes
 from src.constants import MODEL_STRINGS
+
+
+logger = get_logger(__name__)
 
 
 class HyperparameterOptimizationShapes:
@@ -330,7 +333,7 @@ class HyperparameterOptimizationShapes:
             return history["best_val_accuracy"]
 
     def run_hyperparameter_search(self, hyperparameters_to_search=None, n_trials=50, write=True,
-                                  grid_search=True, verbose="warning"):
+                                  grid_search=True, optuna_verbosity="warning"):
         """
         Runs a whole optuna study.
 
@@ -343,7 +346,7 @@ class HyperparameterOptimizationShapes:
             write (bool, optional): If True, writes hyperparameters to file. Defaults to True.
             grid_search (bool): If True, will use standard grid-search. If not, will use default optuna
                 sampler, which will be set to TPE sampler if n_trials is less than 1000.
-            verbose (str, optional): Controls the verbosity of optuna study. Defaults to "warning".
+            optuna_verbosity (str, optional): Controls the verbosity of optuna study. Defaults to "warning".
         """
         self.hyperparameters_to_search = hyperparameters_to_search
         if hyperparameters_to_search is None:
@@ -354,13 +357,13 @@ class HyperparameterOptimizationShapes:
             direction = "minimize"
         else:  # Maximize acccuracy
             direction = "maximize"
-        verbose = str(verbose).strip().lower()
+        optuna_verbosity = str(optuna_verbosity).strip().lower()
 
-        if verbose == "info" or verbose == "2" or verbose == "1":
+        if optuna_verbosity == "info" or optuna_verbosity == "2" or optuna_verbosity == "1":
             optuna.logging.set_verbosity(optuna.logging.INFO)
-        if verbose == "warning":
+        if optuna_verbosity == "warning":
             optuna.logging.set_verbosity(optuna.logging.WARNING)
-        if verbose == "error" or verbose == "0":
+        if optuna_verbosity == "error" or optuna_verbosity == "0":
             optuna.logging.set_verbosity(optuna.logging.ERROR)
 
         study_name = f"Study_{self.n_subset}_{self.model_type}"
@@ -413,9 +416,9 @@ class HyperparameterOptimizationShapes:
 
 
 def run_hyperparameter_optimization_all_models(
-        n_classes, n_attr, signal_strength, subsets, hyperparameters_to_search=None, grid_search=False,
-        n_trials=10, batch_size=16, eval_loss=True, hard_bottleneck=None, device=None, num_workers=0,
-        pin_memory=False, persistent_workers=False, non_blocking=False, fast=False, write=True, verbose="warning"):
+        n_classes, n_attr, signal_strength, subsets, hyperparameters_to_search=None, grid_search=False, n_trials=10,
+        batch_size=16, eval_loss=True, hard_bottleneck=None, device=None, num_workers=0, pin_memory=False,
+        persistent_workers=False, non_blocking=False, fast=False, write=True, optuna_verbosity="warning"):
     """
     Run hyperparameter search for every model for many subsets.
 
@@ -446,13 +449,13 @@ def run_hyperparameter_optimization_all_models(
         max_epochs (int, optional): Maximum amount of epochs to run. Defaults to 50.
         write (bool, optional): Whether to write hyperparameters to file or not.
         fast (bool, optional): If True, will use hyperparameters with very low `n_epochs`. Defaults to False.
-        verbose (str, optional): Controls the verbosity of optuna study. Defaults to "warning".
+        optuna_verbosity (str, optional): Controls the verbosity of optuna study. Defaults to "warning".
     """
     set_hyperparameters_to_search = False
     if hyperparameters_to_search is None:
         set_hyperparameters_to_search = True
     for n_subset in subsets:
-        print(f"\nRunning hyperparameter search for {n_subset} subsets. \n")
+        logger.info(f"\n    Running hyperparameter search for subset {n_subset} / {subsets}.\n")
         for model_type in MODEL_STRINGS:
             if grid_search and set_hyperparameters_to_search:
                 if model_type == "cnn":
@@ -477,12 +480,12 @@ def run_hyperparameter_optimization_all_models(
                         "attr_weight": False, "attr_weight_decay": False, "n_epochs": False, "n_linear_output": True,
                         "activation": False, "two_layers": False, "n_hidden": False, "hard": False}
 
-            print(f"\nRunning hyperparameter optimization on model {model_type}. \n")
+            logger.info(f"Running hyperparameter optimization on model {model_type}. \n")
             obj = HyperparameterOptimizationShapes(
                 model_type=model_type, n_classes=n_classes, n_attr=n_attr, signal_strength=signal_strength,
                 n_subset=n_subset, batch_size=batch_size, eval_loss=eval_loss,
                 hard_bottleneck=hard_bottleneck, device=device, num_workers=num_workers,
                 pin_memory=pin_memory, persistent_workers=persistent_workers, non_blocking=non_blocking, fast=fast)
             obj.run_hyperparameter_search(n_trials=n_trials, hyperparameters_to_search=hyperparameters_to_search,
-                                          grid_search=grid_search, write=write, verbose=verbose)
-            print(f"\nFinnished search for model {model_type} with value {obj.study.best_trial.value}.\n")
+                                          grid_search=grid_search, write=write, optuna_verbosity=optuna_verbosity)
+            logger.info(f"Finnished search for model {model_type} with value {obj.study.best_trial.value}.\n")

@@ -1,11 +1,15 @@
 import torch
 import optuna
 
+from src.common.utils import get_logger
 from src.constants import N_EARLY_STOP_DEFAULT
 
 
+logger = get_logger(__name__)
+
+
 def train_simple(model, criterion, optimizer, train_loader, val_loader=None, n_epochs=10, scheduler=None, trial=None,
-                 n_early_stop=None, device=None, non_blocking=False, verbose=2):
+                 n_early_stop=None, device=None, non_blocking=False, verbose=1):
     """
     Trains a model and calculate training and valudation stats, given the model, loader, optimizer
     and some hyperparameters.
@@ -29,8 +33,7 @@ def train_simple(model, criterion, optimizer, train_loader, val_loader=None, n_e
         device (str): Use "cpu" for cpu training and "cuda:0" for gpu training.
         non_blocking (bool): If True, allows for asyncronous transfer between RAM and VRAM.
             This only works together with `pin_memory=True` to dataloader and GPU training.
-        verbose (int): Determines how much output is printed. If 2, will print stats after every epoch.
-            If 1, will print after last epoch only. If 0, will not print anything.
+        verbose (int): If 0, will not log anything. If not 0, will log last epoch with INFO and the others with DEBUG.
 
     Returns:
         dict: A dictionary of the training history. Will contain lists of training loss and accuracy over
@@ -107,12 +110,12 @@ def train_simple(model, criterion, optimizer, train_loader, val_loader=None, n_e
             else:  # Better than best loss
                 n_stagnation = 0
             if n_stagnation == n_early_stop:  # Early stopping, abort training
-                if verbose == 0:  # Do not print anything
+                if verbose == 0:  # No output
                     break
-                print(f"Epoch [{epoch + 1} / {n_epochs}]")
-                print(f"Train loss: {average_train_loss:.4f}, Train Accuracy: {train_accuracy:.4f}%")
-                print(f"Validation loss: {average_val_loss:.4f}, Validation Accuracy: {val_accuracy:.4f}%\n")
-                print(f"Early stopping after {n_stagnation} rounds of no validation loss improvement.\n")
+                logger.info(f"Epoch [{epoch + 1} / {n_epochs}]\n")
+                logger.info(f"Train loss: {average_train_loss:.4f}, Train Accuracy: {train_accuracy:.4f}%")
+                logger.info(f"Validation loss: {average_val_loss:.4f}, Validation Accuracy: {val_accuracy:.4f}%\n")
+                logger.info(f"Early stopping after {n_stagnation} rounds of no validation loss improvement.\n")
                 break
 
             if average_val_loss < best_val_loss:
@@ -130,15 +133,22 @@ def train_simple(model, criterion, optimizer, train_loader, val_loader=None, n_e
                 if trial.should_prune():
                     raise optuna.exceptions.TrialPruned()
 
-        if (verbose == 2) or ((verbose == 1) and (epoch + 1 == n_epochs)):
-            print(f"Epoch [{epoch + 1} / {n_epochs}]")
-            print(f"Train loss: {average_train_loss:.4f}, Train Accuracy: {train_accuracy:.4f}%")
-            if val_loader is not None:
-                print(f"Validation loss: {average_val_loss:.4f}, Validation Accuracy: {val_accuracy:.4f}%")
-            print()
-
         if scheduler is not None:
             scheduler.step()
+
+        if verbose == 0:  # Do not log
+            continue
+
+        message = f"Epoch [{epoch + 1} / {n_epochs}]\n"
+        message += f"Train loss: {average_train_loss:.4f}, Train Accuracy: {train_accuracy:.4f}%\n"
+        if val_loader is not None:
+            message += f"Validation loss: {average_val_loss:.4f}, Validation Accuracy: {val_accuracy:.4f}%"
+        message += "\n"
+
+        if epoch + 1 == n_epochs:  # Last epoch
+            logger.info(message)
+        else:
+            logger.debug(message)
 
     history = {"train_class_loss": train_class_loss_list, "train_class_accuracy": train_class_accuracy_list,
                "val_class_loss": val_class_loss_list, "val_class_accuracy": val_class_accuracy_list,
@@ -155,7 +165,7 @@ def train_simple(model, criterion, optimizer, train_loader, val_loader=None, n_e
 
 def train_cbm(model, criterion, attr_criterion, optimizer, train_loader, val_loader=None, n_epochs=10, attr_weight=1,
               attr_weight_decay=1, scheduler=None, trial=None, n_early_stop=15, device=None, non_blocking=False,
-              verbose=2):
+              verbose=1):
     """
     Trains and evaluates a Joint Concept Bottleneck Model. This means it is both trained normal
     output cross entropy loss, but also on the intermediary attribute loss.
@@ -185,8 +195,7 @@ def train_cbm(model, criterion, attr_criterion, optimizer, train_loader, val_loa
         device (str): Use "cpu" for cpu training and "cuda" for gpu training.
         non_blocking (bool): If True, allows for asyncronous transfer between RAM and VRAM.
             This only works together with `pin_memory=True` to dataloader and GPU training.
-        verbose (int): Determines how much output is printed. If 2, will print stats after every epoch.
-            If 1, will print after last epoch only. If 0, will not print anything.
+        verbose (int): If 0, will not log anything. If not 0, will log last epoch with INFO and the others with DEBUG.
 
     Returns:
         dict: A dictionary of the training history. Will contain lists of training loss and accuracy over
@@ -304,17 +313,22 @@ def train_cbm(model, criterion, attr_criterion, optimizer, train_loader, val_loa
             else:  # Better than best loss
                 n_stagnation = 0
             if n_stagnation == n_early_stop:  # Early stopping, abort training
-                if verbose == 0:  # Do not print output
+                if verbose == 0:  # Do not log
                     break
-                print(f"Epoch [{epoch + 1} / {n_epochs}]")
-                print(f"Train atribute loss: {average_train_attr_loss:.4f}, ", end="")
-                print(f"Train attribute accuracy: {train_attr_accuracy:.4f}%")
-                print(f"Train class loss: {average_train_class_loss:.4f}, ", end="")
-                print(f"Train class accuracy: {train_class_accuracy:.4f}%")
-                print(f"Val atribute loss: {average_val_attr_loss:.4f}, ", end="")
-                print(f"Val attribute accuracy: {val_attr_accuracy:.4f}%")
-                print(f"Val class loss: {average_val_class_loss:.4f}, Val class accuracy: {val_class_accuracy:.4f}%\n")
-                print(f"Early stopping after {n_stagnation} rounds of no validation loss improvement.\n")
+                logger.info(f"Epoch [{epoch + 1} / {n_epochs}]\n")
+                message = f"Train atribute loss: {average_train_attr_loss:.4f}, "
+                message += f"Train attribute accuracy: {train_attr_accuracy:.4f}%"
+                logger.info(message)
+                message = f"Train class loss: {average_train_class_loss:.4f}, "
+                message += f"Train class accuracy: {train_class_accuracy:.4f}%"
+                logger.info(message)
+                message = f"Val atribute loss: {average_val_attr_loss:.4f}, "
+                message += f"Val attribute accuracy: {val_attr_accuracy:.4f}%"
+                logger.info(message)
+                message = f"Val class loss: {average_val_class_loss:.4f}, "
+                message += f"Val class accuracy: {val_class_accuracy:.4f}%\n"
+                logger.info(message)
+                logger.info(f"Early stopping after {n_stagnation} rounds of no validation loss improvement.\n")
                 break
 
             if average_val_class_loss < best_val_loss:
@@ -332,22 +346,29 @@ def train_cbm(model, criterion, attr_criterion, optimizer, train_loader, val_loa
                 if trial.should_prune():
                     raise optuna.exceptions.TrialPruned()
 
-        if (verbose == 2) or ((verbose == 1) and (epoch + 1 == n_epochs)):
-            print(f"Epoch [{epoch + 1} / {n_epochs}]")
-            print(f"Train atribute loss: {average_train_attr_loss:.4f}, ", end="")
-            print(f"Train attribute accuracy: {train_attr_accuracy:.4f}%")
-            print(
-                f"Train class loss: {average_train_class_loss:.4f}, Train class accuracy: {train_class_accuracy:.4f}%")
-
-            if val_loader is not None:
-                print(f"Val atribute loss: {average_val_attr_loss:.4f}, ", end="")
-                print(f"Val attribute accuracy: {val_attr_accuracy:.4f}%")
-                print(f"Val class loss: {average_val_class_loss:.4f}, Val class accuracy: {val_class_accuracy:.4f}%")
-            print()
-
         if scheduler is not None:
             scheduler.step()
         attr_weight *= attr_weight_decay
+
+        if verbose == 0:  # Do not log
+            continue
+
+        message = f"Epoch [{epoch + 1} / {n_epochs}]\n"
+        message += f"Train atribute loss: {average_train_attr_loss:.4f}, "
+        message += f"Train attribute accuracy: {train_attr_accuracy:.4f}%\n"
+        message += f"Train class loss: {average_train_class_loss:.4f}, "
+        message += f"Train class accuracy: {train_class_accuracy:.4f}%\n"
+
+        if val_loader is not None:
+            message += f"Val atribute loss: {average_val_attr_loss:.4f}, "
+            message += f"Val attribute accuracy: {val_attr_accuracy:.4f}%\n"
+            message += f"Val class loss: {average_val_class_loss:.4f}, Val class accuracy: {val_class_accuracy:.4f}%"
+        message += "\n"
+
+        if (epoch + 1 == n_epochs):
+            logger.info(message)
+        else:
+            logger.debug(message)
 
     history = {"train_class_loss": train_class_loss_list, "train_class_accuracy": train_class_accuracy_list,
                "val_class_loss": val_class_loss_list, "val_class_accuracy": val_class_accuracy_list,

@@ -31,7 +31,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 
-from src.common.utils import split_dataset
+from src.common.utils import split_dataset, get_logger
+
+
+logger = get_logger(__name__)
 
 
 def draw_concept_probabilities(n_classes, class_number, signal_strength=0.98, equal_probabilities=False,
@@ -627,7 +630,7 @@ def generate_shapes_dataset(class_names, shape_combinations, n_images_class=10, 
         shape_name = class_names[i]
         shape_combination = shape_combinations[i]
         if verbose:
-            print(f"Beginning shape combination {shape_name}:")
+            logger.info(f"Beginning shape combination {shape_name}:")
         class_subdir = str(i) + "_" + shape_name + "/"
         full_dir_path = base_dir + class_subdir
 
@@ -635,7 +638,7 @@ def generate_shapes_dataset(class_names, shape_combinations, n_images_class=10, 
 
         for j in range(n_images_class):
             if verbose and ((j + 1) % 100 == 0):
-                print(f"Image number [{j + 1} / {n_images_class}].")
+                logger.info(f"Image number [{j + 1} / {n_images_class}].")
             fig_name = shape_name + "_" + str(j) + ".png"
             # Draw concept-probabilites to use for single image
             concept_probabilities = draw_concept_probabilities(n_classes=len(class_names), class_number=i,
@@ -656,7 +659,7 @@ def generate_shapes_dataset(class_names, shape_combinations, n_images_class=10, 
                               "attribute_label": concept_labels, "class_name": shape_name})
 
     if verbose:
-        print("Begin writing tables:")
+        logger.info("Begin writing tables:")
     tables_dir = base_dir + "tables/"  # Folder where data with labels and paths should be saved
     if os.path.exists(tables_dir):
         shutil.rmtree(tables_dir)
@@ -667,7 +670,7 @@ def generate_shapes_dataset(class_names, shape_combinations, n_images_class=10, 
     if split_data:  # Split data in train, validation and test-set.
         split_dataset(data_list, tables_dir, include_test=True)
     if verbose:
-        print("Finished writing tables.")
+        logger.info("Finished writing tables.")
 
 
 def make_shapes_10k_c4_correlation():

@@ -4,7 +4,7 @@ Testing function where the code can be run.
 import argparse
 import torch
 
-from src.common.utils import seed_everything, parse_int_list
+from src.common.utils import seed_everything, parse_int_list, get_logger, set_global_log_level
 from src.hyperparameter_optimization import run_hyperparameter_optimization_all_models
 from src.evaluation import run_models_on_subsets_and_plot
 
@@ -37,7 +37,8 @@ def parse_arguments():
     parser.add_argument("--num_workers", type=int, default=0, help="Amount of workers to load data to RAM.")
     parser.add_argument("--pin_memory", action="store_true", help="Pins the RAM memory (makes it non-pagable).")
     parser.add_argument("--persistent_workers", action="store_true", help="Do not reload workers between epochs")
-    parser.add_argument("--verbose", type=int, default=1, help="Verbosity of training (2, 1 or 0).")
+    parser.add_argument("--logging_level", type=str, default="info", help="Verbosisty level of the logger.")
+    parser.add_argument("--optuna_verbosity", type=int, default=1, help="Verbosity of optuna (2, 1 or 0).")
 
     args = parser.parse_args()
     return args
@@ -46,6 +47,9 @@ def parse_arguments():
 if __name__ == "__main__":
     seed_everything(57)
     args = parse_arguments()
+
+    set_global_log_level(args.logging_level)
+    logger = get_logger(__name__)
 
     device = args.device
     if args.device is None or args.device == "":
@@ -59,13 +63,13 @@ if __name__ == "__main__":
             grid_search=grid_search, subsets=args.subsets, batch_size=args.batch_size, eval_loss=True,
             hard_bottleneck=args.hard_bottleneck, device=device, num_workers=args.num_workers,
             pin_memory=args.pin_memory, persistent_workers=args.persistent_workers, non_blocking=args.non_blocking,
-            fast=args.fast, verbose=args.verbose)
+            fast=args.fast, optuna_verbosity=args.optuna_verbosity)
 
     if args.evaluate_and_plot:
-        print(f"\nBeginning evaluation with {args.n_bootstrap} bootstrap iterations.\n")
+        logger.info(f"\nBeginning evaluation with {args.n_bootstrap} bootstrap iterations.\n")
         run_models_on_subsets_and_plot(
             args.n_classes, args.n_attr, signal_strength=args.signal_strength, subsets=args.subsets,
             n_bootstrap=args.n_bootstrap, bootstrap_checkpoints=args.bootstrap_checkpoints, fast=args.fast,
             batch_size=args.batch_size, hard_bottleneck=args.hard_bottleneck,
             non_blocking=args.non_blocking, num_workers=args.num_workers, pin_memory=args.pin_memory,
-            persistent_workers=args.persistent_workers, verbose=args.verbose)
+            persistent_workers=args.persistent_workers)
