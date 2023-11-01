@@ -441,7 +441,7 @@ class ShapesSCM(nn.Module):
         else:
             y = concepts
         if self.hard:
-            y = torch.round(concepts)
+            y = torch.round(y)
 
         x = torch.concat((x, y), dim=1)
         x = self.final_classifier(x)  # Out: N x n_classes
