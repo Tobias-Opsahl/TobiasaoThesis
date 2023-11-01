@@ -4,7 +4,7 @@ import torch.nn as nn
 from src.train import train_simple, train_cbm
 from src.datasets.datasets_shapes import load_data_shapes, make_subset_shapes
 from src.plotting import plot_training_histories, plot_test_accuracies
-from src.common.utils import load_models_shapes, add_histories, seed_everything, get_logger
+from src.common.utils import seed_everything, get_logger, load_models_shapes, add_histories, average_histories
 from src.common.path_utils import load_hyperparameters_shapes, save_history_shapes, save_model_shapes
 from src.constants import MODEL_STRINGS, COLORS, MAX_EPOCHS, FAST_MAX_EPOCHS, BOOTSTRAP_CHECKPOINTS
 
@@ -170,8 +170,9 @@ def run_models_on_subsets_and_plot(
             n_classes, n_attr, signal_strength, n_subset=None, mode="test", batch_size=batch_size,
             drop_last=False, num_workers=num_workers, pin_memory=pin_memory, persistent_workers=persistent_workers)
         for i in range(n_bootstrap):
+            logger.info(f"Begginging bootstrap iteration [{i + 1} / {n_bootstrap}]")
             make_subset_shapes(n_classes, n_attr, signal_strength, n_images_class=n_subset, seed=seed)
-            seed += 1  # Change seed so that subset will be different for the bootstrapping
+            seed += 1  # Change seed so that subset will be different for the bootstrapping # TODO: Uncomment
 
             train_loader, val_loader = load_data_shapes(
                 n_classes, n_attr, signal_strength, n_subset, mode="train-val", batch_size=batch_size, drop_last=False,
@@ -181,19 +182,20 @@ def run_models_on_subsets_and_plot(
                 n_classes, n_attr, signal_strength, n_subset=n_subset, train_loader=train_loader, val_loader=val_loader,
                 test_loader=test_loader, hyperparameters=None, hard_bottleneck=hard_bottleneck,
                 fast=fast, device=device, non_blocking=non_blocking, seed=base_seed)
-            histories_total = add_histories(histories_total, histories, n_bootstrap)
+            histories_total = add_histories(histories_total, histories)
 
             n_boot = i + 1
             if n_boot in bootstrap_checkpoints:
 
-                save_history_shapes(n_classes, n_attr, signal_strength, n_boot, n_subset, histories_total,
+                averaged_histories = average_histories(histories_total, n_boot)
+                save_history_shapes(n_classes, n_attr, signal_strength, n_boot, n_subset, averaged_histories,
                                     hard_bottleneck=hard_bottleneck)
                 plot_training_histories(n_classes, n_attr, signal_strength, n_boot, n_subset,
-                                        histories=histories_total, names=MODEL_STRINGS, hard_bottleneck=hard_bottleneck,
-                                        colors=COLORS, attributes=False)
+                                        histories=averaged_histories, names=MODEL_STRINGS,
+                                        hard_bottleneck=hard_bottleneck, colors=COLORS, attributes=False)
                 # Exclude cnn model when plotting attributes / concept training
                 plot_training_histories(n_classes, n_attr, signal_strength, n_boot, n_subset,
-                                        histories=histories_total[1:], names=["cbm", "cbm_res", "cbm_skip", "scm"],
+                                        histories=averaged_histories[1:], names=["cbm", "cbm_res", "cbm_skip", "scm"],
                                         hard_bottleneck=hard_bottleneck, colors=COLORS[1:], attributes=True)
 
     for n_boot in bootstrap_checkpoints:

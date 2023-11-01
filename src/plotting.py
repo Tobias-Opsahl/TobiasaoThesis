@@ -265,7 +265,7 @@ def plot_test_accuracies(n_classes, n_attr, signal_strength, subsets, n_bootstra
         plt.plot(x_values, error_list, label=name, c=color)  # Lines
         plt.scatter(x_values, error_list, marker="s", facecolor=color, edgecolor=color)  # Squares at each point
 
-    plt.subplots_adjust(left=0.05, right=0.95, top=0.95, bottom=0.1)
+    plt.subplots_adjust(left=0.065, right=0.95, top=0.95, bottom=0.1)
     plt.legend()
     plt.xlabel("Size of Subset for each class")
     save_test_plot_shapes(n_classes, n_attr, signal_strength, n_bootstrap, hard_bottleneck=hard_bottleneck)

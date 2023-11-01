@@ -1,4 +1,5 @@
 import os
+import copy
 import torch
 import shutil
 import random
@@ -214,19 +215,17 @@ def load_models_shapes(n_classes, n_attr, signal_strength=98, n_subset=None, hyp
     return models
 
 
-def add_histories(histories_total, histories_new, n_bootstrap):
+def add_histories(histories_total, histories_new):
     """
-    Adds together two training histories and averages. This means looping over the dictionaries and summing them,
-    and also dividing new sum by `n_bootstrap` to average over runs.
+    Adds together two training histories. This means looping over the dictionaries and summing them,
     This is also supported for first iteration where `histories_total` is None.
 
     Args:
-        histories_total (dict): First dictionary to add. May be None.
-        histories_new (dict): Second dictionary to add.
-        n_bootstrap (int): The amount of bootstrap iteration, will divide by this number.
+        histories_total (list of dict dict): First list of dictionaries to add. May be None.
+        histories_new (dict): Second list of dictionaries to add.
 
     Returns:
-        dict: The added and averaged dictionary.
+        list of dict: The added dictionary.
     """
 
     metric_keys = ["train_class_loss", "train_class_accuracy", "val_class_loss", "val_class_accuracy",
@@ -238,7 +237,7 @@ def add_histories(histories_total, histories_new, n_bootstrap):
                 if histories_new[i].get(key) is None:
                     continue
                 for j in range(len(histories_new[i][key])):
-                    histories_new[i][key][j] /= n_bootstrap
+                    histories_new[i][key][j]
         return histories_new
 
     for i in range(len(histories_new)):  # loop over each models history
@@ -246,5 +245,32 @@ def add_histories(histories_total, histories_new, n_bootstrap):
             if histories_total[i].get(key) is None:
                 continue
             for j in range(len(histories_new[i][key])):
-                histories_total[i][key][j] += histories_new[i][key][j] / n_bootstrap
+                histories_total[i][key][j] += histories_new[i][key][j]
     return histories_total
+
+
+def average_histories(histories_total, n_bootstrap):
+    """
+    Given a complete training history, will average out the numerical inputs, based on how many bootstrap iterations
+    that was ran.
+
+    Args:
+        histories_total (list of dict): Dictionary of hsitories
+        n_bootstrap (int): THe amount of bootstrap iterations ran.
+
+    Returns:
+        list of dict: The averaged dictionary.
+    """
+
+    metric_keys = ["train_class_loss", "train_class_accuracy", "val_class_loss", "val_class_accuracy",
+                   "train_attr_loss", "train_attr_accuracy", "val_attr_loss", "val_attr_accuracy", "test_accuracy"]
+
+    new_histories = []
+    for i in range(len(histories_total)):  # loop over each models history
+        new_histories.append(copy.deepcopy(histories_total[i]))
+        for key in metric_keys:  # Loop over the keys to use
+            if histories_total[i].get(key) is None:
+                continue
+            for j in range(len(histories_total[i][key])):
+                new_histories[i][key][j] /= n_bootstrap
+    return new_histories
