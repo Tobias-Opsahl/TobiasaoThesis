@@ -106,11 +106,11 @@ def train_and_evaluate_shapes(
         if model.name == "ShapesCNN":
             history, models_dict = train_simple(
                 model, criterion, optimizer, train_loader, val_loader, scheduler=exp_lr_scheduler, n_epochs=n_epochs,
-                n_early_stop=None, device=device, non_blocking=non_blocking)
+                n_early_stop=False, device=device, non_blocking=non_blocking)
         else:
             history, models_dict = train_cbm(
                 model, criterion, attr_criterion, optimizer, train_loader, val_loader, n_epochs=n_epochs,
-                attr_weight=hp[model_string]["attr_weight"], scheduler=exp_lr_scheduler, n_early_stop=None,
+                attr_weight=hp[model_string]["attr_weight"], scheduler=exp_lr_scheduler, n_early_stop=False,
                 device=device, non_blocking=non_blocking)
 
         state_dict = models_dict["best_model_loss_state_dict"]

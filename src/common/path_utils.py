@@ -431,7 +431,8 @@ def load_hyperparameters_shapes(n_classes=None, n_attr=None, signal_strength=Non
                 warnings.warn(message)
                 with open(alt_file_path, "r") as infile:
                     hyperparameters = yaml.safe_load(infile)
-                hyperparameters["hard"] = True
+                for key in hyperparameters:
+                    hyperparameters[key]["hard"] = True
                 return hyperparameters
         message = f"No hyperparameters found for {n_classes=}, {n_attr=} and {n_subset=}. "
         message += f"Tried path {file_path}. "

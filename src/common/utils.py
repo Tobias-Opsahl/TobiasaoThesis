@@ -8,15 +8,7 @@ import numpy as np
 
 from src.common.path_utils import load_hyperparameters_shapes
 from src.models.models_shapes import ShapesCNN, ShapesCBM, ShapesCBMWithResidual, ShapesCBMWithSkip, ShapesSCM
-from src.constants import MODEL_STRINGS, DEFAULT_LOG_LEVEL
-
-
-_CURRENT_LOG_LEVEL = DEFAULT_LOG_LEVEL
-
-
-# def set_global_log_level(level):
-#     global _CURRENT_LOG_LEVEL
-#     _CURRENT_LOG_LEVEL = level
+from src.constants import MODEL_STRINGS
 
 
 def set_global_log_level(level):
