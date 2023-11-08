@@ -3,10 +3,10 @@ import torch.nn as nn
 
 from src.train import train_simple, train_cbm
 from src.datasets.datasets_shapes import load_data_shapes, make_subset_shapes
-from src.plotting import plot_training_histories, plot_test_accuracies
+from src.plotting import plot_training_histories_shapes, plot_test_accuracies_shapes
 from src.common.utils import seed_everything, get_logger, load_models_shapes, add_histories, average_histories
 from src.common.path_utils import load_hyperparameters_shapes, save_history_shapes, save_model_shapes
-from src.constants import MODEL_STRINGS, COLORS, MAX_EPOCHS, FAST_MAX_EPOCHS, BOOTSTRAP_CHECKPOINTS
+from src.constants import MODEL_STRINGS, COLORS, MAX_EPOCHS, FAST_MAX_EPOCHS_SHAPES, BOOTSTRAP_CHECKPOINTS
 
 
 logger = get_logger(__name__)
@@ -83,7 +83,8 @@ def train_and_evaluate_shapes(
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     hp = hyperparameters
     if hp is None:
-        hp = load_hyperparameters_shapes(n_classes, n_attr, signal_strength, n_subset, hard_bottleneck=hard_bottleneck)
+        hp = load_hyperparameters_shapes(
+            n_classes, n_attr, signal_strength, n_subset, hard_bottleneck=hard_bottleneck)
 
     models = load_models_shapes(n_classes, n_attr, hyperparameters=hp)
     histories = []
@@ -96,11 +97,12 @@ def train_and_evaluate_shapes(
         logger.info(f"Running model {model.name}:")
         optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()),
                                      lr=hp[model_string]["learning_rate"])
-        exp_lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=hp[model_string]["gamma"])
+        exp_lr_scheduler = torch.optim.lr_scheduler.StepLR(
+            optimizer, step_size=5, gamma=hp[model_string]["gamma"])
 
         n_epochs = MAX_EPOCHS
         if fast:
-            n_epochs = FAST_MAX_EPOCHS
+            n_epochs = FAST_MAX_EPOCHS_SHAPES
         if seed is not None:  # Seed before training, for reprorudibility
             seed_everything(seed)
         if model.name == "ShapesCNN":
@@ -117,7 +119,8 @@ def train_and_evaluate_shapes(
         save_model_shapes(n_classes, n_attr, signal_strength, n_subset, state_dict,
                           model_type=model.short_name, metric="loss", hard_bottleneck=hard_bottleneck)
         model.load_state_dict(state_dict)
-        test_accuracy = evaluate_on_test_set(model, test_loader, device=device, non_blocking=non_blocking)
+        test_accuracy = evaluate_on_test_set(
+            model, test_loader, device=device, non_blocking=non_blocking)
         history["test_accuracy"] = [test_accuracy]
         histories.append(history)
 
@@ -137,8 +140,8 @@ def run_models_on_subsets_and_plot(
     Args:
         n_classes (int): The amount of classes in the dataset.
         n_attr (int): The amount of attributes in the dataset
-        subsets (list of int): List of the subsets to run on.
         signal_strength (int): The signal_strength the dataset is created with.
+        subsets (list of int): List of the subsets to run on.
         n_bootstrap (int, optional): The amount of times to draw new subset and run models. Defaults to 1.
         bootstrap_checkpoints (list of int): List of bootstrap iterations to save and plot after.
         fast (bool, optional): If True, will load hyperparameters with low `n_epochs`. Defaults to False.
@@ -163,16 +166,19 @@ def run_models_on_subsets_and_plot(
 
     for n_subset in subsets:
         seed = base_seed
-        logger.info(f"\n    Beginning evaluation on subset {n_subset} / {subsets}: \n")
+        logger.info(
+            f"\n    Beginning evaluation on subset {n_subset} / {subsets}: \n")
         histories_total = None
         # Load test-set for full dataset (not subset)
         test_loader = load_data_shapes(
             n_classes, n_attr, signal_strength, n_subset=None, mode="test", batch_size=batch_size,
             drop_last=False, num_workers=num_workers, pin_memory=pin_memory, persistent_workers=persistent_workers)
         for i in range(n_bootstrap):
-            logger.info(f"Begginging bootstrap iteration [{i + 1} / {n_bootstrap}]")
-            make_subset_shapes(n_classes, n_attr, signal_strength, n_images_class=n_subset, seed=seed)
-            seed += 1  # Change seed so that subset will be different for the bootstrapping # TODO: Uncomment
+            logger.info(
+                f"Beginning bootstrap iteration [{i + 1} / {n_bootstrap}]")
+            make_subset_shapes(n_classes, n_attr, signal_strength,
+                               n_images_class=n_subset, seed=seed)
+            seed += 1  # Change seed so that subset will be different for the bootstrapping
 
             train_loader, val_loader = load_data_shapes(
                 n_classes, n_attr, signal_strength, n_subset, mode="train-val", batch_size=batch_size, drop_last=False,
@@ -190,16 +196,19 @@ def run_models_on_subsets_and_plot(
                 averaged_histories = average_histories(histories_total, n_boot)
                 save_history_shapes(n_classes, n_attr, signal_strength, n_boot, n_subset, averaged_histories,
                                     hard_bottleneck=hard_bottleneck)
-                plot_training_histories(n_classes, n_attr, signal_strength, n_boot, n_subset,
-                                        histories=averaged_histories, names=MODEL_STRINGS,
-                                        hard_bottleneck=hard_bottleneck, colors=COLORS, attributes=False)
-                # Exclude cnn model when plotting attributes / concept training
-                plot_training_histories(n_classes, n_attr, signal_strength, n_boot, n_subset,
-                                        histories=averaged_histories[1:], names=["cbm", "cbm_res", "cbm_skip", "scm"],
-                                        hard_bottleneck=hard_bottleneck, colors=COLORS[1:], attributes=True)
+                # Only plot histories for last bootstrap iterations
+                if n_boot == bootstrap_checkpoints[-1]:
+                    plot_training_histories_shapes(
+                        n_classes, n_attr, signal_strength, n_boot, n_subset, histories=averaged_histories,
+                        names=MODEL_STRINGS, hard_bottleneck=hard_bottleneck, colors=COLORS, attributes=False)
+                    # Exclude cnn model when plotting attributes / concept training
+                    plot_training_histories_shapes(
+                        n_classes, n_attr, signal_strength, n_boot, n_subset, histories=averaged_histories[1:],
+                        names=["cbm", "cbm_res", "cbm_skip", "scm"], hard_bottleneck=hard_bottleneck, colors=COLORS[1:],
+                        attributes=True)
 
     for n_boot in bootstrap_checkpoints:
         if n_boot > n_bootstrap:  # Incase a checkpoint is higher than the actual iterations ran
             break
-        plot_test_accuracies(n_classes, n_attr, signal_strength, subsets=subsets, n_bootstrap=n_boot,
-                             hard_bottleneck=hard_bottleneck)
+        plot_test_accuracies_shapes(
+            n_classes, n_attr, signal_strength, subsets=subsets, n_bootstrap=n_boot, hard_bottleneck=hard_bottleneck)

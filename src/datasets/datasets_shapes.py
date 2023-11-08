@@ -1,7 +1,6 @@
 import os
 import pickle
 import random
-import shutil
 import torch
 import torchvision
 from torch.utils.data import Dataset, DataLoader
