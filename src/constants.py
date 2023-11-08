@@ -1,7 +1,10 @@
 MODEL_STRINGS = ["cnn", "cbm", "cbm_res", "cbm_skip", "scm"]
+MODEL_STRINGS_CUB = ["cnn", "cbm", "cbm_res", "cbm_skip"]
 COLORS = ["y", "r", "blueviolet", "black", "skyblue"]
+COLORS_CUB = ["y", "r", "blueviolet", "black"]
 MAX_EPOCHS = 50
-FAST_MAX_EPOCHS = 2  # Use in order to quickly test if implementations work
+FAST_MAX_EPOCHS_SHAPES = 2  # Use in order to quickly test if implementations work
+FAST_MAX_EPOCHS_CUB = 1
 N_EARLY_STOP_DEFAULT = 7
 DEFAULT_HYPERPARAMETERS_FILENAME_SHAPES = "default.yaml"
 FAST_HYPERPARAMETERS_FILENAME_SHAPES = "fast.yaml"
@@ -20,9 +23,13 @@ HISTORY_FOLDER = "history/"
 SAVED_MODELS_FOLDER = "saved_models/"
 PLOTS_FOLDER = "plots/"
 
-# Data paths. Does not need to be edited, if datasets are put in "data/shapes/", "data/cub/", etc.
 # DATA_FOLDER gets added to the beginning of the other folders, and it can be an absolute path. It will
-# also make all the other sub-folder absolute.
+# also make all the other sub-foldes absolute.
 DATA_FOLDER = "data/"
 SHAPES_FOLDER = "shapes/"
-CUB_FOLDER = "CUB/"
+CUB_FOLDER = "cub/"
+CUB_TABLES_FOLDER = "CUB_processed/class_attr_data_10"
+CUB_PROCESSED_FOLDER = "CUB_processed/"
+CUB_FEATURE_SELECTION_FILENAME = "CUB_feature_selection.pkl"
+
+N_CLASSES_CUB = 200

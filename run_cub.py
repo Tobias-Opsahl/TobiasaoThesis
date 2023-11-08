@@ -4,32 +4,40 @@ Testing function where the code can be run.
 import argparse
 import torch
 import torch.nn as nn
-import numpy as np
-from train import train_simple, train_cbm
 
-from src.datasets.datasets_cub import load_data_cub
-from src.models.models_cub import (make_mobilenetv3, CBMWithSkip, make_cbm, SequentialConceptModel)
-from src.common.utils import seed_everything
+from src.train import train_simple, train_cbm
+from src.datasets.datasets_cub import load_data_cub, make_subset_cub
+from src.models.models_cub import CubCNN, CubCBM, CubCBMWithResidual, CubCBMWithSkip
+from src.common.utils import seed_everything, get_logger, set_global_log_level, find_class_imbalance, parse_int_list
+from src.common.path_utils import load_data_list_cub
+from src.evaluation_cub import run_models_on_subsets_and_plot
+from src.hyperparameter_optimization_cub import run_hyperparameter_optimization_all_models
 
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Script for parsing command-line arguments.")
+    
+    parser.add_argument("--run_hyperparameters", action="store_true", help="Run hyperparameter search.")
+    parser.add_argument("--no_grid_search", action="store_true", help="Do not run grid-search, but TPEsampler.")
+    parser.add_argument("--evaluate_and_plot", action="store_true", help="Evaluate models and plot.")
 
-    parser.add_argument("--batch_size", type=int, default=16, help="Batch size for training.")
-    parser.add_argument("--n_classes", type=int, default=10, help="Number of classes.")
-    parser.add_argument("--n_attr", type=int, default=112, help="Number of attributes.")
-    parser.add_argument("--n_epochs", type=int, default=10, help="Number of epochs for training.")
-    parser.add_argument("--n_hidden", type=int, default=128, help="Number of hidden units in cbm skip connection.")
-    parser.add_argument("--n_linear_output", type=int, default=64, help="Number of nodes in first linear layer")
-    parser.add_argument("--attr_weight", type=int, default=1, help="Weight for attributes.")
-    parser.add_argument("--sigmoid", action="store_true", help="Use sigmoid activation in concept layer.")
-    parser.add_argument("--relu", action="store_true", help="Use relu activation in concept layer.")
-    parser.add_argument("--small", action="store_true", help="Use a small model. If not specified, defaults to False.")
+    parser.add_argument("--batch_size", type=int, default=128, help="Batch size for training.")
+    parser.add_argument("--n_bootstrap", type=int, default=1, help="number of bootstrap iterations to run")
+    help = "Number of bootstrap iterations to save at. Can be single int or list of int, for example `1` or `1,5,10`."
+    parser.add_argument("--bootstrap_checkpoints", type=parse_int_list, help=help)
+    # parser.add_argument("--n_bootstrap", type=int, default=1, help="Number of bootstrap iterations.")
+    help = "Sizes of subsets to run on. Can be single int or list of int, for example `50` or `50,100,150`."
+    parser.add_argument("--subsets", type=parse_int_list, default=[1], help=help)
+    parser.add_argument("--n_trials", type=int, default=100, help="Number of trials for hyperparameter search.")
+    parser.add_argument("--fast", action="store_true", help="Use fast testing hyperparameters.")
+    parser.add_argument("--hard_bottleneck", action="store_true", help="If True, will use hard bottleneck")
+
     parser.add_argument("--device", type=str, default=None, help="Device to train on. cuda:0 or CPU.")
     parser.add_argument("--non_blocking", action="store_true", help="Allows asynchronous RAM to VRAM operations.")
     parser.add_argument("--num_workers", type=int, default=0, help="Amount of workers to load data to RAM.")
     parser.add_argument("--pin_memory", action="store_true", help="Pins the RAM memory (makes it non-pagable).")
     parser.add_argument("--persistent_workers", action="store_true", help="Do not reload workers between epochs")
+    parser.add_argument("--optuna_verbosity", type=int, default=1, help="Verbosity of optuna (2, 1 or 0).")
 
     args = parser.parse_args()
     return args
@@ -39,44 +47,57 @@ if __name__ == "__main__":
     seed_everything(57)
     args = parse_arguments()
 
+    set_global_log_level("debug")
+    logger = get_logger(__name__)
+
     if args.device is None or args.device == "":
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-    train_loader, val_loader, test_loader = load_data_cub(
-        subset=args.n_classes, n_attr=args.n_attr, batch_size=args.batch_size, drop_last=True,
-        num_workers=args.num_workers, pin_memory=args.pin_memory, persistent_workers=args.persistent_workers)
+    grid_search = not args.no_grid_search
 
-    cbm = make_cbm(n_classes=args.n_classes, n_attr=args.n_attr, sigmoid=args.sigmoid, double_top=True,
-                   n_hidden=args.n_hidden, small=args.small)
-    cbm_skip1 = CBMWithSkip(n_attr=args.n_attr, n_output=args.n_classes, n_hidden=args.n_hidden,
-                            concat=False, sigmoid=args.sigmoid, small=args.small)
-    cbm_skip2 = CBMWithSkip(n_attr=args.n_attr, n_output=args.n_classes, n_hidden=args.n_hidden,
-                            concat=True, sigmoid=args.sigmoid, small=args.small)
-    standard = make_mobilenetv3(n_output=args.n_classes, small=args.small)
+    if args.run_hyperparameters:
+        run_hyperparameter_optimization_all_models(
+            n_trials=args.n_trials, grid_search=grid_search, subsets=args.subsets, batch_size=args.batch_size,
+            eval_loss=True, hard_bottleneck=args.hard_bottleneck, device=device, num_workers=args.num_workers,
+            pin_memory=args.pin_memory, persistent_workers=args.persistent_workers, non_blocking=args.non_blocking,
+            fast=args.fast, optuna_verbosity=args.optuna_verbosity)
 
-    criterion = nn.CrossEntropyLoss()
-    if args.sigmoid:
-        attr_criterion = nn.BCELoss()
-    else:
-        attr_criterion = nn.BCEWithLogitsLoss()
+    if args.evaluate_and_plot:
+        logger.info(f"\nBeginning evaluation with {args.n_bootstrap} bootstrap iterations.\n")
+        run_models_on_subsets_and_plot(
+            subsets=args.subsets, n_bootstrap=args.n_bootstrap, bootstrap_checkpoints=args.bootstrap_checkpoints,
+            fast=args.fast, batch_size=args.batch_size, hard_bottleneck=args.hard_bottleneck,
+            non_blocking=args.non_blocking, num_workers=args.num_workers, pin_memory=args.pin_memory,
+            persistent_workers=args.persistent_workers)
 
-    models = [cbm, cbm_skip1, cbm_skip2]
-    model_names = ["cbm", "cbm_skip1", "cbm_skip2"]
-    for i, model in enumerate([cbm, cbm_skip1, cbm_skip2]):
-        print(f"Running model {i + 1}, {model_names[i]}\n")
-        optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=0.001)
-        exp_lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=2, gamma=0.3)
-        model = train_cbm(model, criterion, attr_criterion, optimizer, train_loader, val_loader,
-                          n_epochs=args.n_epochs, attr_weight=args.attr_weight, scheduler=exp_lr_scheduler,
-                          device=device, non_blocking=args.non_blocking)
+    # train_loader = load_data_cub(
+    #     mode="train", n_subset=n_subset, batch_size=args.batch_size, drop_last=False,
+    #     num_workers=args.num_workers, pin_memory=args.pin_memory, persistent_workers=args.persistent_workers)
 
-    for model in [standard]:
-        print("Running standard model\n")
-        optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=0.001)
-        exp_lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=2, gamma=0.3)
-        model = train_simple(model, criterion, optimizer, train_loader, val_loader,
-                             n_epochs=args.n_epochs, scheduler=exp_lr_scheduler,
-                             device=device, non_blocking=args.non_blocking)
+    # cnn = CubCNN()
+    # cbm = CubCBM()
+    # cbm_res = CubCBMWithResidual()
+    # cbm_skip = CubCBMWithSkip()
 
-    from IPython import embed
-    embed()
+    # criterion = nn.CrossEntropyLoss()
+    # imbalances = find_class_imbalance(n_subset=n_subset, multiple_attr=True)
+    # imbalances = torch.FloatTensor(imbalances).to(device)
+    # attr_criterion = nn.BCEWithLogitsLoss(weight=imbalances)
+
+    # for model in [cnn]:
+    #     print("Running standard model\n")
+    #     optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=0.01)
+    #     exp_lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=2, gamma=0.3)
+    #     model = train_simple(model, criterion, optimizer, train_loader, None,
+    #                          n_epochs=2, scheduler=exp_lr_scheduler,
+    #                          device=device, non_blocking=args.non_blocking)
+
+    # model_names = ["cbm", "cbm_res", "cbm_skip"]
+    # for i, model in enumerate([cbm, cbm_res, cbm_skip]):
+    #     print(f"Running model {i + 1}, {model_names[i]}\n")
+    #     optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=0.01)
+    #     exp_lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=2, gamma=0.3)
+    #     model = train_cbm(model, criterion, attr_criterion, optimizer, train_loader, None,
+    #                       n_epochs=2, attr_weight=args.attr_weight, scheduler=exp_lr_scheduler,
+    #                       device=device, non_blocking=args.non_blocking)
+

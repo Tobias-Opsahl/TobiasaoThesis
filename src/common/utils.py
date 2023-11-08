@@ -4,12 +4,13 @@ import torch
 import shutil
 import random
 import pickle
-import logging
+import logging 
 import numpy as np
 
-from src.common.path_utils import load_hyperparameters_shapes
+from src.common.path_utils import load_hyperparameters_shapes, load_hyperparameters_cub, load_data_list_cub
 from src.models.models_shapes import ShapesCNN, ShapesCBM, ShapesCBMWithResidual, ShapesCBMWithSkip, ShapesSCM
-from src.constants import MODEL_STRINGS
+from src.models.models_cub import CubCNN, CubCBM, CubCBMWithResidual, CubCBMWithSkip
+from src.constants import MODEL_STRINGS, MODEL_STRINGS_CUB, N_CLASSES_CUB
 
 
 def set_global_log_level(level):
@@ -123,7 +124,7 @@ def load_single_model(model_type, n_classes, n_attr, hyperparameters):
     Loads a model, given its hyperparameters.
 
     Args:
-        model_type (str): The model to load. Must be in ["cnn", "cbm", "cbm_res", "cbm_skip"]
+        model_type (str): The model to load. Must be in ["cnn", "cbm", "cbm_res", "cbm_skip", "scm"]
         n_classes (int): The amount of classes used in the dataset.
         n_attr (int): The amount of attributes used in the dataset.
         hyperparameters (dict): The hyperparameters for the model. Can be loaded with `load_hyperparameters_shapes()`.
@@ -180,7 +181,7 @@ def load_single_model(model_type, n_classes, n_attr, hyperparameters):
 def load_models_shapes(n_classes, n_attr, signal_strength=98, n_subset=None, hyperparameters=None,
                        hard_bottleneck=None, fast=False):
     """
-    Loads the shapes model with respect to the hyperparameters.
+    Loads the shapes models with respect to the hyperparameters.
     The classes and attributes must be equal for all the models, but the hyperparameters
     (like nodes in layers and such) can be different.
 
@@ -274,3 +275,124 @@ def average_histories(histories_total, n_bootstrap):
             for j in range(len(histories_total[i][key])):
                 new_histories[i][key][j] /= n_bootstrap
     return new_histories
+
+
+def find_class_imbalance(n_subset=None, multiple_attr=False):
+    """
+    From the CBM code.
+    Calculate class imbalance ratio for the binary attribute labels.
+    This means the imbalance between positive and negative concepts (there are a lot more 0s than 1s).
+    If `multiple_attr` is `True`, then the imbalance is different for each concept. If not, it is the average of all.
+
+    Args:
+        n_subset (int): The amount of images used for each class in the subset. If `None`, will use all data.
+        multiple_attr (bool): If `True`, will make a separate weight for each concept. If `False`, will average
+            across all concepts
+
+    Returns:
+        list: List of imbalance-weights for the attributes.
+    """
+    imbalance_ratio = []
+    data = load_data_list_cub("train", n_subset)
+    n = len(data)
+    n_attr = len(data[0]["attribute_label"])
+    if multiple_attr:
+        n_ones = [0] * n_attr
+        total = [n] * n_attr
+    else:
+        n_ones = [0]
+        total = [n * n_attr]
+    for d in data:
+        labels = d["attribute_label"]
+        if multiple_attr:
+            for i in range(n_attr):
+                n_ones[i] += labels[i]
+        else:
+            n_ones[0] += sum(labels)
+
+    for j in range(len(n_ones)):
+        imbalance_ratio.append(total[j] / n_ones[j] - 1)
+    if not multiple_attr:  # e.g. [9.0] --> [9.0] * 312
+        imbalance_ratio *= n_attr
+    return imbalance_ratio
+
+
+def load_single_model_cub(model_type, hyperparameters, n_attr=112):
+    """
+    Loads a model, given its hyperparameters.
+
+    Args:
+        model_type (str): The model to load. Must be in ["cnn", "cbm", "cbm_res", "cbm_skip"]
+        hyperparameters (dict): The hyperparameters for the model. Can be loaded with `load_hyperparameters_shapes()`.
+        n_attr (int): The amount of attributes used in the dataset.
+
+    Raises:
+        ValueError: If model_type is not supported
+
+    Returns:
+        model: The pytorch model.
+    """
+    model_type = model_type.strip().lower()
+    if model_type not in MODEL_STRINGS_CUB:
+        raise ValueError(f"The model type must be in {MODEL_STRINGS_CUB}. Was {model_type}. ")
+    hp = hyperparameters
+
+    if model_type == "cnn":
+        cnn = CubCNN(
+            n_classes=N_CLASSES_CUB, n_linear_output=hp["n_linear_output"],
+            dropout_probability=hp["dropout_probability"])
+        return cnn
+
+    if hp.get("hard") is None:  # This hp was added later, so add this for backwards compability
+        hp["hard"] = False
+
+    if model_type == "cbm":
+        cbm = CubCBM(
+            n_classes=N_CLASSES_CUB, n_attr=n_attr, n_linear_output=hp["n_linear_output"],
+            attribute_activation_function=hp["activation"], hard=hp["hard"], two_layers=hp["two_layers"],
+            dropout_probability=hp["dropout_probability"])
+        return cbm
+
+    elif model_type == "cbm_res":
+        cbm_res = CubCBMWithResidual(
+            n_classes=N_CLASSES_CUB, n_attr=n_attr, n_linear_output=hp["n_linear_output"],
+            attribute_activation_function=hp["activation"], hard=hp["hard"],
+            dropout_probability=hp["dropout_probability"])
+        return cbm_res
+
+    elif model_type == "cbm_skip":
+        cbm_skip = CubCBMWithSkip(
+            n_classes=N_CLASSES_CUB, n_attr=n_attr, n_hidden=hp["n_hidden"], n_linear_output=hp["n_linear_output"],
+            attribute_activation_function=hp["activation"], hard=hp["hard"],
+            dropout_probability=hp["dropout_probability"])
+        return cbm_skip
+
+
+def load_models_cub(n_subset=None, hyperparameters=None, hard_bottleneck=None, fast=False, n_attr=112):
+    """
+    Loads the cub models with respect to the hyperparameters.
+
+    Args:
+        n_subset (int): The amount of data used to train the model. Used for loading hyperparameters.
+        hyperparameters (dict of dict, optional): Dictionary of the hyperparameter-dictionaries.
+            Should be read from yaml file in "hyperparameters/". If `None`, will read
+            default or fast hyperparameters. Defaults to None.
+        hard_bottleneck (bool): If True, will load hard-bottleneck concept layer for the concept models.
+            If not, will use what is in the hyperparameters.
+        fast (bool, optional): If True, will load hyperparameters with very low `n_epochs`. This
+            can be used for fast testing of the code. Defaults to False.
+        n_attr (int): Amount of attribues.
+
+    Returns:
+        list of models: List of the models loaded.
+    """
+    hp = hyperparameters
+    if hp is None:
+        hp = load_hyperparameters_cub(n_subset, fast=fast, hard_bottleneck=hard_bottleneck)
+    cnn = load_single_model_cub(model_type="cnn", hyperparameters=hp["cnn"], n_attr=n_attr)
+    cbm = load_single_model_cub(model_type="cbm", hyperparameters=hp["cbm"], n_attr=n_attr)
+    cbm_res = load_single_model_cub(model_type="cbm_res", hyperparameters=hp["cbm_res"], n_attr=n_attr)
+    cbm_skip = load_single_model_cub(model_type="cbm_skip", hyperparameters=hp["cbm_skip"], n_attr=n_attr)
+
+    models = [cnn, cbm, cbm_res, cbm_skip]
+    return models
