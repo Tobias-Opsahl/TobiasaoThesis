@@ -8,7 +8,7 @@ module load Python/3.9.5-GCCcore-10.3.0
 
 Transfer python files (go to TobiasaoThesis/ locally):
 
-tar -czvf project_files.tar.gz src/ src/common/ src/datasets/ src/models/ run_shapes.py
+tar -czvf project_files.tar.gz src/ src/common/ src/datasets/ src/models/ run_shapes.py run_cub.py run_make_datasets_shapes.py
 scp -v -J tobiasao@login.uio.no project_files.tar.gz tobiasao@ml1.hpc.uio.no:TobiasaoThesis/
 tar -xzvf project_files.tar.gz
 
@@ -17,18 +17,21 @@ scp -v -J tobiasao@login.uio.no src/evaluation.py tobiasao@ml1.hpc.uio.no:Tobias
 # Copy over dataset:
 scp -v -r -J tobiasao@login.uio.no tobiasao@ml1.hpc.uio.no:TobiasaoThesis/data/shapes/shapes_1k_c15_a9_s100/ ./data/shapes/shapes_1k_c15_a9_s100/
 # From local to remote#
+scp -v -r -J tobiasao@login.uio.no results/hyperparameters/cub/* tobiasao@ml1.hpc.uio.no:TobiasaoThesis/results/hyperparameters/cub/
 scp -v -r -J tobiasao@login.uio.no results/hyperparameters/remote_grid_search/shapes/*_s98/ tobiasao@ml1.hpc.uio.no:TobiasaoThesis/results/hyperparameters/shapes/
 scp -v -r -J tobiasao@login.uio.no results/history/remote_grid_search_s100_history/shapes/ tobiasao@ml1.hpc.uio.no:TobiasaoThesis/results/history/shapes/
 scp -v -r -J tobiasao@login.uio.no results/plots/remote_grid_search_s100_plots/shapes/ tobiasao@ml1.hpc.uio.no:TobiasaoThesis/results/plots/shapes/
 
 
-# Copy over results (hyperparameters, plots and histories):
+# Shapes Copy over results (hyperparameters, plots and histories):
 scp -v -r -J tobiasao@login.uio.no tobiasao@ml1.hpc.uio.no:TobiasaoThesis/results/hyperparameters/ ./results/hyperparameters/remote_all_hyperparameters/
 scp -v -r -J tobiasao@login.uio.no tobiasao@ml1.hpc.uio.no:TobiasaoThesis/results/plots/ ./results/plots/remote_grid_search_s100_plots/  
 scp -v -r -J tobiasao@login.uio.no tobiasao@ml1.hpc.uio.no:TobiasaoThesis/results/history/ ./results/history/remote_grid_search_all_history/  
 
-# Make dataset remote:
-nohup python make_shapes_dataset.py &> logs/make_dataset_a5.txt &
+# Cub copy over results
+scp -v -r -J tobiasao@login.uio.no tobiasao@ml1.hpc.uio.no:TobiasaoThesis/results/plots/cub/ ./results/plots/remote_cub1_plots/
+scp -v -r -J tobiasao@login.uio.no tobiasao@ml1.hpc.uio.no:TobiasaoThesis/results/history/cub/ ./results/history/remote_cub1_history/  
+
 
 # Fast:
 python run_shapes.py --n_classes 10 --n_attr 5 --signal_strength 100 --fast --run_hyperparameters --n_trials 2 --evaluate_and_plot --n_bootstrap 2 --bootstrap_checkpoints 1,2
@@ -124,7 +127,25 @@ CUDA_VISIBLE_DEVICES=2 nohup python run_shapes.py --n_classes 15 --n_attr 9 --si
 CUDA_VISIBLE_DEVICES=2 nohup python run_shapes.py --n_classes 21 --n_attr 9 --signal_strength 98 --run_hyperparameters --hard_bottleneck --subsets 50,150,200 &> logs/hard_c21_a9_s98_sub1_grid_search.txt &
 CUDA_VISIBLE_DEVICES=2 nohup python run_shapes.py --n_classes 21 --n_attr 9 --signal_strength 98 --run_hyperparameters --hard_bottleneck --subsets 100,250 &> logs/hard_c21_a9_s98_sub2_grid_search.txt &
 
+Shapes s50
 
+nohup python run_make_datasets_shapes.py &> logs/make_c50_dataset.txt &
+scp -v -r -J tobiasao@login.uio.no tobiasao@ml1.hpc.uio.no:TobiasaoThesis/data/shapes/shapes_1k_c10_a9_s50/ ./data/shapes/shapes_1k_c10_a9_s50/
+
+Fast s50
+python run_shapes.py --fast --n_classes 10 --n_attr 9 --signal_strength 50 --evaluate_and_plot --subsets 29 --n_bootstrap 1 --bootstrap_checkpoints 1 --run_hyperparameters --n_trials 2
+
+Evaluate s50
+CUDA_VISIBLE_DEVICES=2 nohup python run_shapes.py --n_classes 10 --n_attr 9 --signal_strength 50 --evaluate_and_plot --subsets 50,100,150,200,250 --n_bootstrap 10 --bootstrap_checkpoints 1,3,5,10 &> logs/c10_a9_s50_b10_eval.txt &
+CUDA_VISIBLE_DEVICES=2 nohup python run_shapes.py --n_classes 10 --n_attr 9 --signal_strength 50 --evaluate_and_plot --subsets 50,100,150,200,250 --n_bootstrap 10 --bootstrap_checkpoints 1,3,5,10 --hard_bottleneck &> logs/hard_c10_a9_s50_b10_eval.txt &
+
+Hyperparam s50
+CUDA_VISIBLE_DEVICES=1 nohup python run_shapes.py --n_classes 10 --n_attr 9 --signal_strength 50 --run_hyperparameters --subsets 50,150,200 &> logs/c10_a9_s50_sub1_grid_search.txt &
+CUDA_VISIBLE_DEVICES=1 nohup python run_shapes.py --n_classes 10 --n_attr 9 --signal_strength 50 --run_hyperparameters --subsets 100,250 &> logs/c10_a9_s50_sub2_grid_search.txt &
+
+HARD-BOTTLENECK Hyperparam s50 
+CUDA_VISIBLE_DEVICES=2 nohup python run_shapes.py --n_classes 10 --n_attr 9 --signal_strength 50 --run_hyperparameters --hard_bottleneck --subsets 50,150,200 &> logs/hard_c10_a9_s50_sub1_grid_search.txt &
+CUDA_VISIBLE_DEVICES=2 nohup python run_shapes.py --n_classes 10 --n_attr 9 --signal_strength 50 --run_hyperparameters --hard_bottleneck --subsets 100,250 &> logs/hard_c10_a9_s50_sub2_grid_search.txt &
 
 
 
@@ -154,6 +175,48 @@ CUDA_VISIBLE_DEVICES=6 nohup python run_shapes.py --n_classes 15 --n_attr 9 --si
 CUDA_VISIBLE_DEVICES=6 nohup python run_shapes.py --n_classes 15 --n_attr 9 --signal_strength 100 --run_hyperparameters --hard_bottleneck --subsets 100,250 &> logs/hard_c15_a9_s100_sub2_grid_search.txt &
 CUDA_VISIBLE_DEVICES=6 nohup python run_shapes.py --n_classes 21 --n_attr 9 --signal_strength 100 --run_hyperparameters --hard_bottleneck --subsets 50,150,200 &> logs/hard_c21_a9_s100_sub1_grid_search.txt &
 CUDA_VISIBLE_DEVICES=6 nohup python run_shapes.py --n_classes 21 --n_attr 9 --signal_strength 100 --run_hyperparameters --hard_bottleneck --subsets 100,250 &> logs/hard_c21_a9_s100_sub2_grid_search.txt &
+
+
+CUB:
+
+Evaluation sub 7,12,17 n_bootstrap 1
+CUDA_VISIBLE_DEVICES=1 nohup python run_cub.py --evaluate_and_plot --subsets 7,12,17 --n_bootstrap 1 --bootstrap_checkpoints 1 --logging_level debug &> logs/cub_b1_eval.txt &
+
+Evaluation sub 8,13,18 n_bootstrap 1
+CUDA_VISIBLE_DEVICES=2 nohup python run_cub.py --evaluate_and_plot --subsets 8,13,18 --n_bootstrap 1 --bootstrap_checkpoints 1 --logging_level debug &> logs/cub_b1_2_eval.txt &
+
+valuation sub 9, 14, 19 n_bootstrap 1
+CUDA_VISIBLE_DEVICES=2 nohup python run_cub.py --evaluate_and_plot --subsets 9,14,19 --n_bootstrap 1 --bootstrap_checkpoints 1 --logging_level debug &> logs/cub_b1_3_eval.txt &
+
+
+
+HARD-BOTTLENECK Evaluation sub 5,10 n_bootstrap 1
+CUDA_VISIBLE_DEVICES=6 nohup python run_cub.py --evaluate_and_plot --subsets 5,10 --n_bootstrap 1 --bootstrap_checkpoints 1 --logging_level debug --hard_bottleneck &> logs/hard_cub_b1_eval.txt &
+
+Hyperparameter search 
+CUDA_VISIBLE_DEVICES=2 nohup python run_cub.py --run_hyperparameters --subsets 5 --n_trials 20 &> logs/cub_s5_grid_search.txt &
+CUDA_VISIBLE_DEVICES=2 nohup python run_cub.py --run_hyperparameters --subsets 10 --n_trials 20 &> logs/cub_s10_grid_search.txt &
+CUDA_VISIBLE_DEVICES=1 nohup python run_cub.py --run_hyperparameters --subsets 15 --n_trials 20 &> logs/cub_s15_grid_search.txt &
+CUDA_VISIBLE_DEVICES=2 nohup python run_cub.py --run_hyperparameters --subsets 20 --n_trials 20 &> logs/cub_s20_grid_search.txt &
+CUDA_VISIBLE_DEVICES=6 nohup python run_cub.py --run_hyperparameters --subsets 25 --n_trials 20 &> logs/cub_s25_grid_search.txt &
+CUDA_VISIBLE_DEVICES=6 nohup python run_cub.py --run_hyperparameters --subsets 30 --n_trials 20 &> logs/cub_Full_grid_search.txt &
+
+CUDA_VISIBLE_DEVICES=2 nohup python run_cub.py --run_hyperparameters --subsets 6 --n_trials 20 &> logs/cub_s6_grid_search.txt &
+CUDA_VISIBLE_DEVICES=2 nohup python run_cub.py --run_hyperparameters --subsets 11 --n_trials 20 &> logs/cub_s11_grid_search.txt &
+CUDA_VISIBLE_DEVICES=3 nohup python run_cub.py --run_hyperparameters --subsets 16 --n_trials 20 &> logs/cub_s16_grid_search.txt &
+CUDA_VISIBLE_DEVICES=3 nohup python run_cub.py --run_hyperparameters --subsets 21 --n_trials 20 &> logs/cub_s21_grid_search.txt &
+CUDA_VISIBLE_DEVICES=2 nohup python run_cub.py --run_hyperparameters --subsets 26 --n_trials 20 &> logs/cub_s26_grid_search.txt &
+
+CUDA_VISIBLE_DEVICES=6 nohup python run_cub.py --run_hyperparameters --subsets 7 --n_trials 20 &> logs/cub_s7_grid_search.txt &
+CUDA_VISIBLE_DEVICES=6 nohup python run_cub.py --run_hyperparameters --subsets 12 --n_trials 20 &> logs/cub_s12_grid_search.txt &
+CUDA_VISIBLE_DEVICES=6 nohup python run_cub.py --run_hyperparameters --subsets 17 --n_trials 20 &> logs/cub_s17_grid_search.txt &
+CUDA_VISIBLE_DEVICES=4 nohup python run_cub.py --run_hyperparameters --subsets 22 --n_trials 20 &> logs/cub_s22_grid_search.txt &
+CUDA_VISIBLE_DEVICES=4 nohup python run_cub.py --run_hyperparameters --subsets 27 --n_trials 20 &> logs/cub_s27_grid_search.txt &
+
+CUDA_VISIBLE_DEVICES=1 nohup python run_cub.py --run_hyperparameters --subsets 8 --n_trials 20 &> logs/cub_s8_grid_search.txt &
+
+CUDA_VISIBLE_DEVICES=6 nohup python run_cub.py --run_hyperparameters --subsets 30 --n_trials 20 --num_workers 4 --persistent_workers --pin_memory --non_blocking &> logs/cub_Full_grid_search.txt &
+
 
 
 1. itevu4330

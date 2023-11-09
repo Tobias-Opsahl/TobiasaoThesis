@@ -889,11 +889,28 @@ def make_shapes_1k_c21_a9_s100():
                             use_background_concepts=True, signal_strength=1)
 
 
+def make_shapes_1k_c10_a9_s50():
+    """
+    Makes a dataset with 1k images of 10 classes, with no concept-class correlation.
+    Use background concepts.
+    """
+    class_names = ["triangle_triangle", "triangle_rectangle", "triangle_ellipse", "triangle_hexagon",
+                   "rectangle_rectangle", "rectangle_ellipse", "rectangle_hexagon",
+                   "ellipse_ellipse", "ellipse_hexagon", "hexagon_hexagon"]
+    shape_combinations = []  # Nested list structure
+    for shape_name in class_names:
+        shape_combinations.append([shape_name.split("_")[0], shape_name.split("_")[1]])
+    base_dir = "data/shapes/shapes_1k_c10_a9_s50/"
+    generate_shapes_dataset(class_names=class_names, shape_combinations=shape_combinations, n_images_class=1000,
+                            split_data=True, base_dir=base_dir, use_position_concepts=False,
+                            use_background_concepts=True, signal_strength=0.5)
+
 if __name__ == "__main__":
     all_shapes = ["circle", "rectangle", "triangle", "pentagon", "hexagon", "ellipse", "wedge"]
-    make_shapes_1k_c10_a5_s100()
-    make_shapes_1k_c15_a5_s100()
-    make_shapes_1k_c21_a5_s100()
+    # make_shapes_1k_c10_a5_s100()
+    # make_shapes_1k_c15_a5_s100()
+    # make_shapes_1k_c21_a5_s100()
+    make_shapes_1k_c10_a9_s50()
     # make_shapes_1k_c10_a9_s100()
     # make_shapes_1k_c15_a9_s100()
     # make_shapes_1k_c21_a9_s100()
