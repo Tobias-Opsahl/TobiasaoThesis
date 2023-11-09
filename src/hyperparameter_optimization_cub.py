@@ -270,7 +270,7 @@ class HyperparameterOptimizationShapes:
         all_possibilities = {
             "learning_rate": [0.01, 0.005, 0.001],
             "gamma": [0.1, 1],
-            "dropout_probability": [0, 0.2, 0.4],
+            "dropout_probability": [0.1, 0.3],
             "n_epochs": [20, 30, 50, 100],
             "n_linear_output": [16, 64, 128, 256],
             "n_hidden": [16, 32, 64],
@@ -279,7 +279,7 @@ class HyperparameterOptimizationShapes:
             "two_layers": [True, False],
             "attr_weight": [1, 3, 5, 10],
             "attr_weight_decay": [0.5, 0.7, 0.9, 1],
-            "attr_schedule": [0.9, 10]
+            "attr_schedule": [0.9, 3]
         }
 
         search_space = {}  # Add only the hyperparameters we are going to search for in the space
@@ -311,10 +311,8 @@ class HyperparameterOptimizationShapes:
         model = load_single_model_cub(
             model_type=self.model_type, hyperparameters=hp)
         criterion = nn.CrossEntropyLoss()
-        optimizer = torch.optim.Adam(
-            filter(lambda p: p.requires_grad, model.parameters()), lr=hp["learning_rate"])
-        exp_lr_scheduler = torch.optim.lr_scheduler.StepLR(
-            optimizer, step_size=5, gamma=hp["gamma"])
+        optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=hp["learning_rate"])
+        exp_lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=hp["gamma"])
         if self.model_type == "cnn":  # Train non-bottleneck model
             history, _ = train_simple(
                 model, criterion, optimizer, train_loader, val_loader, trial=trial, scheduler=exp_lr_scheduler,
@@ -462,12 +460,12 @@ def run_hyperparameter_optimization_all_models(
             if grid_search and set_hyperparameters_to_search:
                 if model_type == "cnn":
                     hyperparameters_to_search = {
-                        "learning_rate": True, "dropout_probability": False, "gamma": True, "attr_schedule": False,
+                        "learning_rate": True, "dropout_probability": True, "gamma": True, "attr_schedule": False,
                         "attr_weight": False, "attr_weight_decay": False, "n_epochs": False, "n_linear_output": False,
                         "activation": False, "two_layers": False, "n_hidden": False, "hard": False}
                 else:
                     hyperparameters_to_search = {
-                        "learning_rate": True, "dropout_probability": False, "gamma": False, "attr_schedule": True,
+                        "learning_rate": True, "dropout_probability": True, "gamma": False, "attr_schedule": True,
                         "attr_weight": False, "attr_weight_decay": False, "n_epochs": False, "n_linear_output": False,
                         "activation": False, "two_layers": False, "n_hidden": False, "hard": False}
             if not grid_search and set_hyperparameters_to_search:

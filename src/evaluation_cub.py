@@ -175,9 +175,9 @@ def run_models_on_subsets_and_plot(
         if fast:
             test_loader = test_loader
         for i in range(n_bootstrap):
-            logger.info(
-                f"Beginning bootstrap iteration [{i + 1} / {n_bootstrap}]")
-            make_subset_cub(n_images_class=n_subset, seed=seed)
+            logger.info(f"Beginning bootstrap iteration [{i + 1} / {n_bootstrap}]")
+            if n_subset is not None:  # Do not make subset of data-list if we use all data
+                make_subset_cub(n_images_class=n_subset, seed=seed)
             seed += 1  # Change seed so that subset will be different for the bootstrapping
 
             train_loader, val_loader = load_data_cub(

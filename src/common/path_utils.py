@@ -609,7 +609,7 @@ def load_history_cub(n_bootstrap, n_subset, hard_bottleneck=False):
 
     Args:
         n_bootstrap (int): The amount of bootstrap iterations that were used.
-        n_subset (int): The amount of instances in each class used in the subset.
+        n_subset (int): The amount of instances in each class used in the subset. Use `None` for full dataset.
         hard_bottleneck (bool): Set to `True` if hard bottleneck was used. This will alter the name to end with `_hard`.
 
     Returns:
@@ -617,7 +617,11 @@ def load_history_cub(n_bootstrap, n_subset, hard_bottleneck=False):
     """
     folder_name = get_cub_folder_path(relative_folder=HISTORY_FOLDER)
     bottleneck = "" if not hard_bottleneck else "_hard"
-    filename = Path(f"histories_sub{n_subset}_b{n_bootstrap}{bottleneck}.pkl")
+    if n_subset is not None:
+        sub_string = f"_sub{n_subset}"
+    else:  # `n_subset` = None means full dataset
+        sub_string = "_full"
+    filename = Path(f"histories{sub_string}_b{n_bootstrap}{bottleneck}.pkl")
     file_path = make_file_path(folder_name, filename, check_folder_exists=False)
     history = pickle.load(open(file_path, "rb"))
     return history
@@ -635,7 +639,11 @@ def save_history_cub(n_bootstrap, n_subset, history, hard_bottleneck=False):
     """
     folder_name = get_cub_folder_path(relative_folder=HISTORY_FOLDER)
     bottleneck = "" if not hard_bottleneck else "_hard"
-    filename = Path(f"histories_sub{n_subset}_b{n_bootstrap}{bottleneck}.pkl")
+    if n_subset is not None:
+        sub_string = f"_sub{n_subset}"
+    else:  # `n_subset` = None means full dataset
+        sub_string = "_full"
+    filename = Path(f"histories{sub_string}_b{n_bootstrap}{bottleneck}.pkl")
     file_path = make_file_path(folder_name, filename, check_folder_exists=True)
     with open(file_path, "wb") as outfile:
         pickle.dump(history, outfile)
@@ -663,7 +671,11 @@ def load_model_cub(n_subset, model_type, metric="loss", hard_bottleneck=False):
 
     folder_name = get_cub_folder_path(n_subset=n_subset, relative_folder=SAVED_MODELS_FOLDER)
     bottleneck = "" if not hard_bottleneck else "_hard"
-    filename = Path(f"{model_type}_sub{n_subset}_{metric}{bottleneck}.pth")
+    if n_subset is not None:
+        sub_string = f"_sub{n_subset}"
+    else:  # `n_subset` = None means full dataset
+        sub_string = "_full"
+    filename = Path(f"{model_type}{sub_string}_{metric}{bottleneck}.pth")
     file_path = make_file_path(folder_name, filename, check_folder_exists=False)
     state_dict = torch.load(file_path)
     return state_dict
@@ -688,7 +700,11 @@ def save_model_cub(n_subset, state_dict, model_type, metric="loss", hard_bottlen
 
     folder_name = get_cub_folder_path(relative_folder=SAVED_MODELS_FOLDER)
     bottleneck = "" if (model_type == "cnn") or not hard_bottleneck else "_hard"
-    filename = Path(f"{model_type}_sub{n_subset}_{metric}{bottleneck}.pth")
+    if n_subset is not None:
+        sub_string = f"_sub{n_subset}"
+    else:  # `n_subset` = None means full dataset
+        sub_string = "_full"
+    filename = Path(f"{model_type}{sub_string}_{metric}{bottleneck}.pth")
     file_path = make_file_path(folder_name, filename, check_folder_exists=True)
     torch.save(state_dict, file_path)
 
@@ -704,9 +720,13 @@ def save_training_plot_cub(n_bootstrap, n_subset, hard_bottleneck=False, attr=Fa
         attr (bool, optional): Set to True if the training plot is of the attributes / concepts. Defaults to False.
     """
     folder_name = get_cub_folder_path(relative_folder=PLOTS_FOLDER)
-    attr_string = "" if not attr else "attr_"
+    attr_string = "" if not attr else "_attr"
     bottleneck = "" if not hard_bottleneck else "_hard"
-    filename = Path(f"training_history_{attr_string}sub{n_subset}_b{n_bootstrap}{bottleneck}.pdf")
+    if n_subset is not None:
+        sub_string = f"_sub{n_subset}"
+    else:  # `n_subset` = None means full dataset
+        sub_string = "_full"
+    filename = Path(f"training_history{attr_string}{sub_string}_b{n_bootstrap}{bottleneck}.pdf")
     file_path = make_file_path(folder_name, filename, check_folder_exists=True)
     plt.savefig(file_path)
     plt.close()
@@ -749,10 +769,6 @@ def load_hyperparameters_cub(n_subset=None, hard_bottleneck=False, fast=False, d
     Returns:
         dict: The hyperparameters.
     """
-    if (not default and not fast) and (n_subset is None):
-        message = f"When getting non-default or non-fast hyperparameters, argument `n_subset` must be provided (int). "
-        raise ValueError(message)
-
     folder_name = get_cub_folder_path(relative_folder=HYPERPARAMETERS_FOLDER)
     if fast:  # Here n_epohcs = 2, for fast testing
         if hard_bottleneck:
@@ -765,12 +781,16 @@ def load_hyperparameters_cub(n_subset=None, hard_bottleneck=False, fast=False, d
         return hyperparameters
 
     bottleneck = "" if not hard_bottleneck else "_hard"
-    filename = Path(f"hyperparameters_sub{n_subset}{bottleneck}.yaml")
+    if n_subset is not None:
+        sub_string = f"_sub{n_subset}"
+    else:  # `n_subset` = None means full dataset
+        sub_string = "_full"
+    filename = Path(f"hyperparameters{sub_string}{bottleneck}.yaml")
     file_path = make_file_path(folder_name, filename, check_folder_exists=False)
 
     if (not default) and (not os.path.exists(file_path)):  # No hp for this class-attr-sub
         if hard_bottleneck:  # Check for soft-hyperparameters existing for this setting.
-            alt_filename = Path(f"hyperparameters_sub{n_subset}.yaml")
+            alt_filename = Path(f"hyperparameters{sub_string}.yaml")
             alt_file_path = file_path = make_file_path(folder_name, alt_filename, check_folder_exists=False)
             if os.path.exists(alt_file_path):  # Use soft hyperparams for hard-setting.
                 message = f"No hard hyperparameters found for {n_subset=}. "
@@ -819,7 +839,11 @@ def save_hyperparameters_cub(n_subset, hyperparameters_dict, model_type, hard_bo
         raise ValueError(message)
     folder_name = get_cub_folder_path(relative_folder=HYPERPARAMETERS_FOLDER)
     bottleneck = "" if not hard_bottleneck else "_hard"
-    filename = Path(f"hyperparameters_sub{n_subset}{bottleneck}.yaml")
+    if n_subset is not None:
+        sub_string = f"_sub{n_subset}"
+    else:  # `n_subset` = None means full dataset
+        sub_string = "_full"
+    filename = Path(f"hyperparameters{sub_string}{bottleneck}.yaml")
     file_path = make_file_path(folder_name, filename, check_folder_exists=False)
     if not os.path.exists(file_path):  # No yaml file for this setting
         os.makedirs(folder_name, exist_ok=True)

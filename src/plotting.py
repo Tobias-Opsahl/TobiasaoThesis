@@ -238,14 +238,13 @@ def plot_test_accuracies(histories_list, subsets, model_strings, colors):
         colors (list of str): List of colors to use for the different models.
     """
     test_accuracies_lists = [[] for _ in range(len(model_strings))]
-    from IPython import embed
-    embed()
     for i in range(len(subsets)):
         histories = histories_list[i]
         for j in range(len(model_strings)):
             test_accuracies_lists[j].append(histories[j]["test_accuracy"])
 
     x_values = subsets
+            
     n_models = len(test_accuracies_lists)
     fig = plt.figure()
 
@@ -386,6 +385,10 @@ def plot_test_accuracies_cub(subsets, n_bootstrap=1, hard_bottleneck=False, mode
     for n_subset in subsets:
         histories = load_history_cub(n_bootstrap, n_subset, hard_bottleneck=hard_bottleneck)
         histories_list.append(histories)
+
+    for i in range(subsets):  # n_subset = None means full data set, which is about 30 images per class.
+        if subsets[i] is None:
+            subsets[i] = 30
 
     plot_test_accuracies(histories_list, subsets, model_strings=model_strings, colors=colors)
     save_test_plot_cub(n_bootstrap, hard_bottleneck=hard_bottleneck)

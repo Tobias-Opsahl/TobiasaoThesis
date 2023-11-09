@@ -21,12 +21,13 @@ def parse_arguments():
     parser.add_argument("--no_grid_search", action="store_true", help="Do not run grid-search, but TPEsampler.")
     parser.add_argument("--evaluate_and_plot", action="store_true", help="Evaluate models and plot.")
 
-    parser.add_argument("--batch_size", type=int, default=128, help="Batch size for training.")
+    parser.add_argument("--batch_size", type=int, default=16, help="Batch size for training.")
     parser.add_argument("--n_bootstrap", type=int, default=1, help="number of bootstrap iterations to run")
     help = "Number of bootstrap iterations to save at. Can be single int or list of int, for example `1` or `1,5,10`."
     parser.add_argument("--bootstrap_checkpoints", type=parse_int_list, help=help)
     # parser.add_argument("--n_bootstrap", type=int, default=1, help="Number of bootstrap iterations.")
-    help = "Sizes of subsets to run on. Can be single int or list of int, for example `50` or `50,100,150`."
+    help = "Sizes of subsets to run on. Can be single int or list of int, for example `5` or `5,10,15`. " 
+    help += " Use `30` for full dataset."
     parser.add_argument("--subsets", type=parse_int_list, default=[1], help=help)
     parser.add_argument("--n_trials", type=int, default=100, help="Number of trials for hyperparameter search.")
     parser.add_argument("--fast", action="store_true", help="Use fast testing hyperparameters.")
@@ -37,6 +38,7 @@ def parse_arguments():
     parser.add_argument("--num_workers", type=int, default=0, help="Amount of workers to load data to RAM.")
     parser.add_argument("--pin_memory", action="store_true", help="Pins the RAM memory (makes it non-pagable).")
     parser.add_argument("--persistent_workers", action="store_true", help="Do not reload workers between epochs")
+    parser.add_argument("--logging_level", type=str, default="info", help="Verbosisty level of the logger.")
     parser.add_argument("--optuna_verbosity", type=int, default=1, help="Verbosity of optuna (2, 1 or 0).")
 
     args = parser.parse_args()
@@ -47,11 +49,15 @@ if __name__ == "__main__":
     seed_everything(57)
     args = parse_arguments()
 
-    set_global_log_level("debug")
+    set_global_log_level(args.logging_level)
     logger = get_logger(__name__)
 
     if args.device is None or args.device == "":
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+    for i in range(len(args.subsets)):
+        if args.subsets[i] >= 30:
+            args.subsets[i] = None
 
     grid_search = not args.no_grid_search
 
@@ -69,35 +75,3 @@ if __name__ == "__main__":
             fast=args.fast, batch_size=args.batch_size, hard_bottleneck=args.hard_bottleneck,
             non_blocking=args.non_blocking, num_workers=args.num_workers, pin_memory=args.pin_memory,
             persistent_workers=args.persistent_workers)
-
-    # train_loader = load_data_cub(
-    #     mode="train", n_subset=n_subset, batch_size=args.batch_size, drop_last=False,
-    #     num_workers=args.num_workers, pin_memory=args.pin_memory, persistent_workers=args.persistent_workers)
-
-    # cnn = CubCNN()
-    # cbm = CubCBM()
-    # cbm_res = CubCBMWithResidual()
-    # cbm_skip = CubCBMWithSkip()
-
-    # criterion = nn.CrossEntropyLoss()
-    # imbalances = find_class_imbalance(n_subset=n_subset, multiple_attr=True)
-    # imbalances = torch.FloatTensor(imbalances).to(device)
-    # attr_criterion = nn.BCEWithLogitsLoss(weight=imbalances)
-
-    # for model in [cnn]:
-    #     print("Running standard model\n")
-    #     optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=0.01)
-    #     exp_lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=2, gamma=0.3)
-    #     model = train_simple(model, criterion, optimizer, train_loader, None,
-    #                          n_epochs=2, scheduler=exp_lr_scheduler,
-    #                          device=device, non_blocking=args.non_blocking)
-
-    # model_names = ["cbm", "cbm_res", "cbm_skip"]
-    # for i, model in enumerate([cbm, cbm_res, cbm_skip]):
-    #     print(f"Running model {i + 1}, {model_names[i]}\n")
-    #     optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=0.01)
-    #     exp_lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=2, gamma=0.3)
-    #     model = train_cbm(model, criterion, attr_criterion, optimizer, train_loader, None,
-    #                       n_epochs=2, attr_weight=args.attr_weight, scheduler=exp_lr_scheduler,
-    #                       device=device, non_blocking=args.non_blocking)
-
