@@ -84,9 +84,11 @@ class HyperparameterOptimizationShapes:
             list of str: List of the hyperparameter names.
         """
         # Common hyperparameters
-        hyperparameter_names = [
-            "learning_rate", "dropout_probability", "gamma", "n_linear_output", "n_epochs"]
-        if self.model_type != "cnn":  # Hyperparameters only for concept models
+        hyperparameter_names = ["learning_rate", "gamma", "n_epochs"]
+        if self.model_type not in ["lr_oracle", "nn_oracle"]:
+            hyperparameter_names.append("dropout_probability")
+            hyperparameter_names.append("n_linear_output")
+        if self.model_type in ["cbm", "cbm_res", "cbm_skip", "scm"]:  # Hyperparameters only for concept models
             hyperparameter_names.append("activation")
             hyperparameter_names.append("attr_weight")
             hyperparameter_names.append("attr_weight_decay")
@@ -418,8 +420,32 @@ class HyperparameterOptimizationShapes:
                                  model_type=self.model_type, hard_bottleneck=self.hard_bottleneck)
 
 
+def get_hyperparameters_dictionary(hyperparameters_list):
+    """
+    Makes a dictionary of which hyperparameters to search for in hyperparameter search.
+    Arugment should be a list of hyperparameters to search for.
+
+    Args:
+        hyperparameters_list (list of str): The list of hyperparameters to search for.
+
+    Returns:
+        dict: Dictionary of all hyperparameters, pointing to `True` (search) or `False` (not search).
+    """
+    hyperparameters_to_search = {
+        "learning_rate": False, "dropout_probability": True, "gamma": False, "attr_schedule": False,
+        "attr_weight": False, "attr_weight_decay": False, "n_epochs": False, "n_linear_output": False,
+        "activation": False, "two_layers": False, "n_hidden": False, "hard": False}
+    for hyperparameter_string in hyperparameters_list:
+        if hyperparameter_string not in hyperparameters_to_search.keys():
+            message = f"Elements in `hyperparameters_list` must be in `hyperparameters_to_search.keys()`. "
+            message += f"Element {hyperparameter_string} was not. "
+            raise ValueError(message)
+        hyperparameters_to_search[hyperparameter_string] = True
+    return hyperparameters_to_search
+
+
 def run_hyperparameter_optimization_all_models(
-        subsets, hyperparameters_to_search=None, grid_search=False, n_trials=10,
+        subsets, model_strings=None, hyperparameters_to_search=None, grid_search=False, n_trials=10,
         batch_size=16, eval_loss=True, hard_bottleneck=None, device=None, num_workers=0, pin_memory=False,
         persistent_workers=False, non_blocking=False, fast=False, write=True, optuna_verbosity="warning"):
     """
@@ -427,6 +453,7 @@ def run_hyperparameter_optimization_all_models(
 
     Args:
         subsets (list of int): List of the subsets to run on.
+        model_strings (list of str): Models to search for. See `src.constants.py`.
         hyperparameters_to_search (dict, optinal): Determines the hyperparameters to search for. See the
             hyperparameter-class for more doctumentation.
         grid_search (bool, optional): If True, will run grid-search optimization. If not, uses optunas default sampler.
@@ -451,37 +478,36 @@ def run_hyperparameter_optimization_all_models(
         fast (bool, optional): If True, will use hyperparameters with very low `n_epochs`. Defaults to False.
         optuna_verbosity (str, optional): Controls the verbosity of optuna study. Defaults to "warning".
     """
+    if model_strings is None:
+        model_strings = MODEL_STRINGS_CUB
     set_hyperparameters_to_search = False
     if hyperparameters_to_search is None:
         set_hyperparameters_to_search = True
     for n_subset in subsets:
         logger.info(f"\n    Running hyperparameter search for subset {n_subset} / {subsets}.\n")
-        for model_type in MODEL_STRINGS_CUB:
+        for model_type in model_strings:
             if grid_search and set_hyperparameters_to_search:
                 if model_type == "cnn":
-                    hyperparameters_to_search = {
-                        "learning_rate": True, "dropout_probability": True, "gamma": True, "attr_schedule": False,
-                        "attr_weight": False, "attr_weight_decay": False, "n_epochs": False, "n_linear_output": False,
-                        "activation": False, "two_layers": False, "n_hidden": False, "hard": False}
+                    hyperparameters_names = ["learning_rate", "dropout_probability", "gamma"]
+                    hyperparameters_to_search = get_hyperparameters_dictionary(hyperparameters_names)
+                elif model_type in ["lr_oracle", "nn_oracle"]:
+                    hyperparameters_names = ["learning_rate"]
+                    hyperparameters_to_search = get_hyperparameters_dictionary(hyperparameters_names)
                 else:
-                    hyperparameters_to_search = {
-                        "learning_rate": True, "dropout_probability": True, "gamma": False, "attr_schedule": True,
-                        "attr_weight": False, "attr_weight_decay": False, "n_epochs": False, "n_linear_output": False,
-                        "activation": False, "two_layers": False, "n_hidden": False, "hard": False}
+                    hyperparameters_names = ["learning_rate", "dropout_probability", "attr_schedule"]
+                    hyperparameters_to_search = get_hyperparameters_dictionary(hyperparameters_names)
             if not grid_search and set_hyperparameters_to_search:
                 if model_type == "cnn":
-                    hyperparameters_to_search = {
-                        "learning_rate": True, "dropout_probability": True, "gamma": True, "attr_schedule": False,
-                        "attr_weight": False, "attr_weight_decay": False, "n_epochs": False, "n_linear_output": True,
-                        "activation": False, "two_layers": False, "n_hidden": False, "hard": False}
+                    hyperparameters_names = ["learning_rate", "dropout_probability", "gamma", "n_linear_output"]
+                    hyperparameters_to_search = get_hyperparameters_dictionary(hyperparameters_names)
+                elif model_type in ["lr_oracle", "nn_oracle"]:
+                    hyperparameters_names = ["learning_rate"]
+                    hyperparameters_to_search = get_hyperparameters_dictionary(hyperparameters_names)
                 else:
-                    hyperparameters_to_search = {
-                        "learning_rate": True, "dropout_probability": True, "gamma": False, "attr_schedule": True,
-                        "attr_weight": False, "attr_weight_decay": False, "n_epochs": False, "n_linear_output": True,
-                        "activation": False, "two_layers": False, "n_hidden": False, "hard": False}
+                    hyperparameters_names = ["learning_rate", "dropout_probability", "attr_schedule", "n_linear_output"]
+                    hyperparameters_to_search = get_hyperparameters_dictionary(hyperparameters_names)
 
-            logger.info(
-                f"Running hyperparameter optimization on model {model_type}. \n")
+            logger.info(f"Running hyperparameter optimization on model {model_type}. \n")
             obj = HyperparameterOptimizationShapes(
                 model_type=model_type, n_subset=n_subset, batch_size=batch_size, eval_loss=eval_loss,
                 hard_bottleneck=hard_bottleneck, device=device, num_workers=num_workers,

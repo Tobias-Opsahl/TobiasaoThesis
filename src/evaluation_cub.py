@@ -7,7 +7,8 @@ from src.plotting import plot_training_histories_cub, plot_test_accuracies_cub
 from src.common.utils import (seed_everything, get_logger, load_models_cub, add_histories,
                               average_histories, find_class_imbalance)
 from src.common.path_utils import load_hyperparameters_cub, save_history_cub, save_model_cub
-from src.constants import MODEL_STRINGS_CUB, COLORS_CUB, MAX_EPOCHS, FAST_MAX_EPOCHS_CUB, BOOTSTRAP_CHECKPOINTS
+from src.constants import (MODEL_STRINGS_CUB, COLORS_CUB, MAX_EPOCHS, FAST_MAX_EPOCHS_CUB, BOOTSTRAP_CHECKPOINTS,
+                           MODEL_STRINGS_ORACLE, MODEL_STRINGS_ALL_CUB, COLORS_ORACLE, COLORS_ALL_CUB)
 
 
 logger = get_logger(__name__)
@@ -19,8 +20,6 @@ def evaluate_on_test_set(model, test_loader, device=None, non_blocking=False):
 
     Args:
         model (model): Pytorch pretrained model
-        test_loader (_type_): _description_
-        device (_type_, optional): _description_. Defaults to None.
         non_blocking (bool, optional): _description_. Defaults to False.
         test_loader (dataloader): The test-dataloader
         device (str): Use "cpu" for cpu training and "cuda:0" for gpu training.
@@ -36,6 +35,10 @@ def evaluate_on_test_set(model, test_loader, device=None, non_blocking=False):
     model.eval()
     test_correct = 0
     for input, labels, attr_labels, paths in test_loader:
+        if model.short_name in ["lr_oracle", "nn_oracle"]:  # Oracle model, testing on attributes-labels
+            input = attr_labels.to(device, non_blocking=non_blocking)
+        else:  # Normal model
+            input = input.to(device, non_blocking=non_blocking)
         input = input.to(device, non_blocking=non_blocking)
         labels = labels.to(device, non_blocking=non_blocking)
         outputs = model(input)
@@ -49,7 +52,7 @@ def evaluate_on_test_set(model, test_loader, device=None, non_blocking=False):
 
 
 def train_and_evaluate_cub(
-        n_subset, train_loader, val_loader, test_loader,
+        n_subset, train_loader, val_loader, test_loader, model_strings=None,
         hyperparameters=None, hard_bottleneck=None, fast=False, device=None, non_blocking=False, seed=None):
     """
     Trains the cub models given some hyperparameters, classes, attributes and data subdirectory.
@@ -60,6 +63,7 @@ def train_and_evaluate_cub(
         train_loader (dataloader): The training dataloader.
         val_loader (dataloader): The validation dataloader.
         test_loader (dataloader): The test dataloader.
+        model_strings (list of str): List of strings of the models to evaluate. Load from `src.constants.py`.
         hyperparameters (dict of dict, optional): Dictionary of the hyperparameter-dictionaries.
             Should be read from yaml file in "hyperparameters/". If `None`, will read
             default or fast hyperparameters. Defaults to None.
@@ -83,7 +87,14 @@ def train_and_evaluate_cub(
     if hp is None:
         hp = load_hyperparameters_cub(n_subset, hard_bottleneck=hard_bottleneck)
 
-    models = load_models_cub(hyperparameters=hp)
+    if "lr_oracle" not in hp:  # Add oracle hyperparameters
+        default_hp = load_hyperparameters_cub(default=True)
+        hp["lr_oracle"] = default_hp["lr_oracle"]
+    if "nn_oracle" not in hp:
+        default_hp = load_hyperparameters_cub(default=True)
+        hp["nn_oracle"] = default_hp["nn_oracle"]
+
+    models = load_models_cub(model_strings=model_strings, hyperparameters=hp)
     histories = []
     criterion = nn.CrossEntropyLoss()
     imbalances = find_class_imbalance(n_subset=n_subset, multiple_attr=True)
@@ -92,7 +103,7 @@ def train_and_evaluate_cub(
 
     for i in range(len(models)):
         model = models[i]
-        model_string = MODEL_STRINGS_CUB[i]
+        model_string = model_strings[i]
         logger.info(f"Running model {model.name}:")
         optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()),
                                      lr=hp[model_string]["learning_rate"])
@@ -104,11 +115,15 @@ def train_and_evaluate_cub(
             n_epochs = FAST_MAX_EPOCHS_CUB
         if seed is not None:  # Seed before training, for reprorudibility
             seed_everything(seed)
-        if model.name == "CubCNN":
+        if model_string == "cnn":
             history, models_dict = train_simple(
                 model, criterion, optimizer, train_loader, val_loader, scheduler=exp_lr_scheduler, n_epochs=n_epochs,
                 n_early_stop=False, device=device, non_blocking=non_blocking)
-        else:
+        elif model_string in ["lr_oracle", "nn_oracle"]:
+            history, models_dict = train_simple(
+                model, criterion, optimizer, train_loader, val_loader, scheduler=exp_lr_scheduler, n_epochs=n_epochs,
+                n_early_stop=False, device=device, non_blocking=non_blocking, oracle=True)
+        else:  # Concept model
             history, models_dict = train_cbm(
                 model, criterion, attr_criterion, optimizer, train_loader, val_loader, n_epochs=n_epochs,
                 attr_weight=hp[model_string]["attr_weight"], scheduler=exp_lr_scheduler, n_early_stop=False,
@@ -126,11 +141,11 @@ def train_and_evaluate_cub(
 
 
 def run_models_on_subsets_and_plot(
-        subsets, n_bootstrap=1, bootstrap_checkpoints=None, fast=False,
+        subsets,  model_strings=None, n_bootstrap=1, bootstrap_checkpoints=None, fast=False,
         batch_size=16, hard_bottleneck=None, device=None, non_blocking=False, num_workers=0, pin_memory=False,
         persistent_workers=False, base_seed=57):
     """
-    Run all available models (from MODEL_STRINGS_CUB_CUB) on different subsets. For each subset, plots the models
+    Run all available models (from MODEL_STRINGS_CUB) on different subsets. For each subset, plots the models
     training-history together, and also plots the test error for each subset.
     To even out variance, the subsets can be bootstrapped with "n_bootstrap".
     Note that this will only bootstrap the training and validation set, while the test-set remains the same.
@@ -138,6 +153,7 @@ def run_models_on_subsets_and_plot(
     Args:
         subsets (list of int): List of the subsets to run on.
         n_bootstrap (int, optional): The amount of times to draw new subset and run models. Defaults to 1.
+        model_strings (list of str): List of strings of the models to evaluate. Load from `src.constants.py`.
         bootstrap_checkpoints (list of int): List of bootstrap iterations to save and plot after.
         fast (bool, optional): If True, will load hyperparameters with low `n_epochs`. Defaults to False.
         batch_size (int, optional): Batch-size of the training. Defaults to 16.
@@ -158,6 +174,17 @@ def run_models_on_subsets_and_plot(
     """
     if bootstrap_checkpoints is None:
         bootstrap_checkpoints = BOOTSTRAP_CHECKPOINTS
+
+    if model_strings is None:
+        model_strings = MODEL_STRINGS_CUB
+        colors = COLORS_CUB
+
+    if model_strings == MODEL_STRINGS_CUB:
+        colors = COLORS_CUB
+    elif model_strings == MODEL_STRINGS_ORACLE:
+        colors = COLORS_ORACLE
+    else:
+        colors = COLORS_ALL_CUB
 
     for n_subset in subsets:
         seed = base_seed
@@ -186,8 +213,8 @@ def run_models_on_subsets_and_plot(
 
             histories = train_and_evaluate_cub(
                 n_subset=n_subset, train_loader=train_loader, val_loader=val_loader,
-                test_loader=test_loader, hyperparameters=None, hard_bottleneck=hard_bottleneck,
-                fast=fast, device=device, non_blocking=non_blocking, seed=base_seed)
+                test_loader=test_loader, model_strings=model_strings, hyperparameters=None,
+                hard_bottleneck=hard_bottleneck, fast=fast, device=device, non_blocking=non_blocking, seed=base_seed)
             histories_total = add_histories(histories_total, histories)
 
             n_boot = i + 1
@@ -196,16 +223,19 @@ def run_models_on_subsets_and_plot(
                 averaged_histories = average_histories(histories_total, n_boot)
                 save_history_cub(
                     n_boot, n_subset, averaged_histories, hard_bottleneck=hard_bottleneck)
-                # Only plot histories for last bootstrap iterations
-                if n_boot == bootstrap_checkpoints[-1]:
-                    plot_training_histories_cub(n_boot, n_subset, histories=averaged_histories, names=MODEL_STRINGS_CUB,
-                                                hard_bottleneck=hard_bottleneck, colors=COLORS_CUB, attributes=False)
+                if n_boot == bootstrap_checkpoints[-1]:  # Only plot histories for last bootstrap iterations
+                    plot_training_histories_cub(n_boot, n_subset, histories=averaged_histories, names=model_strings,
+                                                hard_bottleneck=hard_bottleneck, colors=colors, attributes=False)
                     # Exclude cnn model when plotting attributes / concept training
-                    plot_training_histories_cub(n_boot, n_subset, histories=averaged_histories[1:],
-                                                names=["cbm", "cbm_res", "cbm_skip"],
-                                                hard_bottleneck=hard_bottleneck, colors=COLORS_CUB[1:], attributes=True)
+                    oracle_only = (model_strings == MODEL_STRINGS_ORACLE)
+                    if oracle_only:
+                        continue
+                    plot_training_histories_cub(
+                        n_boot, n_subset, histories=averaged_histories[1:4], names=model_strings[1:4],
+                        hard_bottleneck=hard_bottleneck, colors=colors[1:4], attributes=True)
 
     for n_boot in bootstrap_checkpoints:
         if n_boot > n_bootstrap:  # Incase a checkpoint is higher than the actual iterations ran
             break
-        plot_test_accuracies_cub(subsets=subsets, n_bootstrap=n_boot, hard_bottleneck=hard_bottleneck)
+        plot_test_accuracies_cub(subsets=subsets, n_bootstrap=n_boot, hard_bottleneck=hard_bottleneck,
+                                 model_strings=model_strings, colors=colors)
