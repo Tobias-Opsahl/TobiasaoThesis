@@ -1,7 +1,13 @@
-MODEL_STRINGS = ["cnn", "cbm", "cbm_res", "cbm_skip", "scm"]
+MODEL_STRINGS_SHAPES = ["cnn", "cbm", "cbm_res", "cbm_skip", "scm"]
 MODEL_STRINGS_CUB = ["cnn", "cbm", "cbm_res", "cbm_skip"]
-COLORS = ["y", "r", "blueviolet", "black", "skyblue"]
+MODEL_STRINGS_ORACLE = ["lr_oracle", "nn_oracle"]
+MODEL_STRINGS_ALL_SHAPES = ["cnn", "cbm", "cbm_res", "cbm_skip", "scm", "lr_oracle", "nn_oracle"]
+MODEL_STRINGS_ALL_CUB = ["cnn", "cbm", "cbm_res", "cbm_skip", "lr_oracle", "nn_oracle"]
+COLORS_SHAPES = ["y", "r", "blueviolet", "black", "skyblue"]
 COLORS_CUB = ["y", "r", "blueviolet", "black"]
+COLORS_ORACLE = ["hotpink", "deeppink"]
+COLORS_ALL_SHAPES = ["y", "r", "blueviolet", "black", "skyblue", "hotpink", "deeppink"]
+COLORS_ALL_CUB= ["y", "r", "blueviolet", "black", "deeppink", "hotpink"]
 MAX_EPOCHS = 50
 FAST_MAX_EPOCHS_SHAPES = 2  # Use in order to quickly test if implementations work
 FAST_MAX_EPOCHS_CUB = 1
@@ -33,3 +39,4 @@ CUB_PROCESSED_FOLDER = "CUB_processed/"
 CUB_FEATURE_SELECTION_FILENAME = "CUB_feature_selection.pkl"
 
 N_CLASSES_CUB = 200
+N_ATTR_CUB = 112

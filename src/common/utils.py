@@ -8,9 +8,11 @@ import logging
 import numpy as np
 
 from src.common.path_utils import load_hyperparameters_shapes, load_hyperparameters_cub, load_data_list_cub
-from src.models.models_shapes import ShapesCNN, ShapesCBM, ShapesCBMWithResidual, ShapesCBMWithSkip, ShapesSCM
+from src.models.models_shapes import (ShapesCNN, ShapesCBM, ShapesCBMWithResidual, ShapesCBMWithSkip, ShapesSCM,
+                                      ShapesLogisticOracle, ShapesNNOracle)
 from src.models.models_cub import CubCNN, CubCBM, CubCBMWithResidual, CubCBMWithSkip
-from src.constants import MODEL_STRINGS, MODEL_STRINGS_CUB, N_CLASSES_CUB
+from src.constants import (MODEL_STRINGS_ALL_SHAPES, MODEL_STRINGS_ALL_CUB, N_CLASSES_CUB, N_ATTR_CUB,
+                           MODEL_STRINGS_SHAPES, MODEL_STRINGS_CUB)
 
 
 def set_global_log_level(level):
@@ -136,8 +138,8 @@ def load_single_model(model_type, n_classes, n_attr, hyperparameters):
         model: The pytorch model.
     """
     model_type = model_type.strip().lower()
-    if model_type not in MODEL_STRINGS:
-        raise ValueError(f"The model type must be in {MODEL_STRINGS}. Was {model_type}. ")
+    if model_type not in MODEL_STRINGS_ALL_SHAPES:
+        raise ValueError(f"The model type must be in {MODEL_STRINGS_ALL_SHAPES}. Was {model_type}. ")
     hp = hyperparameters
 
     if model_type == "cnn":
@@ -177,8 +179,16 @@ def load_single_model(model_type, n_classes, n_attr, hyperparameters):
             dropout_probability=hp["dropout_probability"])
         return scm
 
+    elif model_type == "lr_oracle":
+        lr_oracle = ShapesLogisticOracle(n_classes=n_classes, n_attr=n_attr)
+        return lr_oracle
 
-def load_models_shapes(n_classes, n_attr, signal_strength=98, n_subset=None, hyperparameters=None,
+    elif model_type == "nn_oracle":
+        lr_oracle = ShapesNNOracle(n_classes=n_classes, n_attr=n_attr)
+        return lr_oracle
+
+
+def load_models_shapes(n_classes, n_attr, signal_strength=98, n_subset=None, model_strings=None, hyperparameters=None,
                        hard_bottleneck=None, fast=False):
     """
     Loads the shapes models with respect to the hyperparameters.
@@ -190,6 +200,7 @@ def load_models_shapes(n_classes, n_attr, signal_strength=98, n_subset=None, hyp
         n_attr (int): Amount of attribues.
         signal_strength (int). The signal-strength used for creating the dataset.
         n_subset (int): The amount of data used to train the model. Used for loading hyperparameters.
+        model_strings (list of str): List of names of models to load, from `src.constants.py`.
         hyperparameters (dict of dict, optional): Dictionary of the hyperparameter-dictionaries.
             Should be read from yaml file in "hyperparameters/". If `None`, will read
             default or fast hyperparameters. Defaults to None.
@@ -205,14 +216,14 @@ def load_models_shapes(n_classes, n_attr, signal_strength=98, n_subset=None, hyp
     if hp is None:
         hp = load_hyperparameters_shapes(n_classes, n_attr, signal_strength, n_subset,
                                          fast=fast, hard_bottleneck=hard_bottleneck)
-    cnn = load_single_model(model_type="cnn", hyperparameters=hp["cnn"], n_classes=n_classes, n_attr=n_attr)
-    cbm = load_single_model(model_type="cbm", hyperparameters=hp["cbm"], n_classes=n_classes, n_attr=n_attr)
-    cbm_res = load_single_model(model_type="cbm_res", hyperparameters=hp["cbm_res"], n_classes=n_classes, n_attr=n_attr)
-    cbm_skip = load_single_model(model_type="cbm_skip", hyperparameters=hp["cbm_skip"],
-                                 n_classes=n_classes, n_attr=n_attr)
-    scm = load_single_model(model_type="scm", hyperparameters=hp["scm"], n_classes=n_classes, n_attr=n_attr)
+    models = []
+    if model_strings is None:
+        model_strings = MODEL_STRINGS_SHAPES
+    for model_string in model_strings:
+        model = load_single_model(model_type=model_string, hyperparameters=hp[model_string],
+                                  n_classes=n_classes, n_attr=n_attr)
+        models.append(model)
 
-    models = [cnn, cbm, cbm_res, cbm_skip, scm]
     return models
 
 
@@ -333,8 +344,8 @@ def load_single_model_cub(model_type, hyperparameters, n_attr=112):
         model: The pytorch model.
     """
     model_type = model_type.strip().lower()
-    if model_type not in MODEL_STRINGS_CUB:
-        raise ValueError(f"The model type must be in {MODEL_STRINGS_CUB}. Was {model_type}. ")
+    if model_type not in MODEL_STRINGS_ALL_CUB:
+        raise ValueError(f"The model type must be in {MODEL_STRINGS_ALL_CUB}. Was {model_type}. ")
     hp = hyperparameters
 
     if model_type == "cnn":
@@ -367,12 +378,22 @@ def load_single_model_cub(model_type, hyperparameters, n_attr=112):
             dropout_probability=hp["dropout_probability"])
         return cbm_skip
 
+    elif model_type == "lr_oracle":
+        lr_oracle = ShapesLogisticOracle(n_classes=N_CLASSES_CUB, n_attr=n_attr)
+        return lr_oracle
 
-def load_models_cub(n_subset=None, hyperparameters=None, hard_bottleneck=None, fast=False, n_attr=112):
+    elif model_type == "nn_oracle":
+        lr_oracle = ShapesNNOracle(n_classes=N_CLASSES_CUB, n_attr=n_attr)
+        return lr_oracle
+
+
+def load_models_cub(model_strings=None, n_subset=None, hyperparameters=None, hard_bottleneck=None,
+                    fast=False, n_attr=N_ATTR_CUB):
     """
     Loads the cub models with respect to the hyperparameters.
 
     Args:
+        model_strings (list of str): List of names of models to load, from `src.constants.py`.
         n_subset (int): The amount of data used to train the model. Used for loading hyperparameters.
         hyperparameters (dict of dict, optional): Dictionary of the hyperparameter-dictionaries.
             Should be read from yaml file in "hyperparameters/". If `None`, will read
@@ -389,10 +410,12 @@ def load_models_cub(n_subset=None, hyperparameters=None, hard_bottleneck=None, f
     hp = hyperparameters
     if hp is None:
         hp = load_hyperparameters_cub(n_subset, fast=fast, hard_bottleneck=hard_bottleneck)
-    cnn = load_single_model_cub(model_type="cnn", hyperparameters=hp["cnn"], n_attr=n_attr)
-    cbm = load_single_model_cub(model_type="cbm", hyperparameters=hp["cbm"], n_attr=n_attr)
-    cbm_res = load_single_model_cub(model_type="cbm_res", hyperparameters=hp["cbm_res"], n_attr=n_attr)
-    cbm_skip = load_single_model_cub(model_type="cbm_skip", hyperparameters=hp["cbm_skip"], n_attr=n_attr)
 
-    models = [cnn, cbm, cbm_res, cbm_skip]
+    models = []
+    if model_strings is None:
+        model_strings = MODEL_STRINGS_CUB
+    for model_string in model_strings:
+        model = load_single_model_cub(model_type=model_string, hyperparameters=hp[model_string], n_attr=n_attr)
+        models.append(model)
+
     return models

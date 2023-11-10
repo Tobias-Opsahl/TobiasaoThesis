@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from PIL import Image
 from matplotlib import rc
 
-from src.constants import MODEL_STRINGS, COLORS, MODEL_STRINGS_CUB, COLORS_CUB
+from src.constants import MODEL_STRINGS_SHAPES, COLORS_SHAPES, MODEL_STRINGS_CUB, COLORS_CUB
 from src.common.path_utils import (load_history_shapes, save_test_plot_shapes, save_training_plot_shapes,
                                    load_history_cub, save_test_plot_cub, save_training_plot_cub)
 
@@ -283,9 +283,9 @@ def plot_training_histories_shapes(n_classes, n_attr, signal_strength, n_bootstr
         title (str, optional): Title for the plot. Defaults to None.    
     """
     if names is None:
-        names = MODEL_STRINGS
+        names = MODEL_STRINGS_SHAPES
     if colors is None:
-        colors = COLORS
+        colors = COLORS_SHAPES
 
     if histories is None:
         histories = load_history_shapes(n_classes, n_attr, signal_strength, n_bootstrap, n_subset,
@@ -316,9 +316,9 @@ def plot_test_accuracies_shapes(n_classes, n_attr, signal_strength, subsets, n_b
         colors (list of str, optional): List of colors to use for the different models. Defaults to None.
     """
     if model_strings is None:
-        model_strings = MODEL_STRINGS
+        model_strings = MODEL_STRINGS_SHAPES
     if colors is None:
-        colors = COLORS
+        colors = COLORS_SHAPES
 
     histories_list = []
     for n_subset in subsets:
@@ -386,7 +386,7 @@ def plot_test_accuracies_cub(subsets, n_bootstrap=1, hard_bottleneck=False, mode
         histories = load_history_cub(n_bootstrap, n_subset, hard_bottleneck=hard_bottleneck)
         histories_list.append(histories)
 
-    for i in range(subsets):  # n_subset = None means full data set, which is about 30 images per class.
+    for i in range(len(subsets)):  # n_subset = None means full data set, which is about 30 images per class.
         if subsets[i] is None:
             subsets[i] = 30
 

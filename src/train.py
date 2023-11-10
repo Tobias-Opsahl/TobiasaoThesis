@@ -9,7 +9,7 @@ logger = get_logger(__name__)
 
 
 def train_simple(model, criterion, optimizer, train_loader, val_loader=None, n_epochs=10, scheduler=None, trial=None,
-                 n_early_stop=None, device=None, non_blocking=False, verbose=1):
+                 n_early_stop=None, device=None, non_blocking=False, oracle=False, verbose=1):
     """
     Trains a model and calculate training and valudation stats, given the model, loader, optimizer
     and some hyperparameters.
@@ -33,6 +33,7 @@ def train_simple(model, criterion, optimizer, train_loader, val_loader=None, n_e
         device (str): Use "cpu" for cpu training and "cuda:0" for gpu training.
         non_blocking (bool): If True, allows for asyncronous transfer between RAM and VRAM.
             This only works together with `pin_memory=True` to dataloader and GPU training.
+        oracle (bool): If True, will train oracle model, which is trained on the concept-labels.
         verbose (int): If 0, will not log anything. If not 0, will log last epoch with INFO and the others with DEBUG.
 
     Returns:
@@ -59,13 +60,18 @@ def train_simple(model, criterion, optimizer, train_loader, val_loader=None, n_e
     best_model_loss = None  # This will only be saved if `val_loader` is not None
     best_model_accuracy = None
     n_stagnation = 0
+    if verbose != 0:
+        logger.info(f"Starting training with device {device}.")
 
     for epoch in range(n_epochs):  # Train
         train_loss = 0
         train_correct = 0
         model.train()
         for input, labels, attr_labels, paths in train_loader:
-            input = input.to(device, non_blocking=non_blocking)
+            if oracle:  # Train oracle model on attribute-lables
+                input = attr_labels.to(device, non_blocking=non_blocking)
+            else:  # Normal model
+                input = input.to(device, non_blocking=non_blocking)
             labels = labels.to(device, non_blocking=non_blocking)
 
             optimizer.zero_grad()
@@ -89,7 +95,10 @@ def train_simple(model, criterion, optimizer, train_loader, val_loader=None, n_e
             val_loss = 0
             val_correct = 0
             for input, labels, attr_labels, paths in val_loader:
-                input = input.to(device, non_blocking=non_blocking)
+                if oracle:  # Train oracle model on attribute-lables
+                    input = attr_labels.to(device, non_blocking=non_blocking)
+                else:  # Normal model
+                    input = input.to(device, non_blocking=non_blocking)
                 labels = labels.to(device, non_blocking=non_blocking)
                 optimizer.zero_grad()
                 outputs = model(input)
@@ -235,6 +244,8 @@ def train_cbm(model, criterion, attr_criterion, optimizer, train_loader, val_loa
     best_model_loss = None  # This will only be saved if `val_loader` is not None
     best_model_accuracy = None
     n_stagnation = 0
+    if verbose != 0:
+        logger.info(f"Starting training with device {device}.")
 
     for epoch in range(n_epochs):  # Train
         train_attr_loss = 0
@@ -285,13 +296,14 @@ def train_cbm(model, criterion, attr_criterion, optimizer, train_loader, val_loa
                 attr_labels = attr_labels.to(device, non_blocking=non_blocking)
                 optimizer.zero_grad()
                 class_outputs, attr_outputs = model(input)
+                attr_probs = torch.sigmoid(attr_outputs)
 
                 class_loss = criterion(class_outputs, labels)
                 attr_loss = attr_weight[epoch] * attr_criterion(attr_outputs, attr_labels)
                 loss = class_loss + attr_loss
 
                 val_attr_loss += attr_loss.item() * input.shape[0]
-                attr_preds = (attr_outputs > 0.5).float()
+                attr_preds = (attr_probs > 0.5).float()
                 val_attr_correct += (attr_preds == attr_labels).sum().item()
 
                 val_class_loss += class_loss.item() * input.shape[0]

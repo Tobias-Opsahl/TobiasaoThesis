@@ -47,3 +47,11 @@ cnn:
   n_epochs: 50
   n_linear_output: 64
   dropout_probability: 0.2
+lr_oracle:
+  learning_rate: 0.001
+  n_epochs: 50
+  gamma: 1
+nn_oracle:
+  learning_rate: 0.001
+  n_epochs: 50
+  gamma: 1

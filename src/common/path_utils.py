@@ -12,7 +12,7 @@ from src.constants import (
     DATA_FOLDER, SHAPES_FOLDER, CUB_FOLDER, FAST_HYPERPARAMETERS_FILENAME_SHAPES,
     DEFAULT_HYPERPARAMETERS_FILENAME_SHAPES, FAST_HYPERPARAMETERS_FILENAME_SHAPES_HARD,
     DEFAULT_HYPERPARAMETERS_FILENAME_SHAPES_HARD, CUB_TABLES_FOLDER, CUB_PROCESSED_FOLDER,
-    CUB_FEATURE_SELECTION_FILENAME)
+    CUB_FEATURE_SELECTION_FILENAME, MODEL_STRINGS_ALL_SHAPES, MODEL_STRINGS_ALL_CUB)
 
 
 def _check_just_file(filename):
@@ -282,7 +282,7 @@ def load_model_shapes(n_classes, n_attr, signal_strength, n_subset, model_type, 
         n_attr (int): The amonut of attributes (concepts) in the dataset.
         signal_strength (int, optional): Signal-strength used to make dataset.
         n_subset (int): The amount of instances in each class used in the subset.
-        model_type (str): Model to load. Must be in ["cnn", "cbm", "cbm_res", "cbm_skip", "scm"].
+        model_type (str): Model to load.
         metric (str, optional): Should be in ["loss", "accuracy"]. Determines if one loads the best
             validation loss model or best validation accuracy loss. Defaults to "loss".
         hard_bottleneck (bool): Set to `True` if hard bottleneck was used. This will alter the name to end with `_hard`.
@@ -291,8 +291,8 @@ def load_model_shapes(n_classes, n_attr, signal_strength, n_subset, model_type, 
         dict: The state-dict to the model.
     """
     model_type = model_type.strip().lower()
-    if model_type not in ["cnn", "cbm", "cbm_res", "cbm_skip", "scm"]:
-        message = f"Argument `model_type` must be in [\"cnn\", \"cbm\", \"cbm_res\", \"cbm_skip\", \"scm\"]. "
+    if model_type not in MODEL_STRINGS_ALL_SHAPES:
+        message = f"Argument `model_type` must be in {MODEL_STRINGS_ALL_SHAPES}. "
         message += f"Was {model_type}. "
         raise ValueError(message)
 
@@ -315,13 +315,13 @@ def save_model_shapes(n_classes, n_attr, signal_strength, n_subset, state_dict, 
         signal_strength (int, optional): Signal-strength used to make dataset.
         n_subset (int): The amount of instances in each class used in the subset.
         state_dict (dict): The state-dict of the model to save.
-        model_type (str): String name of the model to save. Must be in ["cnn", "cbm", "cbm_res", "cbm_skip", "scm"].
+        model_type (str): String name of the model to save.
         metric (str, optional): Nam. Defaults to "loss".
         hard_bottleneck (bool): Set to `True` if hard bottleneck was used. This will alter the name to end with `_hard`.
     """
     model_type = model_type.strip().lower()
-    if model_type not in ["cnn", "cbm", "cbm_res", "cbm_skip", "scm"]:
-        message = f"Argument `model_type` must be in [\"cnn\", \"cbm\", \"cbm_res\", \"cbm_skip\", \"scm\"]. "
+    if model_type not in MODEL_STRINGS_ALL_SHAPES:
+        message = f"Argument `model_type` must be in {MODEL_STRINGS_ALL_SHAPES}. "
         message += f"Was {model_type}. "
         raise ValueError(message)
 
@@ -375,7 +375,7 @@ def save_test_plot_shapes(n_classes, n_attr, signal_strength, n_bootstrap, hard_
 
 
 def load_hyperparameters_shapes(n_classes=None, n_attr=None, signal_strength=None, n_subset=None, hard_bottleneck=False,
-                                fast=False, default=False):
+                                fast=False, default=False, oracle=False):
     """
     Loads a set of hyperparameters. This will try to load hyperparameters specific for this combination of
     classes, attributes and n_subset. If this is not found, it will use default hyperparameters instead.
@@ -471,8 +471,8 @@ def save_hyperparameters_shapes(n_classes, n_attr, signal_strength, n_subset, hy
         model_type (str): The name of the model with the given hyperparameters
         hard_bottleneck (bool): Set to `True` if hard bottleneck was used. This will alter the name to end with `_hard`.
     """
-    if model_type not in ["cnn", "cbm", "cbm_res", "cbm_skip", "scm"]:
-        message = f"Argument `model_type` must be in [\"cnn\", \"cbm\", \"cbm_res\", \"cbm_skip\", \"scm\"]. "
+    if model_type not in MODEL_STRINGS_ALL_SHAPES:
+        message = f"Argument `model_type` must be in {MODEL_STRINGS_ALL_SHAPES}. "
         message += f"Was {model_type}. "
         raise ValueError(message)
     folder_name = get_full_shapes_folder_path(
@@ -655,7 +655,7 @@ def load_model_cub(n_subset, model_type, metric="loss", hard_bottleneck=False):
 
     Args:
         n_subset (int): The amount of instances in each class used in the subset.
-        model_type (str): Model to load. Must be in ["cnn", "cbm", "cbm_res", "cbm_skip", "scm"].
+        model_type (str): Model to load.
         metric (str, optional): Should be in ["loss", "accuracy"]. Determines if one loads the best
             validation loss model or best validation accuracy loss. Defaults to "loss".
         hard_bottleneck (bool): Set to `True` if hard bottleneck was used. This will alter the name to end with `_hard`.
@@ -664,8 +664,8 @@ def load_model_cub(n_subset, model_type, metric="loss", hard_bottleneck=False):
         dict: The state-dict to the model.
     """
     model_type = model_type.strip().lower()
-    if model_type not in ["cnn", "cbm", "cbm_res", "cbm_skip"]:
-        message = f"Argument `model_type` must be in [\"cnn\", \"cbm\", \"cbm_res\", \"cbm_skip\"]. "
+    if model_type not in MODEL_STRINGS_ALL_CUB:
+        message = f"Argument `model_type` must be in {MODEL_STRINGS_ALL_CUB}. "
         message += f"Was {model_type}. "
         raise ValueError(message)
 
@@ -688,13 +688,13 @@ def save_model_cub(n_subset, state_dict, model_type, metric="loss", hard_bottlen
     Args:
         n_subset (int): The amount of instances in each class used in the subset.
         state_dict (dict): The state-dict of the model to save.
-        model_type (str): String name of the model to save. Must be in ["cnn", "cbm", "cbm_res", "cbm_skip", "scm"].
+        model_type (str): String name of the model to save.
         metric (str, optional): Nam. Defaults to "loss".
         hard_bottleneck (bool): Set to `True` if hard bottleneck was used. This will alter the name to end with `_hard`.
     """
     model_type = model_type.strip().lower()
-    if model_type not in ["cnn", "cbm", "cbm_res", "cbm_skip"]:
-        message = f"Argument `model_type` must be in [\"cnn\", \"cbm\", \"cbm_res\", \"cbm_skip\"]. "
+    if model_type not in MODEL_STRINGS_ALL_CUB:
+        message = f"Argument `model_type` must be in {MODEL_STRINGS_ALL_CUB}. "
         message += f"Was {model_type}. "
         raise ValueError(message)
 
@@ -833,8 +833,8 @@ def save_hyperparameters_cub(n_subset, hyperparameters_dict, model_type, hard_bo
         model_type (str): The name of the model with the given hyperparameters
         hard_bottleneck (bool): Set to `True` if hard bottleneck was used. This will alter the name to end with `_hard`.
     """
-    if model_type not in ["cnn", "cbm", "cbm_res", "cbm_skip"]:
-        message = f"Argument `model_type` must be in [\"cnn\", \"cbm\", \"cbm_res\", \"cbm_skip\"]. "
+    if model_type not in MODEL_STRINGS_ALL_CUB:
+        message = f"Argument `model_type` must be in {MODEL_STRINGS_ALL_CUB}. "
         message += f"Was {model_type}. "
         raise ValueError(message)
     folder_name = get_cub_folder_path(relative_folder=HYPERPARAMETERS_FOLDER)
