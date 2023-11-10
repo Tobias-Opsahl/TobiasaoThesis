@@ -307,3 +307,56 @@ class CubCBMWithSkip(nn.Module):
         x = self.final_classifier(x)  # Out: N x n_classes
 
         return x, concepts
+
+class CubLogisticOracle(nn.Module):
+    """
+    Logistic regression from attributes to classes.
+    This model is designed to recieve concepts labels at testing time, and is therefore considered an oracle.
+    """
+    def __init__(self, n_classes, n_attr):
+        """
+        Args:
+            n_classes (int): The amount of classes to predict.
+            n_attr (int): The amount of input concepts.
+        """
+        super(CubLogisticOracle, self).__init__()
+        self.name = "CubLogisticOracle"
+        self.short_name = "lr_oracle"
+
+        self.n_classes = n_classes
+        self.n_attr = n_attr
+
+        self.layer = nn.Linear(n_attr, n_classes)
+
+    def forward(self, x):
+        x = self.layer(x)
+        return x
+
+
+class CubNNOracle(nn.Module):
+    """
+    Two layer neural network from attributes to classes.
+    The hidden layer has as many nodes as the input layer, and uses ReLU activation function.
+    This model is designed to recieve concepts labels at testing time, and is therefore considered an oracle.
+    """
+    def __init__(self, n_classes, n_attr):
+        """
+        Args:
+            n_classes (int): The amount of classes to predict.
+            n_attr (int): The amount of input concepts.
+        """
+        super(CubNNOracle, self).__init__()
+        self.name = "CubNNOracle"
+        self.short_name = "nn_oracle"
+
+        self.n_classes = n_classes
+        self.n_attr = n_attr
+
+        self.hidden_layer = nn.Linear(n_attr, n_attr)
+        self.output_layer = nn.Linear(n_attr, n_classes)
+
+    def forward(self, x):
+        x = self.hidden_layer(x)
+        x = F.relu(x)
+        x = self.output_layer(x)
+        return x

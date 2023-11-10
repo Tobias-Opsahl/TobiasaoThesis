@@ -10,7 +10,7 @@ import numpy as np
 from src.common.path_utils import load_hyperparameters_shapes, load_hyperparameters_cub, load_data_list_cub
 from src.models.models_shapes import (ShapesCNN, ShapesCBM, ShapesCBMWithResidual, ShapesCBMWithSkip, ShapesSCM,
                                       ShapesLogisticOracle, ShapesNNOracle)
-from src.models.models_cub import CubCNN, CubCBM, CubCBMWithResidual, CubCBMWithSkip
+from src.models.models_cub import CubCNN, CubCBM, CubCBMWithResidual, CubCBMWithSkip, CubLogisticOracle, CubNNOracle
 from src.constants import (MODEL_STRINGS_ALL_SHAPES, MODEL_STRINGS_ALL_CUB, N_CLASSES_CUB, N_ATTR_CUB,
                            MODEL_STRINGS_SHAPES, MODEL_STRINGS_CUB)
 
@@ -379,11 +379,11 @@ def load_single_model_cub(model_type, hyperparameters, n_attr=112):
         return cbm_skip
 
     elif model_type == "lr_oracle":
-        lr_oracle = ShapesLogisticOracle(n_classes=N_CLASSES_CUB, n_attr=n_attr)
+        lr_oracle = CubLogisticOracle(n_classes=N_CLASSES_CUB, n_attr=n_attr)
         return lr_oracle
 
     elif model_type == "nn_oracle":
-        lr_oracle = ShapesNNOracle(n_classes=N_CLASSES_CUB, n_attr=n_attr)
+        lr_oracle = CubNNOracle(n_classes=N_CLASSES_CUB, n_attr=n_attr)
         return lr_oracle
 
 

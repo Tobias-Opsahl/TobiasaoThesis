@@ -6,7 +6,7 @@ from src.datasets.datasets_cub import load_data_cub, make_subset_cub
 from src.train import train_simple, train_cbm
 from src.common.utils import load_single_model_cub, get_logger
 from src.common.path_utils import load_hyperparameters_cub, save_hyperparameters_cub
-from src.constants import MODEL_STRINGS_CUB
+from src.constants import MODEL_STRINGS_CUB, MODEL_STRINGS_ALL_CUB
 
 
 logger = get_logger(__name__)
@@ -50,8 +50,8 @@ class HyperparameterOptimizationShapes:
             ValueError: If model_type is not in MODEL_STRINGS_CUB.
         """
         model_type = model_type.strip().lower()
-        if model_type not in MODEL_STRINGS_CUB:
-            raise ValueError(f"The model type must be in {MODEL_STRINGS_CUB}. Was {model_type}. ")
+        if model_type not in MODEL_STRINGS_ALL_CUB:
+            raise ValueError(f"The model type must be in {MODEL_STRINGS_ALL_CUB}. Was {model_type}. ")
         self.model_type = model_type
 
         self.device = device
@@ -319,6 +319,10 @@ class HyperparameterOptimizationShapes:
             history, _ = train_simple(
                 model, criterion, optimizer, train_loader, val_loader, trial=trial, scheduler=exp_lr_scheduler,
                 n_epochs=hp["n_epochs"], device=self.device, non_blocking=self.non_blocking, verbose=0)
+        elif self.model_type in ["lr_oracle", "nn_oracle"]:  # Oracle model, trains only on attribute-lables
+            history, _ = train_simple(
+                model, criterion, optimizer, train_loader, val_loader, trial=trial, scheduler=exp_lr_scheduler,
+                n_epochs=hp["n_epochs"], device=self.device, non_blocking=self.non_blocking, oracle=True, verbose=0)
         else:  # Concept-bottleneck model
             attr_criterion = nn.BCEWithLogitsLoss()
             history, _ = train_cbm(
