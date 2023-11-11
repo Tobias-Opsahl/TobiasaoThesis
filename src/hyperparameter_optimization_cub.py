@@ -270,8 +270,8 @@ class HyperparameterOptimizationShapes:
             dict: Dictionary of the hyperparameter-names pointing to a list of possible values to try.
         """
         all_possibilities = {
-            "learning_rate": [0.01, 0.005, 0.001],
-            "gamma": [0.1, 1],
+            "learning_rate": [0.01, 0.005, 0.001, 0.0005],
+            "gamma": [0.1, 0.5, 0.7, 0.9, 1],
             "dropout_probability": [0.1, 0.3],
             "n_epochs": [20, 30, 50, 100],
             "n_linear_output": [16, 64, 128, 256],
@@ -281,7 +281,7 @@ class HyperparameterOptimizationShapes:
             "two_layers": [True, False],
             "attr_weight": [1, 3, 5, 10],
             "attr_weight_decay": [0.5, 0.7, 0.9, 1],
-            "attr_schedule": [0.9, 3]
+            "attr_schedule": [0.8, 0.9, 1, 3, 10]
         }
 
         search_space = {}  # Add only the hyperparameters we are going to search for in the space
@@ -492,14 +492,15 @@ def run_hyperparameter_optimization_all_models(
         for model_type in model_strings:
             if grid_search and set_hyperparameters_to_search:
                 if model_type == "cnn":
-                    hyperparameters_names = ["learning_rate", "dropout_probability", "gamma"]
+                    hyperparameters_names = ["learning_rate", "gamma"]
                     hyperparameters_to_search = get_hyperparameters_dictionary(hyperparameters_names)
                 elif model_type in ["lr_oracle", "nn_oracle"]:
                     hyperparameters_names = ["learning_rate"]
                     hyperparameters_to_search = get_hyperparameters_dictionary(hyperparameters_names)
                 else:
-                    hyperparameters_names = ["learning_rate", "dropout_probability", "attr_schedule"]
+                    hyperparameters_names = ["learning_rate", "attr_schedule"]
                     hyperparameters_to_search = get_hyperparameters_dictionary(hyperparameters_names)
+
             if not grid_search and set_hyperparameters_to_search:
                 if model_type == "cnn":
                     hyperparameters_names = ["learning_rate", "dropout_probability", "gamma", "n_linear_output"]
