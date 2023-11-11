@@ -5,9 +5,11 @@ from src.train import train_simple, train_cbm
 from src.datasets.datasets_shapes import load_data_shapes, make_subset_shapes
 from src.plotting import plot_training_histories_shapes, plot_test_accuracies_shapes
 from src.common.utils import seed_everything, get_logger, load_models_shapes, add_histories, average_histories
-from src.common.path_utils import load_hyperparameters_shapes, save_history_shapes, save_model_shapes
+from src.common.path_utils import (load_hyperparameters_shapes, save_history_shapes, save_model_shapes,
+                                   load_history_shapes)
 from src.constants import (MAX_EPOCHS, FAST_MAX_EPOCHS_SHAPES, BOOTSTRAP_CHECKPOINTS, MODEL_STRINGS_SHAPES,
-                           MODEL_STRINGS_ORACLE, COLORS_SHAPES, COLORS_ORACLE, COLORS_ALL_SHAPES)
+                           MODEL_STRINGS_ORACLE, COLORS_SHAPES, COLORS_ORACLE, COLORS_ALL_SHAPES,
+                           NAMES_TO_SHORT_NAMES_SHAPES)
 
 
 logger = get_logger(__name__)
@@ -238,4 +240,62 @@ def run_models_on_subsets_and_plot(
             break
         plot_test_accuracies_shapes(
             n_classes, n_attr, signal_strength, subsets=subsets, n_bootstrap=n_boot,
+            hard_bottleneck=hard_bottleneck, model_strings=model_strings, colors=colors)
+
+
+def only_plot(
+    n_classes, n_attr, signal_strength, subsets, model_strings=None, n_bootstrap=1, hard_bottleneck=None,
+    plot_train=True, plot_test=True):
+    """
+    Assume histories are made, and only do the plotting. This is useful for changing the plots slightly after a run.
+
+    Args:
+        n_classes (int): The amount of classes in the dataset.
+        n_attr (int): The amount of attributes in the dataset
+        signal_strength (int): The signal_strength the dataset is created with.
+        subsets (list of int): List of the subsets to run on.
+        model_strings (list of str): List of strings of the models to evaluate. Load from `src.constants.py`.
+        n_bootstrap (int, optional): The amount of times to draw new subset and run models. Defaults to 1.
+        hard_bottleneck (bool): If True, will load hard-bottleneck concept layer for the concept models.
+            If not, will use what is in the hyperparameters.
+        plot_train (bool): If `True`, will plot the training histories.
+        plot_test (bool): If `True`, will plot the test accuracies.
+    """
+    if model_strings is None:
+        model_strings = MODEL_STRINGS_SHAPES
+        colors = COLORS_SHAPES
+
+    if model_strings == MODEL_STRINGS_SHAPES:
+        colors = COLORS_SHAPES
+    elif model_strings == MODEL_STRINGS_ORACLE:
+        colors = COLORS_ORACLE
+    else:
+        colors = COLORS_ALL_SHAPES
+
+    if plot_train:
+        for n_subset in subsets:
+            histories = load_history_shapes(
+                n_classes, n_attr, signal_strength, n_bootstrap, n_subset=n_subset, hard_bottleneck=hard_bottleneck)
+            correct_histories = []
+            for history in histories:  # Get the correct histories, in a semi-hacky way
+                short_name = NAMES_TO_SHORT_NAMES_SHAPES[history["model_name"]]
+                if short_name in model_strings:
+                    correct_histories.append(history)
+                
+            plot_training_histories_shapes(
+                n_classes, n_attr, signal_strength, n_bootstrap, n_subset, histories=correct_histories,
+                names=model_strings, hard_bottleneck=hard_bottleneck, colors=colors, attributes=False)
+
+            oracle_only = (model_strings == MODEL_STRINGS_ORACLE)
+            if oracle_only:  # No attributes for oracle only models
+                continue
+            # Exclude cnn model when plotting attributes / concept training
+            plot_training_histories_shapes(
+                n_classes, n_attr, signal_strength, n_bootstrap, n_subset, histories=correct_histories[1:5],
+                names=model_strings[1:5], hard_bottleneck=hard_bottleneck, colors=colors[1:5],
+                attributes=True)
+
+    if plot_test:
+        plot_test_accuracies_shapes(
+            n_classes, n_attr, signal_strength, subsets=subsets, n_bootstrap=n_bootstrap,
             hard_bottleneck=hard_bottleneck, model_strings=model_strings, colors=colors)

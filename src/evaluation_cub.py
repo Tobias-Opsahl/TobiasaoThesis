@@ -6,9 +6,10 @@ from src.datasets.datasets_cub import load_data_cub, make_subset_cub
 from src.plotting import plot_training_histories_cub, plot_test_accuracies_cub
 from src.common.utils import (seed_everything, get_logger, load_models_cub, add_histories,
                               average_histories, find_class_imbalance)
-from src.common.path_utils import load_hyperparameters_cub, save_history_cub, save_model_cub
+from src.common.path_utils import load_hyperparameters_cub, save_history_cub, save_model_cub, load_history_cub
 from src.constants import (MODEL_STRINGS_CUB, COLORS_CUB, MAX_EPOCHS, FAST_MAX_EPOCHS_CUB, BOOTSTRAP_CHECKPOINTS,
-                           MODEL_STRINGS_ORACLE, MODEL_STRINGS_ALL_CUB, COLORS_ORACLE, COLORS_ALL_CUB)
+                           MODEL_STRINGS_ORACLE, MODEL_STRINGS_ALL_CUB, COLORS_ORACLE, COLORS_ALL_CUB,
+                           NAMES_TO_SHORT_NAMES_CUB)
 
 
 logger = get_logger(__name__)
@@ -239,3 +240,56 @@ def run_models_on_subsets_and_plot(
             break
         plot_test_accuracies_cub(subsets=subsets, n_bootstrap=n_boot, hard_bottleneck=hard_bottleneck,
                                  model_strings=model_strings, colors=colors)
+
+
+def only_plot(
+    subsets, model_strings=None, n_bootstrap=1, hard_bottleneck=None, plot_train=True, plot_test=True):
+    """
+    Assume histories are made, and only do the plotting. This is useful for changing the plots slightly after a run.
+
+    Args:
+        subsets (list of int): List of the subsets to run on.
+        model_strings (list of str): List of strings of the models to evaluate. Load from `src.constants.py`.
+        n_bootstrap (int, optional): The amount of times to draw new subset and run models. Defaults to 1.
+        hard_bottleneck (bool): If True, will load hard-bottleneck concept layer for the concept models.
+            If not, will use what is in the hyperparameters.
+        plot_train (bool): If `True`, will plot the training histories.
+        plot_test (bool): If `True`, will plot the test accuracies.
+    """
+    if model_strings is None:
+        model_strings = MODEL_STRINGS_CUB
+        colors = COLORS_CUB
+
+    if model_strings == MODEL_STRINGS_CUB:
+        colors = COLORS_CUB
+    elif model_strings == MODEL_STRINGS_ORACLE:
+        colors = COLORS_ORACLE
+    else:
+        colors = COLORS_ALL_CUB
+
+    if plot_train:
+        for n_subset in subsets:
+            histories = load_history_cub(n_bootstrap, n_subset=n_subset, hard_bottleneck=hard_bottleneck)
+            correct_histories = []
+            for history in histories:  # Get the correct histories, in a semi-hacky way
+                short_name = NAMES_TO_SHORT_NAMES_CUB[history["model_name"]]
+                if short_name in model_strings:
+                    correct_histories.append(history)
+                
+            plot_training_histories_cub(
+                n_bootstrap, n_subset, histories=correct_histories,
+                names=model_strings, hard_bottleneck=hard_bottleneck, colors=colors, attributes=False)
+
+            oracle_only = (model_strings == MODEL_STRINGS_ORACLE)
+            if oracle_only:  # No attributes for oracle only models
+                continue
+            # Exclude cnn model when plotting attributes / concept training
+            plot_training_histories_cub(
+                n_bootstrap, n_subset, histories=correct_histories[1:4],
+                names=model_strings[1:5], hard_bottleneck=hard_bottleneck, colors=colors[1:4],
+                attributes=True)
+
+    if plot_test:
+        plot_test_accuracies_cub(
+            subsets=subsets, n_bootstrap=n_bootstrap, hard_bottleneck=hard_bottleneck,
+            model_strings=model_strings, colors=colors)

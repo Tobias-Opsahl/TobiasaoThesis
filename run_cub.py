@@ -5,7 +5,7 @@ import argparse
 import torch
 
 from src.common.utils import seed_everything, get_logger, set_global_log_level, parse_int_list
-from src.evaluation_cub import run_models_on_subsets_and_plot
+from src.evaluation_cub import run_models_on_subsets_and_plot, only_plot
 from src.hyperparameter_optimization_cub import run_hyperparameter_optimization_all_models
 from src.constants import MODEL_STRINGS_CUB, MODEL_STRINGS_ORACLE, MODEL_STRINGS_ALL_CUB
 
@@ -15,6 +15,7 @@ def parse_arguments():
     parser.add_argument("--run_hyperparameters", action="store_true", help="Run hyperparameter search.")
     parser.add_argument("--no_grid_search", action="store_true", help="Do not run grid-search, but TPEsampler.")
     parser.add_argument("--evaluate_and_plot", action="store_true", help="Evaluate models and plot.")
+    parser.add_argument("--only_plot", action="store_true", help="Plot models after evaluation.")
     models_help = "Models to run. Chose `cub` for normal models, `oracle` for oracle and `all` for both. "
     parser.add_argument("--models", type=str, choices=["cub", "oracle", "all"], default="cub", help=models_help)
 
@@ -78,3 +79,10 @@ if __name__ == "__main__":
             bootstrap_checkpoints=args.bootstrap_checkpoints, fast=args.fast, batch_size=args.batch_size,
             hard_bottleneck=args.hard_bottleneck, non_blocking=args.non_blocking, num_workers=args.num_workers,
             pin_memory=args.pin_memory, persistent_workers=args.persistent_workers)
+
+    if args.only_plot:
+        logger.info(f"\nPlotting for models {model_strings}. \n")
+        only_plot(
+            subsets=args.subsets, model_strings=model_strings, n_bootstrap=args.n_bootstrap,
+            hard_bottleneck=args.hard_bottleneck)
+

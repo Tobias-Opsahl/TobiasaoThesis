@@ -40,3 +40,25 @@ CUB_FEATURE_SELECTION_FILENAME = "CUB_feature_selection.pkl"
 
 N_CLASSES_CUB = 200
 N_ATTR_CUB = 112
+
+NAMES_TO_SHORT_NAMES_SHAPES = {
+    "ShapesCNN": "cnn",
+    "ShapesCBM": "cbm",
+    "ShapesCBMWithResidual": "cbm_res",
+    "ShapesCBMWithSkip": "cbm_skip",
+    "ShapesSCM": "scm",
+    "ShapesLogisticOracle": "lr_oracle",
+    "ShapesNNOracle": "nn_oracle"
+}
+
+NAMES_TO_SHORT_NAMES_CUB = {
+    "CubCNN": "cnn",
+    "CubCBM": "cbm",
+    "CubCBMWithResidual": "cbm_res",
+    "CubCBMWithSkip": "cbm_skip",
+    "CubSCM": "scm",
+    "CubLogisticOracle": "lr_oracle",
+    "CubNNOracle": "nn_oracle",
+    "ShapesLogisticOracle": "lr_oracle",
+    "ShapesNNOracle": "nn_oracle"
+}
