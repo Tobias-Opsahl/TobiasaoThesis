@@ -434,7 +434,7 @@ def get_hyperparameters_dictionary(hyperparameters_list):
         dict: Dictionary of all hyperparameters, pointing to `True` (search) or `False` (not search).
     """
     hyperparameters_to_search = {
-        "learning_rate": False, "dropout_probability": True, "gamma": False, "attr_schedule": False,
+        "learning_rate": False, "dropout_probability": False, "gamma": False, "attr_schedule": False,
         "attr_weight": False, "attr_weight_decay": False, "n_epochs": False, "n_linear_output": False,
         "activation": False, "two_layers": False, "n_hidden": False, "hard": False}
     for hyperparameter_string in hyperparameters_list:

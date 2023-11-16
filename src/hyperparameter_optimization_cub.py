@@ -270,9 +270,9 @@ class HyperparameterOptimizationShapes:
             dict: Dictionary of the hyperparameter-names pointing to a list of possible values to try.
         """
         all_possibilities = {
-            "learning_rate": [0.01, 0.005, 0.001, 0.0005],
+            "learning_rate": [0.01, 0.005, 0.001, 0.0005, 0.0001],
             "gamma": [0.1, 0.5, 0.7, 0.9, 1],
-            "dropout_probability": [0.1, 0.3],
+            "dropout_probability": [0, 0.1, 0.3],
             "n_epochs": [20, 30, 50, 100],
             "n_linear_output": [16, 64, 128, 256],
             "n_hidden": [16, 32, 64],
@@ -308,13 +308,12 @@ class HyperparameterOptimizationShapes:
             n_subset=self.n_subset, mode="train-val", batch_size=self.batch_size, drop_last=True,
             num_workers=self.num_workers, pin_memory=self.pin_memory, persistent_workers=self.persistent_workers)
 
-        hp = self._get_hyperparameters_for_trial(
-            trial)  # Get suggestions for hyperparameters
+        hp = self._get_hyperparameters_for_trial(trial)  # Get suggestions for hyperparameters
         model = load_single_model_cub(
             model_type=self.model_type, hyperparameters=hp)
         criterion = nn.CrossEntropyLoss()
         optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=hp["learning_rate"])
-        exp_lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=hp["gamma"])
+        exp_lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=hp["gamma"])
         if self.model_type == "cnn":  # Train non-bottleneck model
             history, _ = train_simple(
                 model, criterion, optimizer, train_loader, val_loader, trial=trial, scheduler=exp_lr_scheduler,
@@ -436,7 +435,7 @@ def get_hyperparameters_dictionary(hyperparameters_list):
         dict: Dictionary of all hyperparameters, pointing to `True` (search) or `False` (not search).
     """
     hyperparameters_to_search = {
-        "learning_rate": False, "dropout_probability": True, "gamma": False, "attr_schedule": False,
+        "learning_rate": False, "dropout_probability": False, "gamma": False, "attr_schedule": False,
         "attr_weight": False, "attr_weight_decay": False, "n_epochs": False, "n_linear_output": False,
         "activation": False, "two_layers": False, "n_hidden": False, "hard": False}
     for hyperparameter_string in hyperparameters_list:

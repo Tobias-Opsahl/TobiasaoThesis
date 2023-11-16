@@ -109,7 +109,7 @@ def train_and_evaluate_cub(
         optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()),
                                      lr=hp[model_string]["learning_rate"])
         exp_lr_scheduler = torch.optim.lr_scheduler.StepLR(
-            optimizer, step_size=5, gamma=hp[model_string]["gamma"])
+            optimizer, step_size=10, gamma=hp[model_string]["gamma"])
 
         n_epochs = MAX_EPOCHS
         if fast:
