@@ -25,6 +25,8 @@ def get_base_model_cub(n_output=256):
     resnet18.fc = nn.Linear(num_in_features, n_output)
     for param in resnet18.parameters():
         param.requires_grad = False
+    for param in resnet18.fc.parameters():  # Make new linear layer trainable
+        param.requires_grad = True
     return resnet18
 
 class CubCNN(nn.Module):
