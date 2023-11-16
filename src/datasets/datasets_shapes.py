@@ -33,7 +33,8 @@ class ShapesDataset(Dataset):
         # Convert from dict to list to tensor
         attribute_label = torch.tensor(list(self.data_list[idx]["attribute_label"].values())).to(torch.float32)
 
-        image = Image.open(img_path).convert("RGB")  # Images have alpa channel
+        with Image.open(img_path) as img:  # Open and close properly
+            image = img.convert("RGB")  # Images have alpa channel
 
         if self.transform:
             image = self.transform(image)

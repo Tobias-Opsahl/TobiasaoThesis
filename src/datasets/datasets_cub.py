@@ -61,7 +61,8 @@ class CUBDataset(Dataset):
         if self.attr_mask is not None:  # Load only a subset of attribues
             attribute_label = attribute_label[self.attr_mask]
 
-        image = Image.open(img_path).convert("RGB")  # Some images are grayscale
+        with Image.open(img_path) as img:  # Open and close properly
+            image = img.convert("RGB")  # Some images are grayscale
 
         if self.transform:
             image = self.transform(image)
