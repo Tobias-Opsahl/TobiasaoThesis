@@ -4,7 +4,7 @@ import torch.nn as nn
 
 from src.datasets.datasets_cub import load_data_cub, make_subset_cub
 from src.train import train_simple, train_cbm
-from src.common.utils import load_single_model_cub, get_logger
+from src.common.utils import load_single_model_cub, get_logger, seed_everything
 from src.common.path_utils import load_hyperparameters_cub, save_hyperparameters_cub
 from src.constants import MODEL_STRINGS_CUB, MODEL_STRINGS_ALL_CUB
 
@@ -72,6 +72,8 @@ class HyperparameterOptimizationShapes:
         self.default_hyperparameters = load_hyperparameters_cub(fast=fast, default=True,
                                                                 hard_bottleneck=hard_bottleneck)
 
+        seed_everything(seed)
+        self.seed = seed
         if n_subset is not None:  # Make subset again to make sure seed is correct
             make_subset_cub(n_images_class=n_subset, seed=seed)
 
@@ -382,7 +384,7 @@ class HyperparameterOptimizationShapes:
             pruner = optuna.pruners.NopPruner()
             search_space = self._get_search_space()
             study = optuna.create_study(direction=direction, pruner=pruner, study_name=study_name,
-                                        sampler=optuna.samplers.GridSampler(search_space=search_space))
+                                        sampler=optuna.samplers.GridSampler(search_space=search_space, seed=self.seed))
         study.optimize(self.objective, n_trials=n_trials)
         self.study = study
         self.study_ran = True

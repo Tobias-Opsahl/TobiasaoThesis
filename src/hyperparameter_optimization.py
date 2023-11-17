@@ -4,7 +4,7 @@ import torch.nn as nn
 
 from src.datasets.datasets_shapes import load_data_shapes, make_subset_shapes
 from src.train import train_simple, train_cbm
-from src.common.utils import load_single_model, get_logger
+from src.common.utils import load_single_model, get_logger, seed_everything
 from src.common.path_utils import load_hyperparameters_shapes, save_hyperparameters_shapes
 from src.constants import MODEL_STRINGS_ALL_SHAPES, MODEL_STRINGS_SHAPES
 
@@ -78,6 +78,8 @@ class HyperparameterOptimizationShapes:
         self.default_hyperparameters = load_hyperparameters_shapes(fast=fast, default=True,
                                                                    hard_bottleneck=hard_bottleneck)
 
+        self.seed = seed
+        seed_everything(seed)
         if n_subset is not None:  # Make subset again to make sure seed is correct
             make_subset_shapes(n_classes, n_attr, signal_strength, n_subset, seed=seed)
 
@@ -380,8 +382,9 @@ class HyperparameterOptimizationShapes:
         else:  # Grid search
             pruner = optuna.pruners.NopPruner()  # One actually have to specify no-pruner, else MedianPruner is used.
             search_space = self._get_search_space()
-            study = optuna.create_study(direction=direction, pruner=pruner, study_name=study_name,
-                                        sampler=optuna.samplers.GridSampler(search_space=search_space))
+            study = optuna.create_study(
+                direction=direction, pruner=pruner, study_name=study_name,
+                sampler=optuna.samplers.GridSampler(search_space=search_space, seed=self.seed))
         study.optimize(self.objective, n_trials=n_trials)
         self.study = study
         self.study_ran = True
