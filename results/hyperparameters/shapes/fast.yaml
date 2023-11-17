@@ -48,10 +48,10 @@ cnn:
   n_linear_output: 64
   dropout_probability: 0.1
 lr_oracle:
-  learning_rate: 0.001
+  learning_rate: 0.01
   n_epochs: 2
   gamma: 1
 nn_oracle:
-  learning_rate: 0.001
+  learning_rate: 0.01
   n_epochs: 2
   gamma: 1

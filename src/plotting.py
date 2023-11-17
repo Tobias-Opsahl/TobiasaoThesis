@@ -262,7 +262,8 @@ def plot_test_accuracies(histories_list, subsets, model_strings, colors):
     
 
 def plot_training_histories_shapes(n_classes, n_attr, signal_strength, n_bootstrap, n_subset, histories=None,
-                                   names=None, hard_bottleneck=False, colors=None, attributes=False, title=None):
+                                   names=None, hard_bottleneck=False, colors=None, attributes=False, title=None,
+                                   oracle_only=False):
     """
     Plots the training histories for the Shapes dataset. Saves it in the folder-structure for shapes.
     Histories must already exist.
@@ -280,7 +281,9 @@ def plot_training_histories_shapes(n_classes, n_attr, signal_strength, n_bootstr
         colors (list of str, optional): List of colors to use for the different models. Defaults to None.
         attributes (bool, optional): If True, will plot the attribute stats. Must be a concept-model.
             Defaults to False.
-        title (str, optional): Title for the plot. Defaults to None.    
+        title (str, optional): Title for the plot. Defaults to None.
+        oracle_only (bool): If `True`, will save histories inside oracle folder. This is meant for when only the
+            oracle models are ran, so that one do not overwrite the other histories.
     """
     if names is None:
         names = MODEL_STRINGS_SHAPES
@@ -289,7 +292,8 @@ def plot_training_histories_shapes(n_classes, n_attr, signal_strength, n_bootstr
 
     if histories is None:
         histories = load_history_shapes(n_classes, n_attr, signal_strength, n_bootstrap, n_subset,
-                                        hard_bottleneck=hard_bottleneck)
+                                        oracle_only=oracle_only, hard_bottleneck=hard_bottleneck)
+
     plot_training_histories(histories=histories, names=names,
                             colors=colors, attributes=attributes, title=title)
     save_training_plot_shapes(n_classes, n_attr, signal_strength, n_bootstrap, n_subset, attr=attributes,
@@ -297,7 +301,7 @@ def plot_training_histories_shapes(n_classes, n_attr, signal_strength, n_bootstr
 
 
 def plot_test_accuracies_shapes(n_classes, n_attr, signal_strength, subsets, n_bootstrap=1, hard_bottleneck=False,
-                                model_strings=None, colors=None):
+                                model_strings=None, colors=None, oracle_only=False, add_oracle=False):
     """
     Plots test accuracies for different subsets for the Shapes dataset. Histories must already exist.
     Plots the test-accuracies as pdf format and with minimal border, so that plot is suitable for using in LaTeX.
@@ -314,6 +318,10 @@ def plot_test_accuracies_shapes(n_classes, n_attr, signal_strength, subsets, n_b
         model_strings (list of str, optional): List of string name of models to use. If None,
             will use the constants value of names. Defaults to None.
         colors (list of str, optional): List of colors to use for the different models. Defaults to None.
+        oracle_only (bool): If `True`, will save histories inside oracle folder. This is meant for when only the
+            oracle models are ran, so that one do not overwrite the other histories.
+        add_oracle (bool): Set to `True` if one wants to plot models together with oracles, but oracles were ran
+            separately from models, so they are in the oracle-only folder.
     """
     if model_strings is None:
         model_strings = MODEL_STRINGS_SHAPES
@@ -323,9 +331,15 @@ def plot_test_accuracies_shapes(n_classes, n_attr, signal_strength, subsets, n_b
     histories_list = []
     for n_subset in subsets:
         histories = load_history_shapes(n_classes, n_attr, signal_strength, n_bootstrap, n_subset,
-                                        hard_bottleneck=hard_bottleneck)
+                                        oracle_only=oracle_only, hard_bottleneck=hard_bottleneck)
         histories_list.append(histories)
-    
+
+    if add_oracle:  # Add the oracles from oracle folder
+        for i, n_subset in enumerate(subsets):
+            histories = load_history_shapes(n_classes, n_attr, signal_strength, n_bootstrap, n_subset,
+                                            oracle_only=True, hard_bottleneck=hard_bottleneck)
+            histories_list[i].extend(histories)
+
     plot_test_accuracies(histories_list, subsets, model_strings=model_strings, colors=colors)
     save_test_plot_shapes(n_classes, n_attr, signal_strength,
                           n_bootstrap, hard_bottleneck=hard_bottleneck)
@@ -392,3 +406,7 @@ def plot_test_accuracies_cub(subsets, n_bootstrap=1, hard_bottleneck=False, mode
 
     plot_test_accuracies(histories_list, subsets, model_strings=model_strings, colors=colors)
     save_test_plot_cub(n_bootstrap, hard_bottleneck=hard_bottleneck)
+
+
+def plot_oracles_cub():
+    pass

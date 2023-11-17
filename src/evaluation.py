@@ -9,7 +9,7 @@ from src.common.path_utils import (load_hyperparameters_shapes, save_history_sha
                                    load_history_shapes)
 from src.constants import (MAX_EPOCHS, FAST_MAX_EPOCHS_SHAPES, BOOTSTRAP_CHECKPOINTS, MODEL_STRINGS_SHAPES,
                            MODEL_STRINGS_ORACLE, COLORS_SHAPES, COLORS_ORACLE, COLORS_ALL_SHAPES,
-                           NAMES_TO_SHORT_NAMES_SHAPES)
+                           NAMES_TO_SHORT_NAMES_SHAPES, MODEL_STRINGS_ALL_SHAPES)
 
 
 logger = get_logger(__name__)
@@ -95,7 +95,6 @@ def train_and_evaluate_shapes(
     if "nn_oracle" not in hp:
         default_hp = load_hyperparameters_shapes(default=True)
         hp["nn_oracle"] = default_hp["nn_oracle"]
-
     models = load_models_shapes(n_classes, n_attr, model_strings=model_strings, hyperparameters=hp)
     histories = []
     criterion = nn.CrossEntropyLoss()
@@ -113,7 +112,7 @@ def train_and_evaluate_shapes(
         n_epochs = MAX_EPOCHS
         if fast:
             n_epochs = FAST_MAX_EPOCHS_SHAPES
-        if seed is not None:  # Seed before training, for reprorudibility
+        if seed is not None:  # Seed before training, for reproducibility
             seed_everything(seed)
         if model_string == "cnn":
             history, models_dict = train_simple(
@@ -219,14 +218,15 @@ def run_models_on_subsets_and_plot(
             n_boot = i + 1
             if n_boot in bootstrap_checkpoints:
 
+                oracle_only = (model_strings == MODEL_STRINGS_ORACLE)
                 averaged_histories = average_histories(histories_total, n_boot)
                 save_history_shapes(n_classes, n_attr, signal_strength, n_boot, n_subset, averaged_histories,
-                                    hard_bottleneck=hard_bottleneck)
+                                    oracle_only=oracle_only, hard_bottleneck=hard_bottleneck)
                 if n_boot == bootstrap_checkpoints[-1]:  # Only plot histories for last bootstrap iterations
                     plot_training_histories_shapes(
                         n_classes, n_attr, signal_strength, n_boot, n_subset, histories=averaged_histories,
-                        names=model_strings, hard_bottleneck=hard_bottleneck, colors=colors, attributes=False)
-                    oracle_only = (model_strings == MODEL_STRINGS_ORACLE)
+                        names=model_strings, hard_bottleneck=hard_bottleneck, colors=colors, attributes=False,
+                        oracle_only=oracle_only)
                     if oracle_only:  # No attributes for oracle only models
                         continue
                     # Exclude cnn model when plotting attributes / concept training
@@ -240,12 +240,12 @@ def run_models_on_subsets_and_plot(
             break
         plot_test_accuracies_shapes(
             n_classes, n_attr, signal_strength, subsets=subsets, n_bootstrap=n_boot,
-            hard_bottleneck=hard_bottleneck, model_strings=model_strings, colors=colors)
+            hard_bottleneck=hard_bottleneck, model_strings=model_strings, colors=colors, oracle_only=oracle_only)
 
 
 def only_plot(
     n_classes, n_attr, signal_strength, subsets, model_strings=None, n_bootstrap=1, hard_bottleneck=None,
-    plot_train=True, plot_test=True):
+    plot_train=True, plot_test=True, add_oracle=False):
     """
     Assume histories are made, and only do the plotting. This is useful for changing the plots slightly after a run.
 
@@ -260,6 +260,8 @@ def only_plot(
             If not, will use what is in the hyperparameters.
         plot_train (bool): If `True`, will plot the training histories.
         plot_test (bool): If `True`, will plot the test accuracies.
+        add_oracle (bool): Set to `True` if one wants to plot models together with oracles, but oracles were ran
+            separately from models, so they are in the oracle-only folder.
     """
     if model_strings is None:
         model_strings = MODEL_STRINGS_SHAPES
@@ -272,10 +274,13 @@ def only_plot(
     else:
         colors = COLORS_ALL_SHAPES
 
+    oracle_only = (model_strings == MODEL_STRINGS_ORACLE)
+
     if plot_train:
         for n_subset in subsets:
             histories = load_history_shapes(
-                n_classes, n_attr, signal_strength, n_bootstrap, n_subset=n_subset, hard_bottleneck=hard_bottleneck)
+                n_classes, n_attr, signal_strength, n_bootstrap, n_subset=n_subset, hard_bottleneck=hard_bottleneck,
+                oracle_only=oracle_only)
             correct_histories = []
             for history in histories:  # Get the correct histories, in a semi-hacky way
                 short_name = NAMES_TO_SHORT_NAMES_SHAPES[history["model_name"]]
@@ -284,9 +289,9 @@ def only_plot(
                 
             plot_training_histories_shapes(
                 n_classes, n_attr, signal_strength, n_bootstrap, n_subset, histories=correct_histories,
-                names=model_strings, hard_bottleneck=hard_bottleneck, colors=colors, attributes=False)
+                names=model_strings, hard_bottleneck=hard_bottleneck, colors=colors, attributes=False,
+                oracle_only=oracle_only)
 
-            oracle_only = (model_strings == MODEL_STRINGS_ORACLE)
             if oracle_only:  # No attributes for oracle only models
                 continue
             # Exclude cnn model when plotting attributes / concept training
@@ -295,7 +300,10 @@ def only_plot(
                 names=model_strings[1:5], hard_bottleneck=hard_bottleneck, colors=colors[1:5],
                 attributes=True)
 
+    if add_oracle:
+        model_strings = MODEL_STRINGS_ALL_SHAPES
+        colors = COLORS_ALL_SHAPES
     if plot_test:
         plot_test_accuracies_shapes(
             n_classes, n_attr, signal_strength, subsets=subsets, n_bootstrap=n_bootstrap,
-            hard_bottleneck=hard_bottleneck, model_strings=model_strings, colors=colors)
+            hard_bottleneck=hard_bottleneck, model_strings=model_strings, colors=colors, add_oracle=add_oracle)

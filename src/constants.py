@@ -7,7 +7,7 @@ COLORS_SHAPES = ["y", "r", "blueviolet", "black", "skyblue"]
 COLORS_CUB = ["y", "r", "blueviolet", "black"]
 COLORS_ORACLE = ["hotpink", "deeppink"]
 COLORS_ALL_SHAPES = ["y", "r", "blueviolet", "black", "skyblue", "hotpink", "deeppink"]
-COLORS_ALL_CUB= ["y", "r", "blueviolet", "black", "deeppink", "hotpink"]
+COLORS_ALL_CUB = ["y", "r", "blueviolet", "black", "deeppink", "hotpink"]
 MAX_EPOCHS = 50
 FAST_MAX_EPOCHS_SHAPES = 2  # Use in order to quickly test if implementations work
 FAST_MAX_EPOCHS_CUB = 1
@@ -28,6 +28,7 @@ HYPERPARAMETERS_FOLDER = "hyperparameters/"
 HISTORY_FOLDER = "history/"
 SAVED_MODELS_FOLDER = "saved_models/"
 PLOTS_FOLDER = "plots/"
+ORACLE_FOLDER = "oracles/"
 
 # DATA_FOLDER gets added to the beginning of the other folders, and it can be an absolute path. It will
 # also make all the other sub-foldes absolute.

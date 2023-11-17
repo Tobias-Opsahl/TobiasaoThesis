@@ -12,7 +12,7 @@ from src.constants import (
     DATA_FOLDER, SHAPES_FOLDER, CUB_FOLDER, FAST_HYPERPARAMETERS_FILENAME_SHAPES,
     DEFAULT_HYPERPARAMETERS_FILENAME_SHAPES, FAST_HYPERPARAMETERS_FILENAME_SHAPES_HARD,
     DEFAULT_HYPERPARAMETERS_FILENAME_SHAPES_HARD, CUB_TABLES_FOLDER, CUB_PROCESSED_FOLDER,
-    CUB_FEATURE_SELECTION_FILENAME, MODEL_STRINGS_ALL_SHAPES, MODEL_STRINGS_ALL_CUB)
+    CUB_FEATURE_SELECTION_FILENAME, MODEL_STRINGS_ALL_SHAPES, MODEL_STRINGS_ALL_CUB, ORACLE_FOLDER)
 
 
 def _check_just_file(filename):
@@ -229,7 +229,8 @@ def write_data_list_shapes(n_classes, n_attr, signal_strength, n_subset, train_d
         pickle.dump(val_data, outfile)
 
 
-def load_history_shapes(n_classes, n_attr, signal_strength, n_bootstrap, n_subset, hard_bottleneck=False):
+def load_history_shapes(n_classes, n_attr, signal_strength, n_bootstrap, n_subset,
+                        hard_bottleneck=False, oracle_only=False):
     """
     Load models history, made by `src/evaluation.py`.
 
@@ -240,11 +241,16 @@ def load_history_shapes(n_classes, n_attr, signal_strength, n_bootstrap, n_subse
         n_bootstrap (int): The amount of bootstrap iterations that were used.
         n_subset (int): The amount of instances in each class used in the subset.
         hard_bottleneck (bool): Set to `True` if hard bottleneck was used. This will alter the name to end with `_hard`.
+        oracle_only (bool): If `True`, will load histories from inside oracle folder. This is meant for when only the
+            oracle models are ran, so that one do not overwrite the other histories.
 
     Returns:
         dict: Dictionary of histories.
     """
     folder_name = get_full_shapes_folder_path(n_classes, n_attr, signal_strength, relative_folder=HISTORY_FOLDER)
+    if oracle_only:
+        folder_name = folder_name / ORACLE_FOLDER
+        hard_bottleneck = False
     bottleneck = "" if not hard_bottleneck else "_hard"
     filename = Path(f"histories_sub{n_subset}_b{n_bootstrap}{bottleneck}.pkl")
     file_path = make_file_path(folder_name, filename, check_folder_exists=False)
@@ -252,7 +258,8 @@ def load_history_shapes(n_classes, n_attr, signal_strength, n_bootstrap, n_subse
     return history
 
 
-def save_history_shapes(n_classes, n_attr, signal_strength, n_bootstrap, n_subset, history, hard_bottleneck=False):
+def save_history_shapes(n_classes, n_attr, signal_strength, n_bootstrap, n_subset, history,
+                        oracle_only=False, hard_bottleneck=False):
     """
     Save a history dictionary, made by `src/evaluation.py`.
 
@@ -263,9 +270,13 @@ def save_history_shapes(n_classes, n_attr, signal_strength, n_bootstrap, n_subse
         n_bootstrap (int): The amount of bootstrap iterations that were used.
         n_subset (int): The amount of instances in each class used in the subset.
         history (dict): The histories to save.
+        oracle_only (bool): If `True`, will save histories inside oracle folder. This is meant for when only the
+            oracle models are ran, so that one do not overwrite the other histories.
         hard_bottleneck (bool): Set to `True` if hard bottleneck was used. This will alter the name to end with `_hard`.
     """
     folder_name = get_full_shapes_folder_path(n_classes, n_attr, signal_strength, relative_folder=HISTORY_FOLDER)
+    if oracle_only:
+        folder_name = folder_name / ORACLE_FOLDER
     bottleneck = "" if not hard_bottleneck else "_hard"
     filename = Path(f"histories_sub{n_subset}_b{n_bootstrap}{bottleneck}.pkl")
     file_path = make_file_path(folder_name, filename, check_folder_exists=True)
@@ -603,7 +614,7 @@ def write_test_data_list_cub(test_data_list, filename="test_small.pkl"):
         pickle.dump(test_data_list, outfile)
 
 
-def load_history_cub(n_bootstrap, n_subset, hard_bottleneck=False):
+def load_history_cub(n_bootstrap, n_subset, hard_bottleneck=False, oracle_only=False):
     """
     Load models history, made by `src/evaluation.py`.
 
@@ -611,11 +622,15 @@ def load_history_cub(n_bootstrap, n_subset, hard_bottleneck=False):
         n_bootstrap (int): The amount of bootstrap iterations that were used.
         n_subset (int): The amount of instances in each class used in the subset. Use `None` for full dataset.
         hard_bottleneck (bool): Set to `True` if hard bottleneck was used. This will alter the name to end with `_hard`.
+        oracle_only (bool): If `True`, will load histories from inside oracle folder. This is meant for when only the
+            oracle models are ran, so that one do not overwrite the other histories.
 
     Returns:
         dict: Dictionary of histories.
     """
     folder_name = get_cub_folder_path(relative_folder=HISTORY_FOLDER)
+    if oracle_only:
+        folder_name = folder_name / ORACLE_FOLDER
     bottleneck = "" if not hard_bottleneck else "_hard"
     if n_subset is not None:
         sub_string = f"_sub{n_subset}"
@@ -627,7 +642,7 @@ def load_history_cub(n_bootstrap, n_subset, hard_bottleneck=False):
     return history
 
 
-def save_history_cub(n_bootstrap, n_subset, history, hard_bottleneck=False):
+def save_history_cub(n_bootstrap, n_subset, history, oracle_only=False, hard_bottleneck=False):
     """
     Save a history dictionary, made by `src/evaluation.py`.
 
@@ -635,9 +650,13 @@ def save_history_cub(n_bootstrap, n_subset, history, hard_bottleneck=False):
         n_bootstrap (int): The amount of bootstrap iterations that were used.
         n_subset (int): The amount of instances in each class used in the subset.
         history (dict): The histories to save.
+        oracle_only (bool): If `True`, will save histories inside oracle folder. This is meant for when only the
+            oracle models are ran, so that one do not overwrite the other histories.
         hard_bottleneck (bool): Set to `True` if hard bottleneck was used. This will alter the name to end with `_hard`.
     """
     folder_name = get_cub_folder_path(relative_folder=HISTORY_FOLDER)
+    if oracle_only:
+        folder_name = folder_name / ORACLE_FOLDER
     bottleneck = "" if not hard_bottleneck else "_hard"
     if n_subset is not None:
         sub_string = f"_sub{n_subset}"
