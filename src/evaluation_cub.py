@@ -222,8 +222,7 @@ def run_models_on_subsets_and_plot(
             if n_boot in bootstrap_checkpoints:
 
                 averaged_histories = average_histories(histories_total, n_boot)
-                save_history_cub(
-                    n_boot, n_subset, averaged_histories, hard_bottleneck=hard_bottleneck)
+                save_history_cub(n_boot, n_subset, averaged_histories, hard_bottleneck=hard_bottleneck)
                 if n_boot == bootstrap_checkpoints[-1]:  # Only plot histories for last bootstrap iterations
                     plot_training_histories_cub(n_boot, n_subset, histories=averaged_histories, names=model_strings,
                                                 hard_bottleneck=hard_bottleneck, colors=colors, attributes=False)

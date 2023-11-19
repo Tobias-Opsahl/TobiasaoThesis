@@ -258,7 +258,6 @@ def plot_test_accuracies(histories_list, subsets, model_strings, colors):
 
     plt.subplots_adjust(left=0.065, right=0.95, top=0.95, bottom=0.1)
     plt.legend()
-    plt.xlabel("Size of Subset for each class")
     
 
 def plot_training_histories_shapes(n_classes, n_attr, signal_strength, n_bootstrap, n_subset, histories=None,
@@ -400,6 +399,7 @@ def plot_test_accuracies_cub(subsets, n_bootstrap=1, hard_bottleneck=False, mode
         histories = load_history_cub(n_bootstrap, n_subset, hard_bottleneck=hard_bottleneck)
         histories_list.append(histories)
 
+    subsets = subsets.copy()
     for i in range(len(subsets)):  # n_subset = None means full data set, which is about 30 images per class.
         if subsets[i] is None:
             subsets[i] = 30
