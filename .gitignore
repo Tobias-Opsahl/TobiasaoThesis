@@ -6,10 +6,8 @@ backlog.txt
 data/*
 results/history/*
 results/saved_models/*
-results/hyperparameters/*/
-!results/hyperparameters/shapes/*.yaml
-!results/hyperparameters/cub/*.yaml
+results/hyperparameters/remote*/
+results/hyperparameters/shapes/*/
+results/hyperparameters/cub/hyperparameters*
 results/plots/*
-graveyard.py
-make_plots.py
 project_files.tar.gz
