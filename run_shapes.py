@@ -89,4 +89,4 @@ if __name__ == "__main__":
         only_plot(
             n_classes=args.n_classes, n_attr=args.n_attr, signal_strength=args.signal_strength, subsets=args.subsets,
             model_strings=model_strings, n_bootstrap=args.n_bootstrap, hard_bottleneck=args.hard_bottleneck,
-            add_oracle=args.add_oracle)
+            add_oracle=args.add_oracle, plot_train=False)

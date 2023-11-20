@@ -256,6 +256,7 @@ def plot_test_accuracies(histories_list, subsets, model_strings, colors):
         plt.scatter(x_values, error_list, marker="s", facecolor=color,
                     edgecolor=color)  # Squares at each point
 
+    # Change left to 0.075 if there are 4 digits in the y-axis.
     plt.subplots_adjust(left=0.065, right=0.95, top=0.95, bottom=0.1)
     plt.legend()
     

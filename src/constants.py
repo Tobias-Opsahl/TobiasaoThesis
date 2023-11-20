@@ -1,7 +1,7 @@
 MODEL_STRINGS_SHAPES = ["cnn", "cbm", "cbm_res", "cbm_skip", "scm"]
 MODEL_STRINGS_CUB = ["cnn", "cbm", "cbm_res", "cbm_skip"]
 MODEL_STRINGS_ORACLE = ["lr_oracle", "nn_oracle"]
-MODEL_STRINGS_ALL_SHAPES = ["cnn", "cbm", "cbm_res", "cbm_skip", "scm", "lr_oracle", "nn_oracle"]
+MODEL_STRINGS_ALL_SHAPES = ["cnn", "cbm", "cbm_res", "cbm_skip", "scm", "lr_oracle"]
 MODEL_STRINGS_ALL_CUB = ["cnn", "cbm", "cbm_res", "cbm_skip", "lr_oracle", "nn_oracle"]
 COLORS_SHAPES = ["y", "r", "blueviolet", "black", "skyblue"]
 COLORS_CUB = ["y", "r", "blueviolet", "black"]
