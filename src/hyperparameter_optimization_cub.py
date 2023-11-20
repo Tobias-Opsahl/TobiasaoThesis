@@ -272,8 +272,8 @@ class HyperparameterOptimizationShapes:
             dict: Dictionary of the hyperparameter-names pointing to a list of possible values to try.
         """
         all_possibilities = {
-            "learning_rate": [0.01, 0.005, 0.001, 0.0005, 0.0001],
-            "gamma": [0.1, 0.5, 0.7, 0.9, 1],
+            "learning_rate": [0.001, 0.0005, 0.0001, 0.00005, 0.00001],
+            "gamma": [0.1, 0.5, 0.7, 1],
             "dropout_probability": [0, 0.1, 0.3],
             "n_epochs": [20, 30, 50, 100],
             "n_linear_output": [16, 64, 128, 256],
@@ -283,7 +283,7 @@ class HyperparameterOptimizationShapes:
             "two_layers": [True, False],
             "attr_weight": [1, 3, 5, 10],
             "attr_weight_decay": [0.5, 0.7, 0.9, 1],
-            "attr_schedule": [0.8, 0.9, 1, 3, 10]
+            "attr_schedule": [0.95, 1, 5, 10]
         }
 
         search_space = {}  # Add only the hyperparameters we are going to search for in the space
