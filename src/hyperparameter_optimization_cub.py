@@ -4,7 +4,7 @@ import torch.nn as nn
 
 from src.datasets.datasets_cub import load_data_cub, make_subset_cub
 from src.train import train_simple, train_cbm
-from src.common.utils import load_single_model_cub, get_logger, seed_everything
+from src.common.utils import load_single_model_cub, get_logger, seed_everything, find_class_imbalance
 from src.common.path_utils import load_hyperparameters_cub, save_hyperparameters_cub
 from src.constants import MODEL_STRINGS_CUB, MODEL_STRINGS_ALL_CUB
 
@@ -166,7 +166,7 @@ class HyperparameterOptimizationShapes:
             object: Trial suggestion of the value to test.
         """
         if hp_name == "learning_rate":
-            return trial.suggest_float("learning_rate", 0.0001, 0.1, log=True)
+            return trial.suggest_float("learning_rate", 0.00001, 0.1, log=True)
         elif hp_name == "dropout_probability":
             return trial.suggest_float("dropout_probability", 0, 0.5, log=False)
         elif hp_name == "gamma":
@@ -188,7 +188,7 @@ class HyperparameterOptimizationShapes:
         elif hp_name == "attr_weight_decay":
             return trial.suggest_float("attr_weight_decay", 0.5, 1, log=False)
         elif hp_name == "attr_schedule":
-            attr_schedule = trial.suggest_categorical("attr_schedule", [0.7, 0.8, 0.9, 1, 3, 5, 10])
+            attr_schedule = trial.suggest_categorical("attr_schedule", [0.7, 0.8, 0.9, 0.95, 0.99, 1, 3, 5, 10, 20])
             if attr_schedule < 1:
                 attr_weight = 100
                 attr_weight_decay = attr_schedule
@@ -272,9 +272,9 @@ class HyperparameterOptimizationShapes:
             dict: Dictionary of the hyperparameter-names pointing to a list of possible values to try.
         """
         all_possibilities = {
-            "learning_rate": [0.001, 0.0005, 0.0001, 0.00005, 0.00001],
-            "gamma": [0.1, 0.5, 0.7, 1],
-            "dropout_probability": [0, 0.1, 0.3],
+            "learning_rate": [0.001, 0.0005, 0.0001],
+            "gamma": [0.1, 0.7],
+            "dropout_probability": [0.1, 0.2, 0.3, 0.4],
             "n_epochs": [20, 30, 50, 100],
             "n_linear_output": [16, 64, 128, 256],
             "n_hidden": [16, 32, 64],
@@ -283,7 +283,7 @@ class HyperparameterOptimizationShapes:
             "two_layers": [True, False],
             "attr_weight": [1, 3, 5, 10],
             "attr_weight_decay": [0.5, 0.7, 0.9, 1],
-            "attr_schedule": [0.95, 1, 5, 10]
+            "attr_schedule": [10, 20]
         }
 
         search_space = {}  # Add only the hyperparameters we are going to search for in the space
@@ -325,7 +325,9 @@ class HyperparameterOptimizationShapes:
                 model, criterion, optimizer, train_loader, val_loader, trial=trial, scheduler=exp_lr_scheduler,
                 n_epochs=hp["n_epochs"], device=self.device, non_blocking=self.non_blocking, oracle=True, verbose=0)
         else:  # Concept-bottleneck model
-            attr_criterion = nn.BCEWithLogitsLoss()
+            imbalances = find_class_imbalance(n_subset=self.n_subset, multiple_attr=True)
+            imbalances = torch.FloatTensor(imbalances).to(self.device)
+            attr_criterion = nn.BCEWithLogitsLoss(weight=imbalances)
             history, _ = train_cbm(
                 model, criterion, attr_criterion, optimizer, train_loader, val_loader, n_epochs=hp["n_epochs"],
                 attr_weight=hp["attr_weight"], trial=trial, scheduler=exp_lr_scheduler, device=self.device,
@@ -442,7 +444,7 @@ def get_hyperparameters_dictionary(hyperparameters_list):
         "activation": False, "two_layers": False, "n_hidden": False, "hard": False}
     for hyperparameter_string in hyperparameters_list:
         if hyperparameter_string not in hyperparameters_to_search.keys():
-            message = f"Elements in `hyperparameters_list` must be in `hyperparameters_to_search.keys()`. "
+            message = f"Elements in `hyperparameters_list` must be in `{hyperparameters_to_search.keys()}`. "
             message += f"Element {hyperparameter_string} was not. "
             raise ValueError(message)
         hyperparameters_to_search[hyperparameter_string] = True
@@ -493,13 +495,13 @@ def run_hyperparameter_optimization_all_models(
         for model_type in model_strings:
             if grid_search and set_hyperparameters_to_search:
                 if model_type == "cnn":
-                    hyperparameters_names = ["learning_rate", "gamma"]
+                    hyperparameters_names = ["learning_rate", "gamma", "dropout_probability"]
                     hyperparameters_to_search = get_hyperparameters_dictionary(hyperparameters_names)
                 elif model_type in ["lr_oracle", "nn_oracle"]:
                     hyperparameters_names = ["learning_rate"]
                     hyperparameters_to_search = get_hyperparameters_dictionary(hyperparameters_names)
                 else:
-                    hyperparameters_names = ["learning_rate", "attr_schedule"]
+                    hyperparameters_names = ["learning_rate", "attr_schedule", "dropout_probability"]
                     hyperparameters_to_search = get_hyperparameters_dictionary(hyperparameters_names)
 
             if not grid_search and set_hyperparameters_to_search:
