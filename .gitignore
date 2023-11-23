@@ -6,8 +6,10 @@ backlog.txt
 data/*
 results/history/*
 results/saved_models/*
+results/adversarial/*
 results/hyperparameters/remote*/
 results/hyperparameters/shapes/*/
 results/hyperparameters/cub/hyperparameters*
 results/plots/*
 project_files.tar.gz
+working/

@@ -8,6 +8,7 @@ from src.common.utils import seed_everything, get_logger, set_global_log_level, 
 from src.evaluation_cub import run_models_on_subsets_and_plot, only_plot
 from src.hyperparameter_optimization_cub import run_hyperparameter_optimization_all_models
 from src.constants import MODEL_STRINGS_CUB, MODEL_STRINGS_ORACLE, MODEL_STRINGS_ALL_CUB
+from src.adversarial_attacks import load_model_and_run_attacks_cub
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Script for parsing command-line arguments.")
@@ -16,6 +17,7 @@ def parse_arguments():
     parser.add_argument("--no_grid_search", action="store_true", help="Do not run grid-search, but TPEsampler.")
     parser.add_argument("--evaluate_and_plot", action="store_true", help="Evaluate models and plot.")
     parser.add_argument("--only_plot", action="store_true", help="Plot models after evaluation.")
+    parser.add_argument("--run_adversarial_attacks", action="store_true", help="Run adversarial attacks")
     models_help = "Models to run. Chose `cub` for normal models, `oracle` for oracle and `all` for both. "
     parser.add_argument("--models", type=str, choices=["cub", "oracle", "all"], default="cub", help=models_help)
 
@@ -29,6 +31,17 @@ def parse_arguments():
     parser.add_argument("--n_trials", type=int, default=100, help="Number of trials for hyperparameter search.")
     parser.add_argument("--fast", action="store_true", help="Use fast testing hyperparameters.")
     parser.add_argument("--hard_bottleneck", action="store_true", help="If True, will use hard bottleneck")
+    
+    # Adversarial attacks
+    parser.add_argument("--train_model", action="store_true", help="Will train model for adversarial attacks")
+    parser.add_argument("--epsilon", type=float, default=0.5, help="Epsilon for gradient projection in attacks")
+    parser.add_argument("--alpha", type=float, default=0.5, help="Step size for perturbation in attacks")
+    parser.add_argument("--max_steps", type=int, default=50, help="Max steps for iterative attacks.")
+    parser.add_argument("--max_images", type=int, default=100, help="Max number of images to run attacks on")
+    parser.add_argument("--extra_steps", type=int, default=5, help="Extra steps for iterative attacks")
+    parser.add_argument("--logits", action="store_true", help="Wether to use logits or loss in attacks.")
+    parser.add_argument("--least_likely", action="store_true", help="Least likely class attack.")
+    parser.add_argument("--target", type=int, default=-1, help="Class to do targeted attack towards")
 
     parser.add_argument("--device", type=str, default=None, help="Device to train on. cuda:0 or CPU.")
     parser.add_argument("--non_blocking", action="store_true", help="Allows asynchronous RAM to VRAM operations.")
@@ -86,3 +99,11 @@ if __name__ == "__main__":
             subsets=args.subsets, model_strings=model_strings, n_bootstrap=args.n_bootstrap,
             hard_bottleneck=args.hard_bottleneck)
 
+    if args.run_adversarial_attacks:
+        if args.target == -1:
+            args.target = None
+        load_model_and_run_attacks_cub(
+            train_model=args.train_model, target=args.target, logits=args.logits, least_likely=args.least_likely,
+            epsilon=args.epsilon, alpha=args.alpha, max_steps=args.max_steps, extra_steps=args.extra_steps,
+            max_images=args.max_images, batch_size=args.batch_size, device=device, num_workers=args.num_workers,
+            pin_memory=args.pin_memory, persistent_workers=args.persistent_workers, non_blocking=args.non_blocking)

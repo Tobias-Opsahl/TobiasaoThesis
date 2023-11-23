@@ -39,6 +39,10 @@ CUB_TABLES_FOLDER = "CUB_processed/class_attr_data_10"
 CUB_PROCESSED_FOLDER = "CUB_processed/"
 CUB_FEATURE_SELECTION_FILENAME = "CUB_feature_selection.pkl"
 
+ADVERSARIAL_FOLDER = "adversarial"
+ADVERSARIAL_FILENAME = "adversarial_image.pdf"
+
+
 N_CLASSES_CUB = 200
 N_ATTR_CUB = 112
 

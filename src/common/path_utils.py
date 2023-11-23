@@ -12,7 +12,8 @@ from src.constants import (
     DATA_FOLDER, SHAPES_FOLDER, CUB_FOLDER, FAST_HYPERPARAMETERS_FILENAME_SHAPES,
     DEFAULT_HYPERPARAMETERS_FILENAME_SHAPES, FAST_HYPERPARAMETERS_FILENAME_SHAPES_HARD,
     DEFAULT_HYPERPARAMETERS_FILENAME_SHAPES_HARD, CUB_TABLES_FOLDER, CUB_PROCESSED_FOLDER,
-    CUB_FEATURE_SELECTION_FILENAME, MODEL_STRINGS_ALL_SHAPES, MODEL_STRINGS_ALL_CUB, ORACLE_FOLDER)
+    CUB_FEATURE_SELECTION_FILENAME, MODEL_STRINGS_ALL_SHAPES, MODEL_STRINGS_ALL_CUB, ORACLE_FOLDER,
+    ADVERSARIAL_FOLDER, ADVERSARIAL_FILENAME)
 
 
 def _check_just_file(filename):
@@ -688,7 +689,7 @@ def load_model_cub(n_subset, model_type, metric="loss", hard_bottleneck=False):
         message += f"Was {model_type}. "
         raise ValueError(message)
 
-    folder_name = get_cub_folder_path(n_subset=n_subset, relative_folder=SAVED_MODELS_FOLDER)
+    folder_name = get_cub_folder_path(relative_folder=SAVED_MODELS_FOLDER)
     bottleneck = "" if not hard_bottleneck else "_hard"
     if n_subset is not None:
         sub_string = f"_sub{n_subset}"
@@ -880,3 +881,19 @@ def save_hyperparameters_cub(n_subset, hyperparameters_dict, model_type, hard_bo
     with open(file_path, "w") as yaml_file:
         yaml.dump(hyperparameters_full, yaml_file, default_flow_style=False)
 
+
+def save_adversarial_image_shapes(dataset_name="shapes", adversarial_filename=None):
+    """
+    Saves image made in `plot_perturbed_images`.
+
+    Args:
+        dataset_name (str, optional): Shapes or CUB. Defaults to "shapes".
+        adversarial_filename (name, optional): Name of file. Defaults to None.
+    """
+    base_path = Path(RESULTS_FOLDER)
+    folder_name = base_path / ADVERSARIAL_FOLDER / get_dataset_folder(dataset_name)
+    os.makedirs(folder_name, exist_ok=True)
+    if adversarial_filename is None:
+        adversarial_filename = ADVERSARIAL_FILENAME
+    file_path = make_file_path(folder_name, adversarial_filename)
+    plt.savefig(file_path)

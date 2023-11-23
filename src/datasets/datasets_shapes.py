@@ -61,6 +61,42 @@ def get_transforms_shapes():
     return transform
 
 
+def normalize_shapes(input_image, mean=0.5, std=2):
+    """
+    Normalizes an input images, with the normalization that was done with the Shapes datasets.
+
+    Args:
+        input_image (Tensor): The input image to normalise.
+        mean (float, optional): The mean of the normalisation. Defaults to 0.5.
+        std (int, optional): The standard deviation of the normalisation. Defaults to 2.
+
+    Returns:
+        Tensor: The normalised image.
+    """
+    normalize = torchvision.transforms.Normalize(mean=[mean, mean, mean], std=[std, std, std])
+    normalized = normalize(input_image)
+    return normalized
+
+
+def denormalize_shapes(input_image, mean=0.5, std=2):
+    """
+    Denormalizes an input images, with the normalization parameters that was done with the Shapes datasets.
+
+    Args:
+        input_image (Tensor): The input image to denormalise.
+        mean (float, optional): The mean of the normalisation. Defaults to 0.5.
+        std (int, optional): The standard deviation of the normalisation. Defaults to 2.
+
+    Returns:
+        Tensor: The denormalised image.
+    """
+    new_mean = - mean / std
+    new_std = 1 / std
+    denormalize = torchvision.transforms.Normalize(mean=[new_mean, new_mean, new_mean], std=[new_std, new_std, new_std])
+    denormalized = denormalize(input_image)
+    return denormalized
+
+
 def load_data_shapes(n_classes, n_attr, signal_strength, n_subset=None, mode="train-val",
                      batch_size=4, shuffle=True, drop_last=False, num_workers=0, pin_memory=False,
                      persistent_workers=False):

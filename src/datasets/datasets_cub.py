@@ -98,7 +98,7 @@ def get_transforms_cub(mode, resol=224, normalization="imagenet"):
     """
     assert mode.lower() in ["train", "val", "test", "test_small"]
     if normalization in ["[-1, 1]", "-1, 1", "[-1,1]", "-1,1"]:
-        normalize = torchvision.transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[2, 2, 2])
+        normalize = torchvision.transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
     elif normalization.lower() == "imagenet":
         normalize = torchvision.transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                                      std=[0.229, 0.224, 0.225])
@@ -118,6 +118,42 @@ def get_transforms_cub(mode, resol=224, normalization="imagenet"):
             normalize,
         ])
     return transform
+
+
+def normalize_cub(input_image):
+    """
+    Normalizes an input images, with the normalization that was done with the Shapes datasets.
+    Uses imagenets mean and std.
+
+    Args:
+        input_image (Tensor): The input image to normalise.
+
+    Returns:
+        Tensor: The normalised image.
+    """
+    normalize = torchvision.transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                                 std=[0.229, 0.224, 0.225])
+    normalized = normalize(input_image)
+    return normalized
+
+
+def denormalize_cub(input_image):
+    """
+    Denormalizes an input images, with the normalization parameters that was done with the Shapes datasets.
+    Uses imagenets mean and std.
+
+    Args:
+        input_image (Tensor): The input image to denormalise.
+        mean (float, optional): The mean of the normalisation. Defaults to 0.5.
+        std (int, optional): The standard deviation of the normalisation. Defaults to 2.
+
+    Returns:
+        Tensor: The denormalised image.
+    """
+    denormalize = torchvision.transforms.Normalize(mean=[-0.485 / 0.229, -0.456/0.224, -0.406/0.225],
+                                                   std=[1 / 0.229, 1 / 0.224, 1 / 0.225])
+    denormalized = denormalize(input_image)
+    return denormalized
 
 
 def make_dataloader(dataset, sampler=None, batch_size=4, shuffle=True, drop_last=False,

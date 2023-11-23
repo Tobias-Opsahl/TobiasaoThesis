@@ -8,7 +8,8 @@ from matplotlib import rc
 
 from src.constants import MODEL_STRINGS_SHAPES, COLORS_SHAPES, MODEL_STRINGS_CUB, COLORS_CUB
 from src.common.path_utils import (load_history_shapes, save_test_plot_shapes, save_training_plot_shapes,
-                                   load_history_cub, save_test_plot_cub, save_training_plot_cub)
+                                   load_history_cub, save_test_plot_cub, save_training_plot_cub,
+                                   save_adversarial_image_shapes)
 
 
 def plot_image_single(image_path, pred=None, label=None, transformed=False, show=True, title=None):
@@ -411,3 +412,43 @@ def plot_test_accuracies_cub(subsets, n_bootstrap=1, hard_bottleneck=False, mode
 
 def plot_oracles_cub():
     pass
+
+
+def plot_perturbed_images(perturbed_images, original_images, original_preds, new_preds, iterations_list,
+                          cols=4, max_rows=3, dataset_name="shapes", adversarial_filename=None):
+    """
+    Plots a grid of original and perturbed images showing their original and new predictions.
+
+    Args:
+        perturbed_images (list): List of perturbed image tensors.
+        original_images (list): List of original image tensors.
+        original_preds (list): List of original predictions.
+        new_preds (list): List of new predictions after perturbation.
+        iterations_list (list): List of iterations ran
+        cols (int): Number of columns in the subplot grid.
+        dataset_name (str, optional): Shapes or CUB. Defaults to "shapes".
+        adversarial_filename (name, optional): Name of file. Defaults to None.
+    """
+    plt.figure(figsize=(cols * 4, max_rows * 4))
+
+    for i, (orig_img, perturbed_img) in enumerate(zip(original_images, perturbed_images)):
+        if i > max_rows + 2:
+            break
+        # Plot original image
+        plt.subplot(max_rows, cols, 2 * i + 1)
+        np_orig_img = orig_img.detach().cpu().numpy().squeeze()
+        np_orig_img = np_orig_img.transpose(1, 2, 0)
+        plt.imshow(np_orig_img)
+        plt.title(f"Original: {original_preds[i]}", fontsize=14)
+        plt.axis("off")
+
+        # Plot perturbed image
+        plt.subplot(max_rows, cols, 2 * i + 2)
+        np_perturbed_img = perturbed_img.detach().cpu().numpy().squeeze()
+        np_perturbed_img = np_perturbed_img.transpose(1, 2, 0)
+        plt.imshow(np_perturbed_img)
+        plt.title(f"Perturbed: {new_preds[i]}, Iterations: {iterations_list[i]}", fontsize=14)
+        plt.axis("off")
+
+    plt.tight_layout()
+    save_adversarial_image_shapes(dataset_name, adversarial_filename)
