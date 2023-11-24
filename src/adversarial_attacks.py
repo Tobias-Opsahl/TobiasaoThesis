@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 from src.datasets.datasets_shapes import load_data_shapes, normalize_shapes, denormalize_shapes
 from src.datasets.datasets_cub import load_data_cub, normalize_cub, denormalize_cub
-from src.common.utils import seed_everything, load_single_model, load_single_model_cub, get_logger
+from src.common.utils import seed_everything, load_single_model, load_single_model_cub, find_class_imbalance, get_logger
 from src.common.path_utils import (load_model_shapes, load_hyperparameters_shapes, save_model_shapes,
                                    load_model_cub, load_hyperparameters_cub, save_model_cub)
 from src.train import train_cbm
@@ -14,7 +14,8 @@ from src.plotting import plot_perturbed_images
 logger = get_logger(__name__)
 
 def run_iterative_class_attack(model, input_image, label, target=None, logits=False, least_likely=False,
-                              epsilon=0.5, alpha=0.005, max_steps=100, extra_steps=1, mean=0.5, std=2):
+                              epsilon=0.5, alpha=0.005, max_steps=100, extra_steps=1, mean=0.5, std=2,
+                              device="cpu", non_blocking=False):
     """
     Run a iterative adversarial attack. Many possible methods.
     The attack is on the class, with no evaluation of what is going on with the concepts.
@@ -43,6 +44,9 @@ def run_iterative_class_attack(model, input_image, label, target=None, logits=Fa
         extra_steps (int): How many steps are run after the perturbed image turnes adversarial.
         mean (float or Tensor): Mean of the normalization done in the dataloader.
         std (float or Tensor): Standard deviation of the normalization done in the dataloader.
+        device (str): Use "cpu" for cpu training and "cuda:0" for gpu training.
+        non_blocking (bool): If True, allows for asyncronous transfer between RAM and VRAM.
+            This only works together with `pin_memory=True` to dataloader and GPU training.
 
     Returns:
         Tensor: Perturbed image.
@@ -50,7 +54,7 @@ def run_iterative_class_attack(model, input_image, label, target=None, logits=Fa
         int: The number of iterations ran.
     """
     if isinstance(target, int):
-        target = torch.tensor([target])
+        target = torch.tensor([target]).to(device, non_blocking=non_blocking)
 
     perturbed_image = input_image
     success = 0
@@ -107,7 +111,7 @@ def run_iterative_class_attack(model, input_image, label, target=None, logits=Fa
 
 def run_iterative_concept_attack(model, input_image, class_label, concept_labels, target=None, logits=True,
                                  least_likely=False, epsilon=0.5, alpha=0.005, max_steps=100, extra_steps=1,
-                                 mean=0.5, std=2):
+                                 mean=0.5, std=2, device=None):
     """
     Run a iterative adversarial attack. Many possible methods.
     Tries to change the class without changing the concept-predictions.
@@ -142,7 +146,7 @@ def run_iterative_concept_attack(model, input_image, class_label, concept_labels
         int: The number of iterations ran.
     """
     if isinstance(target, int):
-        target = torch.tensor([target])
+        target = torch.tensor([target]).to(device)
 
     perturbed_image = input_image
     success = 0
@@ -153,7 +157,7 @@ def run_iterative_concept_attack(model, input_image, class_label, concept_labels
 
         class_outputs, attr_outputs = model(perturbed_image)
         _, prediction = torch.max(class_outputs, 1)
-        
+
         if i == 0:  # Save original attribute predictions
             original_attr_probabilities = torch.sigmoid(attr_outputs)
             original_predictions = (original_attr_probabilities > 0).float()
@@ -207,7 +211,7 @@ def run_iterative_concept_attack(model, input_image, class_label, concept_labels
 
 def run_adversarial_attacks(model, test_loader, target=None, logits=True, least_likely=False,
                             epsilon=1, alpha=0.001, max_steps=100, extra_steps=3, max_images=100, denorm_func=None,
-                            mean=0.5, std=2):
+                            mean=0.5, std=2, device="cpu", non_blocking=False):
     """
     Runs adversarial attacks on images from the `test_loader`.
 
@@ -227,6 +231,9 @@ def run_adversarial_attacks(model, test_loader, target=None, logits=True, least_
         denorm_func (callable): Function for de-normalising images.
         mean (float or Tensor): Mean of the normalization done in the dataloader.
         std (float or Tensor): Standard deviation of the normalization done in the dataloader.
+        device (str): Use "cpu" for cpu training and "cuda:0" for gpu training.
+        non_blocking (bool): If True, allows for asyncronous transfer between RAM and VRAM.
+            This only works together with `pin_memory=True` to dataloader and GPU training.
 
     Returns:
         dict: Dictionary of lists of the images that were successfully ran adversarial attacks on. The keys are:
@@ -245,6 +252,9 @@ def run_adversarial_attacks(model, test_loader, target=None, logits=True, least_
     counter = 0
     correct_counter = 0
     for data, label, attr_labels, paths in test_loader:
+        data = data.to(device, non_blocking=non_blocking)
+        label = label.to(device, non_blocking=non_blocking)
+        attr_labels = attr_labels.to(device, non_blocking=non_blocking)
         class_outputs, attr_outputs = model(data)
         _, prediction = torch.max(class_outputs, 1)
 
@@ -347,16 +357,18 @@ def load_model_and_run_attacks_shapes(
             non_blocking=non_blocking, verbose=2)
         state_dict = state_dicts["best_model_loss_state_dict"]
         save_model_shapes(
-            n_classes, n_attr, signal_strength, n_subset, state_dict, "cbm", metric="loss", hard_bottleneck=False)
+            n_classes, n_attr, signal_strength, n_subset, state_dict, "cbm", metric="loss",
+            hard_bottleneck=False, adversarial=True)
 
-    state_dict = load_model_shapes(n_classes, n_attr, signal_strength, n_subset, "cbm", hard_bottleneck=False)
+    state_dict = load_model_shapes(n_classes, n_attr, signal_strength, n_subset, "cbm", hard_bottleneck=False,
+                                   device=device, adversarial=True)
     model.load_state_dict(state_dict)
     model.eval()
 
     output = run_adversarial_attacks(
         model, test_loader, target=target, logits=logits, least_likely=least_likely,
         epsilon=epsilon, alpha=alpha, max_steps=max_steps, extra_steps=extra_steps, max_images=max_images,
-        denorm_func=denormalize_shapes, mean=0.5, std=2)
+        denorm_func=denormalize_shapes, mean=0.5, std=2, device=device, non_blocking=non_blocking)
     plot_perturbed_images(output["perturbed_images"], output["original_images"], output["original_predictions"],
                           output["new_predictions"], output["iterations_list"],
                           adversarial_filename="adversarial_image_shapes.pdf")
@@ -365,8 +377,8 @@ def load_model_and_run_attacks_shapes(
 
 def load_model_and_run_attacks_cub(
     train_model=False, target=None, logits=True, least_likely=False,
-    epsilon=1, alpha=0.001, max_steps=100, extra_steps=3, max_images=100, 
-    batch_size=16, device=None, num_workers=0, pin_memory=False, persistent_workers=False, non_blocking=False, seed=57):
+    epsilon=1, alpha=0.001, max_steps=100, extra_steps=3, max_images=100, batch_size=16,
+    device=None, num_workers=0, pin_memory=False, persistent_workers=False, non_blocking=False, seed=57):
     """
     Loads model and tes-dataloader, and runs adversarial attacks.
 
@@ -400,38 +412,46 @@ def load_model_and_run_attacks_cub(
         seed (int, optional): Seed, used in case subdataset needs to be created. Defaults to 57.
     """
     seed_everything(seed)
-    n_subset = 1
+    if device is None:
+        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
     test_loader = load_data_cub(mode="test", shuffle=True, batch_size=1)
+    n_subset = None
 
     hp = load_hyperparameters_cub(n_subset, hard_bottleneck=False)["cbm"]
     model = load_single_model_cub("cbm", hyperparameters=hp)
     model = model.to(device, non_blocking=non_blocking)
     if train_model:  # Train model
-        train_loader, val_loader = load_data_cub(n_subset=n_subset,
+        train_loader, val_loader = load_data_cub(
             mode="train-val", batch_size=batch_size, drop_last=True, num_workers=num_workers,
             pin_memory=pin_memory, persistent_workers=persistent_workers)
 
         criterion = nn.CrossEntropyLoss()
-        attr_criterion = nn.BCEWithLogitsLoss()
+        imbalances = find_class_imbalance(n_subset=n_subset, multiple_attr=True)
+        imbalances = torch.FloatTensor(imbalances).to(device)
+        attr_criterion = nn.BCEWithLogitsLoss(weight=imbalances)
+        # attr_criterion = nn.BCEWithLogitsLoss()
         optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=hp["learning_rate"])
         exp_lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=hp["gamma"])
         _, state_dicts = train_cbm(
-            model, criterion, attr_criterion, optimizer, train_loader, val_loader, n_epochs=1,
+            model, criterion, attr_criterion, optimizer, train_loader, val_loader, n_epochs=50,
             attr_weight=hp["attr_weight"], scheduler=exp_lr_scheduler, device=device,
             non_blocking=non_blocking, verbose=2)
         state_dict = state_dicts["best_model_loss_state_dict"]
-        save_model_cub(n_subset, state_dict, "cbm", metric="loss", hard_bottleneck=False)
+        save_model_cub(n_subset, state_dict, "cbm", metric="loss", hard_bottleneck=False, adversarial=True)
 
-    state_dict = load_model_cub(n_subset, "cbm", hard_bottleneck=False)
+    state_dict = load_model_cub(n_subset, "cbm", hard_bottleneck=False, device=device, adversarial=True)
     model.load_state_dict(state_dict)
     model.eval()
 
     mean = torch.tensor([0.485, 0.456, 0.406]).view(1, 3, 1, 1)  # Imagenet normalisation
     std = torch.tensor([0.229, 0.224, 0.225]).view(1, 3, 1, 1)
+    mean = mean.to(device, non_blocking=non_blocking)
+    std = std.to(device, non_blocking=non_blocking)
     output = run_adversarial_attacks(
         model, test_loader, target=target, logits=logits, least_likely=least_likely,
         epsilon=epsilon, alpha=alpha, max_steps=max_steps, extra_steps=extra_steps, max_images=max_images,
-        denorm_func=denormalize_cub, mean=mean, std=std)
+        denorm_func=denormalize_cub, mean=mean, std=std, device=device, non_blocking=non_blocking)
     plot_perturbed_images(output["perturbed_images"], output["original_images"], output["original_predictions"],
                           output["new_predictions"], output["iterations_list"],
                           adversarial_filename="adversarial_image_cub.pdf")

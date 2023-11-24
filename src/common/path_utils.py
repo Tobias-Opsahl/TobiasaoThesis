@@ -285,7 +285,8 @@ def save_history_shapes(n_classes, n_attr, signal_strength, n_bootstrap, n_subse
         pickle.dump(history, outfile)
 
 
-def load_model_shapes(n_classes, n_attr, signal_strength, n_subset, model_type, metric="loss", hard_bottleneck=False):
+def load_model_shapes(n_classes, n_attr, signal_strength, n_subset, model_type, metric="loss", hard_bottleneck=False,
+                      device="cpu", adversarial=False):
     """
     Load a state_dict for a model.
 
@@ -298,6 +299,8 @@ def load_model_shapes(n_classes, n_attr, signal_strength, n_subset, model_type, 
         metric (str, optional): Should be in ["loss", "accuracy"]. Determines if one loads the best
             validation loss model or best validation accuracy loss. Defaults to "loss".
         hard_bottleneck (bool): Set to `True` if hard bottleneck was used. This will alter the name to end with `_hard`.
+        device (str): Use "cpu" for cpu training and "cuda" for gpu training.
+        adversarial (bool): If True, loads adversarial saved model, that does not interfere with the other models.
 
     Returns:
         dict: The state-dict to the model.
@@ -310,14 +313,18 @@ def load_model_shapes(n_classes, n_attr, signal_strength, n_subset, model_type, 
 
     folder_name = get_full_shapes_folder_path(n_classes, n_attr, signal_strength, relative_folder=SAVED_MODELS_FOLDER)
     bottleneck = "" if not hard_bottleneck else "_hard"
-    filename = Path(f"{model_type}_sub{n_subset}_{metric}{bottleneck}.pth")
+    if adversarial:
+        adversarial_string = f"_adversarial"
+    else:
+        adversarial_string = ""
+    filename = Path(f"{model_type}_sub{n_subset}_{metric}{bottleneck}{adversarial_string}.pth")
     file_path = make_file_path(folder_name, filename, check_folder_exists=False)
-    state_dict = torch.load(file_path)
+    state_dict = torch.load(file_path, map_location=torch.device(device))
     return state_dict
 
 
 def save_model_shapes(n_classes, n_attr, signal_strength, n_subset, state_dict, model_type, metric="loss",
-                      hard_bottleneck=False):
+                      hard_bottleneck=False, adversarial=False):
     """
     Saves a models state_dict.
 
@@ -330,6 +337,8 @@ def save_model_shapes(n_classes, n_attr, signal_strength, n_subset, state_dict, 
         model_type (str): String name of the model to save.
         metric (str, optional): Nam. Defaults to "loss".
         hard_bottleneck (bool): Set to `True` if hard bottleneck was used. This will alter the name to end with `_hard`.
+        adversarial (bool): If True, saves adversarial saved model, that does not interfere with the other models.
+
     """
     model_type = model_type.strip().lower()
     if model_type not in MODEL_STRINGS_ALL_SHAPES:
@@ -339,7 +348,11 @@ def save_model_shapes(n_classes, n_attr, signal_strength, n_subset, state_dict, 
 
     folder_name = get_full_shapes_folder_path(n_classes, n_attr, signal_strength, relative_folder=SAVED_MODELS_FOLDER)
     bottleneck = "" if (model_type == "cnn") or not hard_bottleneck else "_hard"
-    filename = Path(f"{model_type}_sub{n_subset}_{metric}{bottleneck}.pth")
+    if adversarial:
+        adversarial_string = f"_adversarial"
+    else:
+        adversarial_string = ""
+    filename = Path(f"{model_type}_sub{n_subset}_{metric}{bottleneck}{adversarial_string}.pth")
     file_path = make_file_path(folder_name, filename, check_folder_exists=True)
     torch.save(state_dict, file_path)
 
@@ -669,7 +682,7 @@ def save_history_cub(n_bootstrap, n_subset, history, oracle_only=False, hard_bot
         pickle.dump(history, outfile)
 
 
-def load_model_cub(n_subset, model_type, metric="loss", hard_bottleneck=False):
+def load_model_cub(n_subset, model_type, metric="loss", hard_bottleneck=False, device="cpu", adversarial=False):
     """
     Load a state_dict for a model.
 
@@ -679,6 +692,8 @@ def load_model_cub(n_subset, model_type, metric="loss", hard_bottleneck=False):
         metric (str, optional): Should be in ["loss", "accuracy"]. Determines if one loads the best
             validation loss model or best validation accuracy loss. Defaults to "loss".
         hard_bottleneck (bool): Set to `True` if hard bottleneck was used. This will alter the name to end with `_hard`.
+        device (str): Use "cpu" for cpu training and "cuda" for gpu training.
+        adversarial (bool): If True, loads adversarial saved model, that does not interfere with the other models.
 
     Returns:
         dict: The state-dict to the model.
@@ -695,13 +710,17 @@ def load_model_cub(n_subset, model_type, metric="loss", hard_bottleneck=False):
         sub_string = f"_sub{n_subset}"
     else:  # `n_subset` = None means full dataset
         sub_string = "_full"
-    filename = Path(f"{model_type}{sub_string}_{metric}{bottleneck}.pth")
+    if adversarial:
+        adversarial_string = f"_adversarial"
+    else:
+        adversarial_string = ""
+    filename = Path(f"{model_type}{sub_string}_{metric}{bottleneck}{adversarial_string}.pth")
     file_path = make_file_path(folder_name, filename, check_folder_exists=False)
-    state_dict = torch.load(file_path)
+    state_dict = torch.load(file_path, map_location=torch.device(device))
     return state_dict
 
 
-def save_model_cub(n_subset, state_dict, model_type, metric="loss", hard_bottleneck=False):
+def save_model_cub(n_subset, state_dict, model_type, metric="loss", hard_bottleneck=False, adversarial=False):
     """
     Saves a models state_dict.
 
@@ -711,6 +730,8 @@ def save_model_cub(n_subset, state_dict, model_type, metric="loss", hard_bottlen
         model_type (str): String name of the model to save.
         metric (str, optional): Nam. Defaults to "loss".
         hard_bottleneck (bool): Set to `True` if hard bottleneck was used. This will alter the name to end with `_hard`.
+        adversarial (bool): If True, saves adversarial saved model, that does not interfere with the other models.
+
     """
     model_type = model_type.strip().lower()
     if model_type not in MODEL_STRINGS_ALL_CUB:
@@ -724,7 +745,11 @@ def save_model_cub(n_subset, state_dict, model_type, metric="loss", hard_bottlen
         sub_string = f"_sub{n_subset}"
     else:  # `n_subset` = None means full dataset
         sub_string = "_full"
-    filename = Path(f"{model_type}{sub_string}_{metric}{bottleneck}.pth")
+    if adversarial:
+        adversarial_string = f"_adversarial"
+    else:
+        adversarial_string = ""
+    filename = Path(f"{model_type}{sub_string}_{metric}{bottleneck}{adversarial_string}.pth")
     file_path = make_file_path(folder_name, filename, check_folder_exists=True)
     torch.save(state_dict, file_path)
 
