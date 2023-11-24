@@ -42,6 +42,7 @@ def parse_arguments():
     parser.add_argument("--logits", action="store_true", help="Wether to use logits or loss in attacks.")
     parser.add_argument("--least_likely", action="store_true", help="Least likely class attack.")
     parser.add_argument("--target", type=int, default=-1, help="Class to do targeted attack towards")
+    parser.add_argument("--random_start", type=float, default=0, help="Range for starting image to be withing")
 
     parser.add_argument("--device", type=str, default=None, help="Device to train on. cuda:0 or CPU.")
     parser.add_argument("--non_blocking", action="store_true", help="Allows asynchronous RAM to VRAM operations.")
@@ -102,8 +103,11 @@ if __name__ == "__main__":
     if args.run_adversarial_attacks:
         if args.target == -1:
             args.target = None
+        if args.random_start == 0:
+            args.random_start = None
         load_model_and_run_attacks_cub(
             train_model=args.train_model, target=args.target, logits=args.logits, least_likely=args.least_likely,
             epsilon=args.epsilon, alpha=args.alpha, max_steps=args.max_steps, extra_steps=args.extra_steps,
-            max_images=args.max_images, batch_size=args.batch_size, device=device, num_workers=args.num_workers,
-            pin_memory=args.pin_memory, persistent_workers=args.persistent_workers, non_blocking=args.non_blocking)
+            max_images=args.max_images, random_start=args.random_start, batch_size=args.batch_size, device=device,
+            num_workers=args.num_workers, pin_memory=args.pin_memory, persistent_workers=args.persistent_workers,
+            non_blocking=args.non_blocking)

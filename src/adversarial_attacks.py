@@ -14,8 +14,8 @@ from src.plotting import plot_perturbed_images
 logger = get_logger(__name__)
 
 def run_iterative_class_attack(model, input_image, label, target=None, logits=False, least_likely=False,
-                              epsilon=0.5, alpha=0.005, max_steps=100, extra_steps=1, mean=0.5, std=2,
-                              device="cpu", non_blocking=False):
+                              epsilon=0.5, alpha=0.005, max_steps=100, extra_steps=1, random_start=None,
+                              mean=0.5, std=2, device="cpu", non_blocking=False):
     """
     Run a iterative adversarial attack. Many possible methods.
     The attack is on the class, with no evaluation of what is going on with the concepts.
@@ -42,6 +42,8 @@ def run_iterative_class_attack(model, input_image, label, target=None, logits=Fa
         alpha (float): Step size per iteration.
         max_steps (int): Maximum number of iterations.
         extra_steps (int): How many steps are run after the perturbed image turnes adversarial.
+        random_start (float): If not None, will make starting image in a random start within the original input image.
+            Will be the uniform noise added to each pixel in the random start.
         mean (float or Tensor): Mean of the normalization done in the dataloader.
         std (float or Tensor): Standard deviation of the normalization done in the dataloader.
         device (str): Use "cpu" for cpu training and "cuda:0" for gpu training.
@@ -57,6 +59,12 @@ def run_iterative_class_attack(model, input_image, label, target=None, logits=Fa
         target = torch.tensor([target]).to(device, non_blocking=non_blocking)
 
     perturbed_image = input_image
+    if random_start is not None:  # Make image slightly away from the input image
+        noise = torch.empty_like(input_image).uniform_(-random_start, random_start)
+        perturbed_image = perturbed_image + noise
+        perturbed_image = torch.clamp(perturbed_image, input_image - epsilon, input_image + epsilon)
+        perturbed_image = torch.clamp(perturbed_image, -mean / std, (1 - mean) / std)
+
     success = 0
     for i in range(max_steps):
         perturbed_image = perturbed_image.detach().clone()
@@ -111,7 +119,7 @@ def run_iterative_class_attack(model, input_image, label, target=None, logits=Fa
 
 def run_iterative_concept_attack(model, input_image, class_label, concept_labels, target=None, logits=True,
                                  least_likely=False, epsilon=0.5, alpha=0.005, max_steps=100, extra_steps=1,
-                                 mean=0.5, std=2, device=None):
+                                 random_start=None, mean=0.5, std=2, device=None, non_blocking=False):
     """
     Run a iterative adversarial attack. Many possible methods.
     Tries to change the class without changing the concept-predictions.
@@ -137,8 +145,12 @@ def run_iterative_concept_attack(model, input_image, class_label, concept_labels
         alpha (float): Step size per iteration.
         max_steps (int): Maximum number of iterations.
         extra_steps (int): How many steps are run after the perturbed image turnes adversarial.
+        random_start (float): If not None, will make starting image in a random start within the original input image.
+            Will be the uniform noise added to each pixel in the random start.
         mean (float or Tensor): Mean of the normalization done in the dataloader.
         std (float or Tensor): Standard deviation of the normalization done in the dataloader.
+        non_blocking (bool): If True, allows for asyncronous transfer between RAM and VRAM.
+            This only works together with `pin_memory=True` to dataloader and GPU training.
 
     Returns:
         Tensor: Perturbed image.
@@ -146,9 +158,15 @@ def run_iterative_concept_attack(model, input_image, class_label, concept_labels
         int: The number of iterations ran.
     """
     if isinstance(target, int):
-        target = torch.tensor([target]).to(device)
+        target = torch.tensor([target]).to(device, non_blocking=non_blocking)
 
     perturbed_image = input_image
+    if random_start is not None:  # Make image slightly away from the input image
+        noise = torch.empty_like(input_image).uniform_(-random_start, random_start)
+        perturbed_image = perturbed_image + noise
+        perturbed_image = torch.clamp(perturbed_image, input_image - epsilon, input_image + epsilon)
+        perturbed_image = torch.clamp(perturbed_image, -mean / std, (1 - mean) / std)
+        
     success = 0
     overall_accuracy = 0
     for i in range(max_steps):
@@ -210,8 +228,8 @@ def run_iterative_concept_attack(model, input_image, class_label, concept_labels
 
 
 def run_adversarial_attacks(model, test_loader, target=None, logits=True, least_likely=False,
-                            epsilon=1, alpha=0.001, max_steps=100, extra_steps=3, max_images=100, denorm_func=None,
-                            mean=0.5, std=2, device="cpu", non_blocking=False):
+                            epsilon=1, alpha=0.001, max_steps=100, extra_steps=3, max_images=100, random_start=None,
+                            denorm_func=None, mean=0.5, std=2, device="cpu", non_blocking=False):
     """
     Runs adversarial attacks on images from the `test_loader`.
 
@@ -228,6 +246,8 @@ def run_adversarial_attacks(model, test_loader, target=None, logits=True, least_
         max_steps (int): Maximum number of iterations.
         extra_steps (int): How many steps are run after the perturbed image turnes adversarial.
         max_images (int): Maximum number of images from the test-loader to run.
+        random_start (float): If not None, will make starting image in a random start within the original input image.
+            Will be the uniform noise added to each pixel in the random start.
         denorm_func (callable): Function for de-normalising images.
         mean (float or Tensor): Mean of the normalization done in the dataloader.
         std (float or Tensor): Standard deviation of the normalization done in the dataloader.
@@ -272,7 +292,7 @@ def run_adversarial_attacks(model, test_loader, target=None, logits=True, least_
         perturbed_image, success, iterations_ran = run_iterative_concept_attack(
             model=model, input_image=data, class_label=label, concept_labels=attr_labels, target=target, logits=logits,
             least_likely=least_likely, epsilon=epsilon, alpha=alpha, max_steps=max_steps, extra_steps=extra_steps,
-            mean=mean, std=std)
+            random_start=random_start, mean=mean, std=std, device=device, non_blocking=non_blocking)
 
         if success:  # Save stuff
             correct_counter += 1
@@ -299,7 +319,7 @@ def run_adversarial_attacks(model, test_loader, target=None, logits=True, least_
 
 def load_model_and_run_attacks_shapes(
     n_classes, n_attr, signal_strength, train_model=False, target=None, logits=True, least_likely=False,
-    epsilon=1, alpha=0.001, max_steps=100, extra_steps=3, max_images=100, 
+    epsilon=1, alpha=0.001, max_steps=100, extra_steps=3, max_images=100, random_start=None,
     batch_size=16, device=None, num_workers=0, pin_memory=False, persistent_workers=False, non_blocking=False, seed=57):
     """
     Loads model and tes-dataloader, and runs adversarial attacks.
@@ -319,6 +339,8 @@ def load_model_and_run_attacks_shapes(
         alpha (float): Step size per iteration.
         max_steps (int): Maximum number of iterations.
         extra_steps (int): How many steps are run after the perturbed image turnes adversarial.
+        random_start (float): If not None, will make starting image in a random start within the original input image.
+            Will be the uniform noise added to each pixel in the random start.
         max_images (int): Maximum number of images from the test-loader to run.
         batch_size (int): Batch-size for training the model.
         device (str): Use "cpu" for cpu training and "cuda" for gpu training.
@@ -366,8 +388,8 @@ def load_model_and_run_attacks_shapes(
     model.eval()
 
     output = run_adversarial_attacks(
-        model, test_loader, target=target, logits=logits, least_likely=least_likely,
-        epsilon=epsilon, alpha=alpha, max_steps=max_steps, extra_steps=extra_steps, max_images=max_images,
+        model, test_loader, target=target, logits=logits, least_likely=least_likely, epsilon=epsilon, alpha=alpha,
+        max_steps=max_steps, extra_steps=extra_steps, max_images=max_images, random_start=random_start,
         denorm_func=denormalize_shapes, mean=0.5, std=2, device=device, non_blocking=non_blocking)
     plot_perturbed_images(output["perturbed_images"], output["original_images"], output["original_predictions"],
                           output["new_predictions"], output["iterations_list"],
@@ -377,7 +399,7 @@ def load_model_and_run_attacks_shapes(
 
 def load_model_and_run_attacks_cub(
     train_model=False, target=None, logits=True, least_likely=False,
-    epsilon=1, alpha=0.001, max_steps=100, extra_steps=3, max_images=100, batch_size=16,
+    epsilon=1, alpha=0.001, max_steps=100, extra_steps=3, max_images=100, random_start=None, batch_size=16,
     device=None, num_workers=0, pin_memory=False, persistent_workers=False, non_blocking=False, seed=57):
     """
     Loads model and tes-dataloader, and runs adversarial attacks.
@@ -398,6 +420,8 @@ def load_model_and_run_attacks_cub(
         max_steps (int): Maximum number of iterations.
         extra_steps (int): How many steps are run after the perturbed image turnes adversarial.
         max_images (int): Maximum number of images from the test-loader to run.
+        random_start (float): If not None, will make starting image in a random start within the original input image.
+            Will be the uniform noise added to each pixel in the random start.
         batch_size (int): Batch-size for training the model.
         device (str): Use "cpu" for cpu training and "cuda" for gpu training.
         non_blocking (bool): If True, allows for asyncronous transfer between RAM and VRAM.
@@ -449,8 +473,8 @@ def load_model_and_run_attacks_cub(
     mean = mean.to(device, non_blocking=non_blocking)
     std = std.to(device, non_blocking=non_blocking)
     output = run_adversarial_attacks(
-        model, test_loader, target=target, logits=logits, least_likely=least_likely,
-        epsilon=epsilon, alpha=alpha, max_steps=max_steps, extra_steps=extra_steps, max_images=max_images,
+        model, test_loader, target=target, logits=logits, least_likely=least_likely, epsilon=epsilon, alpha=alpha,
+        max_steps=max_steps, extra_steps=extra_steps, max_images=max_images, random_start=random_start,
         denorm_func=denormalize_cub, mean=mean, std=std, device=device, non_blocking=non_blocking)
     plot_perturbed_images(output["perturbed_images"], output["original_images"], output["original_predictions"],
                           output["new_predictions"], output["iterations_list"],
