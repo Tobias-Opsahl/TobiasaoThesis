@@ -98,9 +98,7 @@ def train_and_evaluate_cub(
     models = load_models_cub(model_strings=model_strings, hyperparameters=hp)
     histories = []
     criterion = nn.CrossEntropyLoss()
-    imbalances = find_class_imbalance(n_subset=n_subset, multiple_attr=True)
-    imbalances = torch.FloatTensor(imbalances).to(device)
-    attr_criterion = nn.BCEWithLogitsLoss(weight=imbalances)
+    attr_criterion = nn.BCEWithLogitsLoss()
 
     for i in range(len(models)):
         model = models[i]

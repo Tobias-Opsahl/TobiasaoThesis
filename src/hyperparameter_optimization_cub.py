@@ -188,7 +188,7 @@ class HyperparameterOptimizationShapes:
         elif hp_name == "attr_weight_decay":
             return trial.suggest_float("attr_weight_decay", 0.5, 1, log=False)
         elif hp_name == "attr_schedule":
-            attr_schedule = trial.suggest_categorical("attr_schedule", [0.7, 0.8, 0.9, 0.95, 0.99, 1, 3, 5, 10, 20])
+            attr_schedule = trial.suggest_categorical("attr_schedule", [0.7, 0.8, 0.9, 0.95, 0.99, 1, 3, 5, 10, 15, 20])
             if attr_schedule < 1:
                 attr_weight = 100
                 attr_weight_decay = attr_schedule
@@ -283,7 +283,7 @@ class HyperparameterOptimizationShapes:
             "two_layers": [True, False],
             "attr_weight": [1, 3, 5, 10],
             "attr_weight_decay": [0.5, 0.7, 0.9, 1],
-            "attr_schedule": [10, 20]
+            "attr_schedule": [10, 15]
         }
 
         search_space = {}  # Add only the hyperparameters we are going to search for in the space
@@ -325,9 +325,7 @@ class HyperparameterOptimizationShapes:
                 model, criterion, optimizer, train_loader, val_loader, trial=trial, scheduler=exp_lr_scheduler,
                 n_epochs=hp["n_epochs"], device=self.device, non_blocking=self.non_blocking, oracle=True, verbose=0)
         else:  # Concept-bottleneck model
-            imbalances = find_class_imbalance(n_subset=self.n_subset, multiple_attr=True)
-            imbalances = torch.FloatTensor(imbalances).to(self.device)
-            attr_criterion = nn.BCEWithLogitsLoss(weight=imbalances)
+            attr_criterion = nn.BCEWithLogitsLoss()
             history, _ = train_cbm(
                 model, criterion, attr_criterion, optimizer, train_loader, val_loader, n_epochs=hp["n_epochs"],
                 attr_weight=hp["attr_weight"], trial=trial, scheduler=exp_lr_scheduler, device=self.device,
@@ -495,13 +493,13 @@ def run_hyperparameter_optimization_all_models(
         for model_type in model_strings:
             if grid_search and set_hyperparameters_to_search:
                 if model_type == "cnn":
-                    hyperparameters_names = ["learning_rate", "gamma", "dropout_probability"]
+                    hyperparameters_names = ["learning_rate", "gamma"]
                     hyperparameters_to_search = get_hyperparameters_dictionary(hyperparameters_names)
                 elif model_type in ["lr_oracle", "nn_oracle"]:
                     hyperparameters_names = ["learning_rate"]
                     hyperparameters_to_search = get_hyperparameters_dictionary(hyperparameters_names)
                 else:
-                    hyperparameters_names = ["learning_rate", "attr_schedule", "dropout_probability"]
+                    hyperparameters_names = ["learning_rate", "attr_schedule"]
                     hyperparameters_to_search = get_hyperparameters_dictionary(hyperparameters_names)
 
             if not grid_search and set_hyperparameters_to_search:
