@@ -120,8 +120,8 @@ def run_iterative_class_attack(model, input_image, label, target=None, logits=Fa
 
 def run_iterative_concept_attack(
     model, input_image, class_label, concept_labels, target=None, logits=True, least_likely=False, epsilon=0.5,
-    alpha=0.005, concept_threshold=0.1, max_steps=100, extra_steps=1, random_start=None, mean=0.5, std=2, device=None,
-    non_blocking=False):
+    alpha=0.005, concept_threshold=0.1, grad_weight=-0.3, max_steps=100, extra_steps=1, random_start=None, mean=0.5,
+    std=2, device=None, non_blocking=False):
     """
     Run a iterative adversarial attack. Many possible methods.
     Tries to change the class without changing the concept-predictions.
@@ -154,6 +154,8 @@ def run_iterative_concept_attack(
         alpha (float): Step size per iteration.
         concept_threshold (float): The threshold of how close the concept logits need to be to zero before zeroing
             out the gradients.
+        grad_weight (float): The weight to zero out or cancel the gradient to the pixels that will change sensitive
+            concepts. Should probably be in [-1, 0].
         max_steps (int): Maximum number of iterations.
         extra_steps (int): How many steps are run after the perturbed image turnes adversarial.
         random_start (float): If not None, will make starting image in a random start within the original input image.
@@ -181,7 +183,10 @@ def run_iterative_concept_attack(
     success = 0
     overall_accuracy = 0
     previous_image = perturbed_image.clone()  # Save last iterations image
-    for i in range(max_steps):
+    for i in range(max_steps + extra_steps):
+        if success == 0 and i >= max_steps:
+            break
+
         perturbed_image = perturbed_image.detach().clone()
         perturbed_image.requires_grad = True
 
@@ -215,17 +220,21 @@ def run_iterative_concept_attack(
             if prediction == target:
                 extra_steps -= 1
                 success = 1
+            else:
+                success = 0
         else:
             if prediction != class_label:
                 extra_steps -= 1
                 success = 1
+            else:
+                success = 0
         if extra_steps <= 0:  # Sufficient steps taken after changing class prediction
             success = 1
             attr_probabilities = torch.sigmoid(attr_outputs)
             predictions = (attr_probabilities > 0).float()
             correct_predictions = (predictions == original_predictions).float()
             overall_accuracy = correct_predictions.mean()
-            break  
+            break
 
         model.zero_grad()
         # Calculate gradient based on class-target:
@@ -271,7 +280,7 @@ def run_iterative_concept_attack(
             concept_sign = attr_outputs[:, j].sign()
             # Zero out gradients that would increase positive concepts or decrease negative concepts
             total_grad_sign = concept_grad_sign * class_adversarial_gradient  # Direction of change
-            mask = torch.where((total_grad_sign != concept_sign), 0 * torch.ones_like(final_mask), final_mask)
+            mask = torch.where((total_grad_sign != concept_sign), grad_weight * torch.ones_like(final_mask), final_mask)
             final_mask = torch.min(final_mask, mask)
 
         if final_mask.sum() == 0:  # Gradients all zeroed out
@@ -293,8 +302,8 @@ def run_iterative_concept_attack(
 
 def run_adversarial_attacks(
     model, test_loader, target=None, logits=True, least_likely=False, epsilon=1, alpha=0.001, concept_threshold=0.1,
-    max_steps=100, extra_steps=3, max_images=100, random_start=None, denorm_func=None, mean=0.5, std=2, device="cpu",
-    non_blocking=False):
+    grad_weight=-0.3, max_steps=100, extra_steps=3, max_images=100, random_start=None, denorm_func=None, mean=0.5,
+    std=2, device="cpu", non_blocking=False):
     """
     Runs adversarial attacks on images from the `test_loader`.
 
@@ -310,6 +319,8 @@ def run_adversarial_attacks(
         alpha (float): Step size per iteration.
         concept_threshold (float): The threshold of how close the concept logits need to be to zero before zeroing
             out the gradients.
+        grad_weight (float): The weight to zero out or cancel the gradient to the pixels that will change sensitive
+            concepts. Should probably be in [-1, 0].
         max_steps (int): Maximum number of iterations.
         extra_steps (int): How many steps are run after the perturbed image turnes adversarial.
         max_images (int): Maximum number of images from the test-loader to run.
@@ -359,10 +370,10 @@ def run_adversarial_attacks(
         perturbed_image, success, iterations_ran = run_iterative_concept_attack(
             model=model, input_image=data, class_label=label, concept_labels=attr_labels, target=target, logits=logits,
             least_likely=least_likely, epsilon=epsilon, alpha=alpha, concept_threshold=concept_threshold,
-            max_steps=max_steps, extra_steps=extra_steps, random_start=random_start, mean=mean, std=std, device=device,
-            non_blocking=non_blocking)
+            grad_weight=grad_weight, max_steps=max_steps, extra_steps=extra_steps, random_start=random_start,
+            mean=mean, std=std, device=device, non_blocking=non_blocking)
 
-        logger.debug(f"Image number {counter}, Succes: {success}, iterations ran: {iterations_ran + 1}")
+        logger.debug(f"Image number {counter}, Succes: {success}, iterations ran: {iterations_ran}")
 
         if success:  # Save stuff
             correct_counter += 1
@@ -389,8 +400,9 @@ def run_adversarial_attacks(
 
 def load_model_and_run_attacks_shapes(
     n_classes, n_attr, signal_strength, train_model=False, target=None, logits=True, least_likely=False,
-    epsilon=1, alpha=0.001, concept_threshold=1, max_steps=100, extra_steps=3, max_images=100, random_start=None,
-    batch_size=16, device=None, num_workers=0, pin_memory=False, persistent_workers=False, non_blocking=False, seed=57):
+    epsilon=1, alpha=0.001, concept_threshold=1, grad_weight=-0.3, max_steps=100, extra_steps=3, max_images=100,
+    random_start=None, batch_size=16, device=None, num_workers=0, pin_memory=False, persistent_workers=False,
+    non_blocking=False, seed=57):
     """
     Loads model and tes-dataloader, and runs adversarial attacks.
 
@@ -409,6 +421,8 @@ def load_model_and_run_attacks_shapes(
         alpha (float): Step size per iteration.
         concept_threshold (float): The threshold of how close the concept logits need to be to zero before zeroing
             out the gradients.
+        grad_weight (float): The weight to zero out or cancel the gradient to the pixels that will change sensitive
+            concepts. Should probably be in [-1, 0].
         max_steps (int): Maximum number of iterations.
         extra_steps (int): How many steps are run after the perturbed image turnes adversarial.
         random_start (float): If not None, will make starting image in a random start within the original input image.
@@ -461,19 +475,19 @@ def load_model_and_run_attacks_shapes(
 
     output = run_adversarial_attacks(
         model, test_loader, target=target, logits=logits, least_likely=least_likely, epsilon=epsilon, alpha=alpha,
-        concept_threshold=concept_threshold, max_steps=max_steps, extra_steps=extra_steps, max_images=max_images,
-        random_start=random_start, denorm_func=denormalize_shapes, mean=0.5, std=2, device=device,
-        non_blocking=non_blocking)
+        concept_threshold=concept_threshold, grad_weight=grad_weight, max_steps=max_steps, extra_steps=extra_steps,
+        max_images=max_images, random_start=random_start, denorm_func=denormalize_shapes, mean=0.5, std=2,
+        device=device, non_blocking=non_blocking)
     plot_perturbed_images(output["perturbed_images"], output["original_images"], output["original_predictions"],
                           output["new_predictions"], output["iterations_list"],
-                          adversarial_filename="adversarial_image_shapes.pdf")
+                          adversarial_filename="adversarial_image_shapes.png", max_rows=7)
     logger.info(f"Success rate: {output['success_rate']}")
 
 
 def load_model_and_run_attacks_cub(
     train_model=False, target=None, logits=True, least_likely=False, epsilon=1, alpha=0.001, concept_threshold=0.1,
-    max_steps=100, extra_steps=3, max_images=100, random_start=None, batch_size=16, device=None, num_workers=0,
-    pin_memory=False, persistent_workers=False, non_blocking=False, seed=57):
+    grad_weight=-0.3, max_steps=100, extra_steps=3, max_images=100, random_start=None, batch_size=16, device=None,
+    num_workers=0, pin_memory=False, persistent_workers=False, non_blocking=False, seed=57):
     """
     Loads model and tes-dataloader, and runs adversarial attacks.
 
@@ -492,6 +506,8 @@ def load_model_and_run_attacks_cub(
         alpha (float): Step size per iteration.
         concept_threshold (float): The threshold of how close the concept logits need to be to zero before zeroing
             out the gradients.
+        grad_weight (float): The weight to zero out or cancel the gradient to the pixels that will change sensitive
+            concepts. Should probably be in [-1, 0].
         max_steps (int): Maximum number of iterations.
         extra_steps (int): How many steps are run after the perturbed image turnes adversarial.
         max_images (int): Maximum number of images from the test-loader to run.
@@ -526,10 +542,7 @@ def load_model_and_run_attacks_cub(
             pin_memory=pin_memory, persistent_workers=persistent_workers)
 
         criterion = nn.CrossEntropyLoss()
-        imbalances = find_class_imbalance(n_subset=n_subset, multiple_attr=True)
-        imbalances = torch.FloatTensor(imbalances).to(device)
-        attr_criterion = nn.BCEWithLogitsLoss(weight=imbalances)
-        # attr_criterion = nn.BCEWithLogitsLoss()
+        attr_criterion = nn.BCEWithLogitsLoss()
         optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=hp["learning_rate"])
         exp_lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=hp["gamma"])
         _, state_dicts = train_cbm(
@@ -549,10 +562,10 @@ def load_model_and_run_attacks_cub(
     std = std.to(device, non_blocking=non_blocking)
     output = run_adversarial_attacks(
         model, test_loader, target=target, logits=logits, least_likely=least_likely, epsilon=epsilon, alpha=alpha,
-        concept_threshold=concept_threshold, max_steps=max_steps, extra_steps=extra_steps, max_images=max_images,
-        random_start=random_start, denorm_func=denormalize_cub, mean=mean, std=std, device=device,
-        non_blocking=non_blocking)
+        concept_threshold=concept_threshold, grad_weight=grad_weight, max_steps=max_steps, extra_steps=extra_steps,
+        max_images=max_images, random_start=random_start, denorm_func=denormalize_cub, mean=mean, std=std,
+        device=device, non_blocking=non_blocking)
     plot_perturbed_images(output["perturbed_images"], output["original_images"], output["original_predictions"],
                           output["new_predictions"], output["iterations_list"],
-                          adversarial_filename="adversarial_image_cub.pdf")
+                          adversarial_filename="adversarial_image_cub.png")
     logger.info(f"Success rate: {output['success_rate']}")

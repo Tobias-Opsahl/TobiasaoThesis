@@ -40,6 +40,7 @@ def parse_arguments():
     parser.add_argument("--epsilon", type=float, default=0, help="Epsilon for gradient projection in attacks")
     parser.add_argument("--alpha", type=float, default=0.5, help="Step size for perturbation in attacks")
     parser.add_argument("--concept_threshold", type=float, default=1, help="Theshold to zero out gradients.")
+    parser.add_argument("--grad_weight", type=float, default=-0.3, help="Weight to cancel out concept changes")
     parser.add_argument("--max_steps", type=int, default=50, help="Max steps for iterative attacks.")
     parser.add_argument("--max_images", type=int, default=100, help="Max number of images to run attacks on")
     parser.add_argument("--extra_steps", type=int, default=5, help="Extra steps for iterative attacks")
@@ -116,8 +117,9 @@ if __name__ == "__main__":
         load_model_and_run_attacks_shapes(
             n_classes=args.n_classes, n_attr=args.n_attr, signal_strength=args.signal_strength,
             train_model=args.train_model, target=args.target, logits=args.logits, least_likely=args.least_likely,
-            epsilon=args.epsilon, alpha=args.alpha, concept_threshold=args.concept_threshold, max_steps=args.max_steps,
-            extra_steps=args.extra_steps, max_images=args.max_images, random_start=args.random_start,
-            batch_size=args.batch_size, device=device, num_workers=args.num_workers, pin_memory=args.pin_memory,
-            persistent_workers=args.persistent_workers, non_blocking=args.non_blocking)
+            epsilon=args.epsilon, alpha=args.alpha, concept_threshold=args.concept_threshold,
+            grad_weight=args.grad_weight, max_steps=args.max_steps, extra_steps=args.extra_steps,
+            max_images=args.max_images, random_start=args.random_start, batch_size=args.batch_size, device=device,
+            num_workers=args.num_workers, pin_memory=args.pin_memory, persistent_workers=args.persistent_workers,
+            non_blocking=args.non_blocking)
         
