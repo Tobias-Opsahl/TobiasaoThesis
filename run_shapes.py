@@ -20,7 +20,6 @@ def parse_arguments():
     parser.add_argument("--run_adversarial_attacks", action="store_true", help="Run adversarial attacks")
     models_help = "Models to run. Chose `shapes` for normal models, `oracle` for oracle and `all` for both. "
     parser.add_argument("--models", type=str, choices=["shapes", "oracle", "all"], default="shapes", help=models_help)
-    parser.add_argument("--add_oracle", action="store_true", help="Also plot oracle")
 
     # Parameters
     parser.add_argument("--n_classes", type=int, default=10, help="Number of classes.")
@@ -105,7 +104,7 @@ if __name__ == "__main__":
         only_plot(
             n_classes=args.n_classes, n_attr=args.n_attr, signal_strength=args.signal_strength, subsets=args.subsets,
             model_strings=model_strings, n_bootstrap=args.n_bootstrap, hard_bottleneck=args.hard_bottleneck,
-            add_oracle=args.add_oracle, plot_train=False)
+            plot_train=True)
 
     if args.run_adversarial_attacks:
         if args.target == -1:

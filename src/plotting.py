@@ -6,7 +6,8 @@ import matplotlib.pyplot as plt
 from PIL import Image
 from matplotlib import rc
 
-from src.constants import MODEL_STRINGS_SHAPES, COLORS_SHAPES, MODEL_STRINGS_CUB, COLORS_CUB
+from src.constants import (MODEL_STRINGS_SHAPES, MODEL_STRINGS_CUB,
+                           MAP_MODEL_TO_COLOR_SHAPES, MAP_MODEL_TO_LINESTYLES_SHAPES)
 from src.common.path_utils import (load_history_shapes, save_test_plot_shapes, save_training_plot_shapes,
                                    load_history_cub, save_test_plot_cub, save_training_plot_cub,
                                    save_adversarial_image_shapes)
@@ -156,7 +157,7 @@ def plot_images_worst(image_paths, logits, labels,
 
 
 
-def plot_training_histories(histories, names, colors=None, attributes=False, title=None):
+def plot_training_histories(histories, model_strings, attributes=False, title=None):
     """
     Plots training and validation loss and accuracy, in four subplots.
     Hisotries can be a list of many training histories, which will results in the history being
@@ -165,18 +166,13 @@ def plot_training_histories(histories, names, colors=None, attributes=False, tit
     Args:
         histories (list of dict): List of training histories, as returned or saved by the train functions
             in `train.py`.
-        names (list of str): List of the names of the models. Must be of same length as histories.
-        colors (list of str, optional): List of colors to use for the different models.
+        model_strings (list of str): List of the names of the models. Must be of same length as histories.
         attributes (bool, optional): If True, will plot the attribute stats. Must be a concept-model.
             Defaults to False.
         title (str, optional): Title for the plot. Defaults to None.
     """
-    fig = plt.figure()
+    fig = plt.figure(figsize=(10, 8))
     fig.suptitle(title)  # Main title
-
-    n_hist = len(histories)
-    if colors is None:  # Matplotlib will chose colors for us
-        colors = [None] * n_hist
 
     if attributes:  # Set name for either class or attributes
         mid_name = "attr"
@@ -202,60 +198,71 @@ def plot_training_histories(histories, names, colors=None, attributes=False, tit
     ax4.set_ylabel("Accuracy")
     axes = [ax1, ax2, ax3, ax4]
 
-    for i in range(n_hist):  # Loop over histories and plot
-        history = histories[i]
-        name = names[i]
-        color = colors[i]
-        axes[0].plot(history["train_" + mid_name + "_loss"],
-                     label=f"{name}", c=color)
-        axes[1].plot(history["val_" + mid_name + "_loss"],
-                     label=f"{name}", c=color)
-        axes[2].plot(history["train_" + mid_name + "_accuracy"],
-                     label=f"{name}", c=color)
-        axes[3].plot(history["val_" + mid_name + "_accuracy"],
-                     label=f"{name}", c=color)
+    for model_string in model_strings:
+        history = histories[model_string]
+        color = MAP_MODEL_TO_COLOR_SHAPES[model_string]
+        linestyle = MAP_MODEL_TO_LINESTYLES_SHAPES[model_string]
 
-    for ax in axes:
-        ax.legend()
+        metrics = ["train_" + mid_name + "_loss", "val_" + mid_name + "_loss",
+                   "train_" + mid_name + "_accuracy", "val_" + mid_name + "_accuracy"]
+        for i, metric in enumerate(metrics):
+            metric_history = np.array(history[metric])
+            x_values = np.arange(metric_history.shape[1])
+            n_bootstrap = metric_history.shape[0]
+            mean = np.mean(metric_history, axis=0)
+            std = np.std(metric_history, axis=0)
+            # z_score = 0.674  # 50% confidence interval
+            z_score = 1.96  # 95% confidence intervals
+            confidence_interval = z_score * std / np.sqrt(n_bootstrap)
+            axes[i].plot(x_values, mean, label=f"{model_string}", c=color, linestyle=linestyle)
+            axes[i].fill_between(x_values, (mean - confidence_interval), (mean + confidence_interval),
+                                 color=color, alpha=0.05)
 
-    plt.tight_layout()  # To avoid overlap
+    ax1.legend()
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95])  # Adjust 'rect' to accommodate the legend
 
 
-def plot_test_accuracies(histories_list, subsets, model_strings, colors):
+def plot_test_accuracies(histories_dict, subsets, model_strings, n_bootstrap):
     """
     Plots the test-accuracies as pdf format and with minimal border, so that plot is suitable for using in LaTeX.
     The histories file must already exist.
 
     Args:
-        n_classes (int): The amount of classes to plot for.
-        n_attr (int): The amount of attributes.
-        signal_strength (int): The signal strength used for the dataset.
+        histories_dict (dict): Dictinaries of training histories, read form pickle files.
         subsets (list of int): The list of subsets to plot for.
-        n_bootstrap (int, optional): The amount of bootstrap iterations used, in order to access correct history.
-        history_folder (str, optional): Folder for where histories are saved. Defaults to "history/".
-        hard_bottleneck (bool): If True, will load histories with hard-bottleneck, and save with "_hard" in name.
         model_strings (list of str): List of string name of models to use. If None,
             will use the constants value of names.
-        colors (list of str): List of colors to use for the different models.
+        n_bootstrap (int, optional): The amount of bootstrap iterations used, in order to access correct history.
     """
-    test_accuracies_lists = [[] for _ in range(len(model_strings))]
-    for i in range(len(subsets)):
-        histories = histories_list[i]
-        for j in range(len(model_strings)):
-            test_accuracies_lists[j].append(histories[j]["test_accuracy"])
+    # Save the test-accuracies on the currect format.
+    # For every model, we will have a 2d arrray, where rows are bootstrap runs, and columns are different subsets
+    test_accuracies = {}
+    for model_string in model_strings:
+        test_accuracies[model_string] = np.zeros((n_bootstrap, len(subsets)))
+        for n_boot in range(n_bootstrap):
+            for i, n_subset in enumerate(subsets):
+                test_accuracy = histories_dict[n_subset][model_string]["test_accuracy"][n_boot][0]
+                test_accuracies[model_string][n_boot][i] = test_accuracy
 
     x_values = subsets
-            
-    n_models = len(test_accuracies_lists)
-    fig = plt.figure()
+    _ = plt.figure()
 
-    for i in range(n_models):
-        error_list = test_accuracies_lists[i]
-        name = model_strings[i]
-        color = colors[i]
-        plt.plot(x_values, error_list, label=name, c=color)  # Lines
-        plt.scatter(x_values, error_list, marker="s", facecolor=color,
-                    edgecolor=color)  # Squares at each point
+    for model_string in test_accuracies:
+        test_accuracies_array = test_accuracies[model_string]
+        color = MAP_MODEL_TO_COLOR_SHAPES[model_string]
+        linestyle = MAP_MODEL_TO_LINESTYLES_SHAPES[model_string]
+
+        mean_accuracies = np.mean(test_accuracies_array, axis=0)
+        std_accuracies = np.std(test_accuracies_array, axis=0)  # For confidence intervals
+
+        z_score = 0.674  # 50% confidence interval
+        # z_score = 1.96  # 95% confidence intervals
+        confidence_interval = z_score * std_accuracies / np.sqrt(n_bootstrap)
+        
+        plt.plot(x_values, mean_accuracies, label=model_string, c=color, linestyle=linestyle)  # Lines
+        plt.scatter(x_values, mean_accuracies, marker="s", facecolor=color, edgecolor=color)  # Squares at each point
+        plt.fill_between(subsets, (mean_accuracies - confidence_interval),
+                         (mean_accuracies + confidence_interval), color=color, alpha=0.05)
 
     # Change left to 0.075 if there are 4 digits in the y-axis.
     plt.subplots_adjust(left=0.065, right=0.95, top=0.95, bottom=0.1)
@@ -263,8 +270,7 @@ def plot_test_accuracies(histories_list, subsets, model_strings, colors):
     
 
 def plot_training_histories_shapes(n_classes, n_attr, signal_strength, n_bootstrap, n_subset, histories=None,
-                                   names=None, hard_bottleneck=False, colors=None, attributes=False, title=None,
-                                   oracle_only=False):
+                                   model_strings=None, hard_bottleneck=False, attributes=False, title=None):
     """
     Plots the training histories for the Shapes dataset. Saves it in the folder-structure for shapes.
     Histories must already exist.
@@ -277,32 +283,27 @@ def plot_training_histories_shapes(n_classes, n_attr, signal_strength, n_bootstr
         n_subset (int): The amount of instances in each class used in the subset.
         histories (list of dict): List of training histories, as returned or saved by the train functions
             in `train.py`.
-        names (list of str): List of the names of the models. Must be of same length as histories.
+        model_strings (list of str): List of the names of the models. Must be of same length as histories.
         hard_bottleneck (bool): If True, will load histories with hard-bottleneck, and save with "_hard" in name.
-        colors (list of str, optional): List of colors to use for the different models. Defaults to None.
         attributes (bool, optional): If True, will plot the attribute stats. Must be a concept-model.
             Defaults to False.
         title (str, optional): Title for the plot. Defaults to None.
-        oracle_only (bool): If `True`, will save histories inside oracle folder. This is meant for when only the
-            oracle models are ran, so that one do not overwrite the other histories.
     """
-    if names is None:
-        names = MODEL_STRINGS_SHAPES
-    if colors is None:
-        colors = COLORS_SHAPES
+    if model_strings is None:
+        model_strings = MODEL_STRINGS_SHAPES
 
     if histories is None:
         histories = load_history_shapes(n_classes, n_attr, signal_strength, n_bootstrap, n_subset,
-                                        oracle_only=oracle_only, hard_bottleneck=hard_bottleneck)
+                                        hard_bottleneck=hard_bottleneck)
 
-    plot_training_histories(histories=histories, names=names,
-                            colors=colors, attributes=attributes, title=title)
+    plot_training_histories(histories=histories, model_strings=model_strings,
+                            attributes=attributes, title=title)
     save_training_plot_shapes(n_classes, n_attr, signal_strength, n_bootstrap, n_subset, attr=attributes,
                               hard_bottleneck=hard_bottleneck)
 
 
 def plot_test_accuracies_shapes(n_classes, n_attr, signal_strength, subsets, n_bootstrap=1, hard_bottleneck=False,
-                                model_strings=None, colors=None, oracle_only=False, add_oracle=False):
+                                model_strings=None):
     """
     Plots test accuracies for different subsets for the Shapes dataset. Histories must already exist.
     Plots the test-accuracies as pdf format and with minimal border, so that plot is suitable for using in LaTeX.
@@ -314,39 +315,25 @@ def plot_test_accuracies_shapes(n_classes, n_attr, signal_strength, subsets, n_b
         signal_strength (int): The signal strength used for the dataset.
         subsets (list of int): The list of subsets to plot for.
         n_bootstrap (int, optional): The amount of bootstrap iterations used, in order to access correct history.
-        history_folder (str, optional): Folder for where histories are saved. Defaults to "history/".
         hard_bottleneck (bool): If True, will load histories with hard-bottleneck, and save with "_hard" in name.
         model_strings (list of str, optional): List of string name of models to use. If None,
             will use the constants value of names. Defaults to None.
-        colors (list of str, optional): List of colors to use for the different models. Defaults to None.
-        oracle_only (bool): If `True`, will save histories inside oracle folder. This is meant for when only the
-            oracle models are ran, so that one do not overwrite the other histories.
-        add_oracle (bool): Set to `True` if one wants to plot models together with oracles, but oracles were ran
-            separately from models, so they are in the oracle-only folder.
     """
     if model_strings is None:
         model_strings = MODEL_STRINGS_SHAPES
-    if colors is None:
-        colors = COLORS_SHAPES
 
-    histories_list = []
-    for n_subset in subsets:
+    histories_dict = {}
+    for n_subset in subsets:  # Load all of the histories, one for each subset
         histories = load_history_shapes(n_classes, n_attr, signal_strength, n_bootstrap, n_subset,
-                                        oracle_only=oracle_only, hard_bottleneck=hard_bottleneck)
-        histories_list.append(histories)
+                                        hard_bottleneck=hard_bottleneck)
+        histories_dict[n_subset] = histories
 
-    if add_oracle:  # Add the oracles from oracle folder
-        for i, n_subset in enumerate(subsets):
-            histories = load_history_shapes(n_classes, n_attr, signal_strength, n_bootstrap, n_subset,
-                                            oracle_only=True, hard_bottleneck=hard_bottleneck)
-            histories_list[i].extend(histories)
-
-    plot_test_accuracies(histories_list, subsets, model_strings=model_strings, colors=colors)
+    plot_test_accuracies(histories_dict, subsets, model_strings=model_strings, n_bootstrap=n_bootstrap)
     save_test_plot_shapes(n_classes, n_attr, signal_strength,
                           n_bootstrap, hard_bottleneck=hard_bottleneck)
 
 
-def plot_training_histories_cub(n_bootstrap, n_subset, histories=None, names=None, hard_bottleneck=False, colors=None,
+def plot_training_histories_cub(n_bootstrap, n_subset, histories=None, model_strings=None, hard_bottleneck=False,
                                 attributes=False, title=None):
     """
     Plots the training histories for the CUB dataset. Saves it in the folder-structure for shapes.
@@ -357,26 +344,23 @@ def plot_training_histories_cub(n_bootstrap, n_subset, histories=None, names=Non
         n_subset (int): The amount of instances in each class used in the subset.
         histories (list of dict): List of training histories, as returned or saved by the train functions
             in `train.py`.
-        names (list of str): List of the names of the models. Must be of same length as histories.
+        model_strings (list of str): List of the names of the models. Must be of same length as histories.
         hard_bottleneck (bool): If True, will load histories with hard-bottleneck, and save with "_hard" in name.
-        colors (list of str, optional): List of colors to use for the different models. Defaults to None.
         attributes (bool, optional): If True, will plot the attribute stats. Must be a concept-model.
             Defaults to False.
         title (str, optional): Title for the plot. Defaults to None.    
     """
-    if names is None:
-        names = MODEL_STRINGS_CUB
-    if colors is None:
-        colors = COLORS_CUB
+    if model_strings is None:
+        model_strings = MODEL_STRINGS_CUB
 
     if histories is None:
         histories = load_history_cub(n_bootstrap, n_subset, hard_bottleneck=hard_bottleneck)
 
-    plot_training_histories(histories=histories, names=names, colors=colors, attributes=attributes, title=title)
+    plot_training_histories(histories=histories, model_strings=model_strings, attributes=attributes, title=title)
     save_training_plot_cub(n_bootstrap, n_subset, hard_bottleneck=hard_bottleneck, attr=attributes)
 
 
-def plot_test_accuracies_cub(subsets, n_bootstrap=1, hard_bottleneck=False, model_strings=None, colors=None):
+def plot_test_accuracies_cub(subsets, n_bootstrap=1, hard_bottleneck=False, model_strings=None):
     """
     Plots test accuracies for different subsets for the CUB dataset. Histories must already exist.
     Plots the test-accuracies as pdf format and with minimal border, so that plot is suitable for using in LaTeX.
@@ -389,24 +373,24 @@ def plot_test_accuracies_cub(subsets, n_bootstrap=1, hard_bottleneck=False, mode
         hard_bottleneck (bool): If True, will load histories with hard-bottleneck, and save with "_hard" in name.
         model_strings (list of str, optional): List of string name of models to use. If None,
             will use the constants value of names. Defaults to None.
-        colors (list of str, optional): List of colors to use for the different models. Defaults to None.
     """
     if model_strings is None:
         model_strings = MODEL_STRINGS_CUB
-    if colors is None:
-        colors = COLORS_CUB
 
-    histories_list = []
+    histories_dict = {}
     for n_subset in subsets:
         histories = load_history_cub(n_bootstrap, n_subset, hard_bottleneck=hard_bottleneck)
-        histories_list.append(histories)
+        if n_subset is not None:
+            histories_dict[n_subset] = histories
+        else:
+            histories_dict[30] = histories
 
     subsets = subsets.copy()
     for i in range(len(subsets)):  # n_subset = None means full data set, which is about 30 images per class.
         if subsets[i] is None:
             subsets[i] = 30
 
-    plot_test_accuracies(histories_list, subsets, model_strings=model_strings, colors=colors)
+    plot_test_accuracies(histories_dict, subsets, model_strings=model_strings, n_bootstrap=n_bootstrap)
     save_test_plot_cub(n_bootstrap, hard_bottleneck=hard_bottleneck)
 
 

@@ -1,5 +1,4 @@
 import os
-import copy
 import torch
 import shutil
 import random
@@ -227,65 +226,26 @@ def load_models_shapes(n_classes, n_attr, signal_strength=98, n_subset=None, mod
     return models
 
 
-def add_histories(histories_total, histories_new):
+def add_histories(histories_total, histories_new, model_strings):
     """
-    Adds together two training histories. This means looping over the dictionaries and summing them,
-    This is also supported for first iteration where `histories_total` is None.
+    Add training new bootstrap iteration of training histories to existing list of training histories.
+    Histories should be from one of the trianing functions, and may have added test-accuracy.
 
     Args:
-        histories_total (list of dict dict): First list of dictionaries to add. May be None.
-        histories_new (dict): Second list of dictionaries to add.
+        histories_total (dict): Accumulated dictionary of histories
+        histories_new (dict): New dictionary of training history.
+        model_strings (list of str): List of model names, which should be keys in the history-dicts.
 
     Returns:
-        list of dict: The added dictionary.
+        dict: The merged histories
     """
-
-    metric_keys = ["train_class_loss", "train_class_accuracy", "val_class_loss", "val_class_accuracy",
-                   "train_attr_loss", "train_attr_accuracy", "val_attr_loss", "val_attr_accuracy", "test_accuracy"]
-
-    if histories_total is None:  # First iteration. We do not need to add, but must divide.
-        for i in range(len(histories_new)):  # loop over each models history
-            for key in metric_keys:  # Loop over the keys to use
-                if histories_new[i].get(key) is None:
-                    continue
-                for j in range(len(histories_new[i][key])):
-                    histories_new[i][key][j]
-        return histories_new
-
-    for i in range(len(histories_new)):  # loop over each models history
-        for key in metric_keys:  # Loop over the keys to use
-            if histories_total[i].get(key) is None:
-                continue
-            for j in range(len(histories_new[i][key])):
-                histories_total[i][key][j] += histories_new[i][key][j]
+    for model_string in model_strings:
+        for key in histories_new[model_string]:
+            if key not in histories_total[model_string]:  # First iteration
+                histories_total[model_string][key] = [histories_new[model_string][key]]
+            else:  # Already in the histories_total
+                histories_total[model_string][key].append(histories_new[model_string][key])
     return histories_total
-
-
-def average_histories(histories_total, n_bootstrap):
-    """
-    Given a complete training history, will average out the numerical inputs, based on how many bootstrap iterations
-    that was ran.
-
-    Args:
-        histories_total (list of dict): Dictionary of hsitories
-        n_bootstrap (int): THe amount of bootstrap iterations ran.
-
-    Returns:
-        list of dict: The averaged dictionary.
-    """
-
-    metric_keys = ["train_class_loss", "train_class_accuracy", "val_class_loss", "val_class_accuracy",
-                   "train_attr_loss", "train_attr_accuracy", "val_attr_loss", "val_attr_accuracy", "test_accuracy"]
-
-    new_histories = []
-    for i in range(len(histories_total)):  # loop over each models history
-        new_histories.append(copy.deepcopy(histories_total[i]))
-        for key in metric_keys:  # Loop over the keys to use
-            if histories_total[i].get(key) is None:
-                continue
-            for j in range(len(histories_total[i][key])):
-                new_histories[i][key][j] /= n_bootstrap
-    return new_histories
 
 
 def find_class_imbalance(n_subset=None, multiple_attr=False):

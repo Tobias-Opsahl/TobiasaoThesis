@@ -4,12 +4,10 @@ import torch.nn as nn
 from src.train import train_simple, train_cbm
 from src.datasets.datasets_cub import load_data_cub, make_subset_cub
 from src.plotting import plot_training_histories_cub, plot_test_accuracies_cub
-from src.common.utils import (seed_everything, get_logger, load_models_cub, add_histories,
-                              average_histories, find_class_imbalance)
+from src.common.utils import seed_everything, get_logger, load_models_cub, add_histories
 from src.common.path_utils import load_hyperparameters_cub, save_history_cub, save_model_cub, load_history_cub
-from src.constants import (MODEL_STRINGS_CUB, COLORS_CUB, MAX_EPOCHS, FAST_MAX_EPOCHS_CUB, BOOTSTRAP_CHECKPOINTS,
-                           MODEL_STRINGS_ORACLE, MODEL_STRINGS_ALL_CUB, COLORS_ORACLE, COLORS_ALL_CUB,
-                           NAMES_TO_SHORT_NAMES_CUB)
+from src.constants import (MODEL_STRINGS_CUB, MAX_EPOCHS, FAST_MAX_EPOCHS_CUB, BOOTSTRAP_CHECKPOINTS,
+                           CONCEPT_MODELS_STRINGS_CUB)
 
 
 logger = get_logger(__name__)
@@ -96,7 +94,7 @@ def train_and_evaluate_cub(
         hp["nn_oracle"] = default_hp["nn_oracle"]
 
     models = load_models_cub(model_strings=model_strings, hyperparameters=hp)
-    histories = []
+    histories = {}
     criterion = nn.CrossEntropyLoss()
     attr_criterion = nn.BCEWithLogitsLoss()
 
@@ -134,7 +132,7 @@ def train_and_evaluate_cub(
         model.load_state_dict(state_dict)
         test_accuracy = evaluate_on_test_set(model, test_loader, device=device, non_blocking=non_blocking)
         history["test_accuracy"] = [test_accuracy]
-        histories.append(history)
+        histories[model_string] = history
 
     return histories
 
@@ -176,20 +174,18 @@ def run_models_on_subsets_and_plot(
 
     if model_strings is None:
         model_strings = MODEL_STRINGS_CUB
-        colors = COLORS_CUB
-
-    if model_strings == MODEL_STRINGS_CUB:
-        colors = COLORS_CUB
-    elif model_strings == MODEL_STRINGS_ORACLE:
-        colors = COLORS_ORACLE
-    else:
-        colors = COLORS_ALL_CUB
+    concept_model_strings = []
+    for model_string in model_strings:
+        if model_string in CONCEPT_MODELS_STRINGS_CUB:
+            concept_model_strings.append(model_string)
 
     for n_subset in subsets:
         seed = base_seed
         logger.info(
             f"\n    Beginning evaluation on subset {n_subset} / {subsets}: \n")
-        histories_total = None
+        histories_total = {}
+        for model_string in model_strings:
+            histories_total[model_string] = {}
         # Load test-set for full dataset (not subset)
         if fast:
             test_name = "test_small"  # Only load 200 of the test-images
@@ -214,29 +210,22 @@ def run_models_on_subsets_and_plot(
                 n_subset=n_subset, train_loader=train_loader, val_loader=val_loader,
                 test_loader=test_loader, model_strings=model_strings, hyperparameters=None,
                 hard_bottleneck=hard_bottleneck, fast=fast, device=device, non_blocking=non_blocking, seed=seed)
-            histories_total = add_histories(histories_total, histories)
+            histories_total = add_histories(histories_total, histories, model_strings)
 
-            n_boot = i + 1
-            if n_boot in bootstrap_checkpoints:
+        # All bootstrap runs for one subset are finished
+        save_history_cub(n_bootstrap, n_subset, histories_total, hard_bottleneck=hard_bottleneck)
+        plot_training_histories_cub(
+            n_bootstrap, n_subset, histories=histories_total,
+            model_strings=model_strings, hard_bottleneck=hard_bottleneck, attributes=False)
 
-                averaged_histories = average_histories(histories_total, n_boot)
-                save_history_cub(n_boot, n_subset, averaged_histories, hard_bottleneck=hard_bottleneck)
-                if n_boot == bootstrap_checkpoints[-1]:  # Only plot histories for last bootstrap iterations
-                    plot_training_histories_cub(n_boot, n_subset, histories=averaged_histories, names=model_strings,
-                                                hard_bottleneck=hard_bottleneck, colors=colors, attributes=False)
-                    # Exclude cnn model when plotting attributes / concept training
-                    oracle_only = (model_strings == MODEL_STRINGS_ORACLE)
-                    if oracle_only:
-                        continue
-                    plot_training_histories_cub(
-                        n_boot, n_subset, histories=averaged_histories[1:4], names=model_strings[1:4],
-                        hard_bottleneck=hard_bottleneck, colors=colors[1:4], attributes=True)
+        # Exclude cnn model when plotting attributes / concept training
+        if concept_model_strings != {}:
+            plot_training_histories_cub(
+                n_bootstrap, n_subset, histories=histories_total,
+                model_strings=concept_model_strings, hard_bottleneck=hard_bottleneck, attributes=True)
 
-    for n_boot in bootstrap_checkpoints:
-        if n_boot > n_bootstrap:  # Incase a checkpoint is higher than the actual iterations ran
-            break
-        plot_test_accuracies_cub(subsets=subsets, n_bootstrap=n_boot, hard_bottleneck=hard_bottleneck,
-                                 model_strings=model_strings, colors=colors)
+    plot_test_accuracies_cub(
+        subsets=subsets, n_bootstrap=n_bootstrap, hard_bottleneck=hard_bottleneck, model_strings=model_strings)
 
 
 def only_plot(
@@ -255,38 +244,28 @@ def only_plot(
     """
     if model_strings is None:
         model_strings = MODEL_STRINGS_CUB
-        colors = COLORS_CUB
 
-    if model_strings == MODEL_STRINGS_CUB:
-        colors = COLORS_CUB
-    elif model_strings == MODEL_STRINGS_ORACLE:
-        colors = COLORS_ORACLE
-    else:
-        colors = COLORS_ALL_CUB
+    concept_model_strings = []
+    for model_string in model_strings:
+        if model_string in CONCEPT_MODELS_STRINGS_CUB:
+            concept_model_strings.append(model_string)
 
     if plot_train:
         for n_subset in subsets:
-            histories = load_history_cub(n_bootstrap, n_subset=n_subset, hard_bottleneck=hard_bottleneck)
-            correct_histories = []
-            for history in histories:  # Get the correct histories, in a semi-hacky way
-                short_name = NAMES_TO_SHORT_NAMES_CUB[history["model_name"]]
-                if short_name in model_strings:
-                    correct_histories.append(history)
-                
-            plot_training_histories_cub(
-                n_bootstrap, n_subset, histories=correct_histories,
-                names=model_strings, hard_bottleneck=hard_bottleneck, colors=colors, attributes=False)
+            histories = load_history_cub(
+                n_bootstrap, n_subset=n_subset, hard_bottleneck=hard_bottleneck)
 
-            oracle_only = (model_strings == MODEL_STRINGS_ORACLE)
-            if oracle_only:  # No attributes for oracle only models
-                continue
-            # Exclude cnn model when plotting attributes / concept training
             plot_training_histories_cub(
-                n_bootstrap, n_subset, histories=correct_histories[1:4],
-                names=model_strings[1:5], hard_bottleneck=hard_bottleneck, colors=colors[1:4],
-                attributes=True)
+                n_bootstrap, n_subset, histories=histories,
+                model_strings=model_strings, hard_bottleneck=hard_bottleneck, attributes=False)
+
+            if concept_model_strings != {}:
+                # Exclude cnn model when plotting attributes / concept training
+                plot_training_histories_cub(
+                    n_bootstrap, n_subset, histories=histories,
+                    model_strings=concept_model_strings, hard_bottleneck=hard_bottleneck, attributes=True)
 
     if plot_test:
         plot_test_accuracies_cub(
-            subsets=subsets, n_bootstrap=n_bootstrap, hard_bottleneck=hard_bottleneck,
-            model_strings=model_strings, colors=colors)
+            subsets=subsets, n_bootstrap=n_bootstrap,
+            hard_bottleneck=hard_bottleneck, model_strings=model_strings)
