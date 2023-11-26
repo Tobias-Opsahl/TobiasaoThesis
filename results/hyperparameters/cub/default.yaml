@@ -36,6 +36,17 @@ cnn:
   n_epochs: 50
   n_linear_output: 256
   dropout_probability: 0.15
+scm:
+  attr_weight: 10
+  attr_weight_decay: 1
+  gamma: 0.7
+  learning_rate: 0.0005
+  n_epochs: 50
+  n_hidden: 256
+  n_linear_output: 256
+  activation: sigmoid
+  dropout_probability: 0.15
+  hard: false
 lr_oracle:
   learning_rate: 0.001
   n_epochs: 50

@@ -7,7 +7,7 @@ import torch
 from src.common.utils import seed_everything, get_logger, set_global_log_level, parse_int_list
 from src.evaluation_cub import run_models_on_subsets_and_plot, only_plot
 from src.hyperparameter_optimization_cub import run_hyperparameter_optimization_all_models
-from src.constants import MODEL_STRINGS_CUB, MODEL_STRINGS_ORACLE, MODEL_STRINGS_ALL_CUB
+from src.constants import MODEL_STRINGS_CUB, MODEL_STRINGS_ORACLE, MODEL_STRINGS_ALL_CUB, SCM_ONLY
 from src.adversarial_attacks import load_model_and_run_attacks_cub
 
 def parse_arguments():
@@ -18,8 +18,9 @@ def parse_arguments():
     parser.add_argument("--evaluate_and_plot", action="store_true", help="Evaluate models and plot.")
     parser.add_argument("--only_plot", action="store_true", help="Plot models after evaluation.")
     parser.add_argument("--run_adversarial_attacks", action="store_true", help="Run adversarial attacks")
-    models_help = "Models to run. Chose `cub` for normal models, `oracle` for oracle and `all` for both. "
-    parser.add_argument("--models", type=str, choices=["cub", "oracle", "all"], default="cub", help=models_help)
+    models_help = "Models to run. Chose `cub` for normal models, `oracle` for oracle and `all` for both, `scm` "
+    models_help += "for only the scm model. "
+    parser.add_argument("--models", type=str, choices=["cub", "oracle", "all", "scm"], default="cub", help=models_help)
 
     parser.add_argument("--batch_size", type=int, default=16, help="Batch size for training.")
     parser.add_argument("--n_bootstrap", type=int, default=1, help="number of bootstrap iterations to run")
@@ -80,6 +81,8 @@ if __name__ == "__main__":
         model_strings = MODEL_STRINGS_ORACLE
     elif args.models == "all":
         model_strings = MODEL_STRINGS_ALL_CUB
+    elif args.models == "scm":
+        model_strings = SCM_ONLY
 
     if args.run_hyperparameters:
         run_hyperparameter_optimization_all_models(
