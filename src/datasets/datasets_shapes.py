@@ -53,7 +53,7 @@ def get_transforms_shapes():
     Returns:
         torchvision.tranforms.Compose: The transforms.
     """
-    normalize = torchvision.transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[2, 2, 2])
+    normalize = torchvision.transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
     transform = torchvision.transforms.Compose([
         torchvision.transforms.ToTensor(),  # Turns image into [0, 1] float tensor
         normalize,
@@ -61,14 +61,14 @@ def get_transforms_shapes():
     return transform
 
 
-def normalize_shapes(input_image, mean=0.5, std=2):
+def normalize_shapes(input_image, mean=0.5, std=0.5):
     """
     Normalizes an input images, with the normalization that was done with the Shapes datasets.
 
     Args:
         input_image (Tensor): The input image to normalise.
         mean (float, optional): The mean of the normalisation. Defaults to 0.5.
-        std (int, optional): The standard deviation of the normalisation. Defaults to 2.
+        std (int, optional): The standard deviation of the normalisation. Defaults to 0.5.
 
     Returns:
         Tensor: The normalised image.
@@ -78,14 +78,14 @@ def normalize_shapes(input_image, mean=0.5, std=2):
     return normalized
 
 
-def denormalize_shapes(input_image, mean=0.5, std=2):
+def denormalize_shapes(input_image, mean=0.5, std=0.5):
     """
     Denormalizes an input images, with the normalization parameters that was done with the Shapes datasets.
 
     Args:
         input_image (Tensor): The input image to denormalise.
         mean (float, optional): The mean of the normalisation. Defaults to 0.5.
-        std (int, optional): The standard deviation of the normalisation. Defaults to 2.
+        std (int, optional): The standard deviation of the normalisation. Defaults to 0.5.
 
     Returns:
         Tensor: The denormalised image.

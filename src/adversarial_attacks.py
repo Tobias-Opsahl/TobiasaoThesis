@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import warnings
 
 from src.datasets.datasets_shapes import load_data_shapes, normalize_shapes, denormalize_shapes
 from src.datasets.datasets_cub import load_data_cub, normalize_cub, denormalize_cub
@@ -16,7 +15,7 @@ logger = get_logger(__name__)
 
 def run_iterative_class_attack(model, input_image, label, target=None, logits=False, least_likely=False,
                               epsilon=0.5, alpha=0.005, max_steps=100, extra_steps=1, random_start=None,
-                              mean=0.5, std=2, device="cpu", non_blocking=False):
+                              mean=0.5, std=0.5, device="cpu", non_blocking=False):
     """
     Run a iterative adversarial attack. Many possible methods.
     The attack is on the class, with no evaluation of what is going on with the concepts.
@@ -121,7 +120,7 @@ def run_iterative_class_attack(model, input_image, label, target=None, logits=Fa
 def run_iterative_concept_attack(
     model, input_image, class_label, concept_labels, target=None, logits=True, least_likely=False, epsilon=0.5,
     alpha=0.005, concept_threshold=0.1, grad_weight=-0.3, max_steps=100, extra_steps=1, random_start=None, mean=0.5,
-    std=2, device=None, non_blocking=False):
+    std=0.5, device=None, non_blocking=False):
     """
     Run a iterative adversarial attack. Many possible methods.
     Tries to change the class without changing the concept-predictions.
@@ -303,7 +302,7 @@ def run_iterative_concept_attack(
 def run_adversarial_attacks(
     model, test_loader, target=None, logits=True, least_likely=False, epsilon=1, alpha=0.001, concept_threshold=0.1,
     grad_weight=-0.3, max_steps=100, extra_steps=3, max_images=100, random_start=None, denorm_func=None, mean=0.5,
-    std=2, device="cpu", non_blocking=False):
+    std=0.5, device="cpu", non_blocking=False):
     """
     Runs adversarial attacks on images from the `test_loader`.
 
@@ -476,7 +475,7 @@ def load_model_and_run_attacks_shapes(
     output = run_adversarial_attacks(
         model, test_loader, target=target, logits=logits, least_likely=least_likely, epsilon=epsilon, alpha=alpha,
         concept_threshold=concept_threshold, grad_weight=grad_weight, max_steps=max_steps, extra_steps=extra_steps,
-        max_images=max_images, random_start=random_start, denorm_func=denormalize_shapes, mean=0.5, std=2,
+        max_images=max_images, random_start=random_start, denorm_func=denormalize_shapes, mean=0.5, std=0.5,
         device=device, non_blocking=non_blocking)
     plot_perturbed_images(output["perturbed_images"], output["original_images"], output["original_predictions"],
                           output["new_predictions"], output["iterations_list"],
