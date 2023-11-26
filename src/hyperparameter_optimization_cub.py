@@ -316,6 +316,7 @@ class HyperparameterOptimizationShapes:
         criterion = nn.CrossEntropyLoss()
         optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=hp["learning_rate"])
         exp_lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=hp["gamma"])
+        seed_everything(self.seed)
         if self.model_type == "cnn":  # Train non-bottleneck model
             history, _ = train_simple(
                 model, criterion, optimizer, train_loader, val_loader, trial=trial, scheduler=exp_lr_scheduler,

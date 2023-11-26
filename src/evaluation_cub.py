@@ -213,7 +213,7 @@ def run_models_on_subsets_and_plot(
             histories = train_and_evaluate_cub(
                 n_subset=n_subset, train_loader=train_loader, val_loader=val_loader,
                 test_loader=test_loader, model_strings=model_strings, hyperparameters=None,
-                hard_bottleneck=hard_bottleneck, fast=fast, device=device, non_blocking=non_blocking, seed=base_seed)
+                hard_bottleneck=hard_bottleneck, fast=fast, device=device, non_blocking=non_blocking, seed=seed)
             histories_total = add_histories(histories_total, histories)
 
             n_boot = i + 1
