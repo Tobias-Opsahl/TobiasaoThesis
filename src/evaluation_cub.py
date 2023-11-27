@@ -2,8 +2,9 @@ import torch
 import torch.nn as nn
 
 from src.train import train_simple, train_cbm
+from src.evaluation import evaluate_on_test_set
 from src.datasets.datasets_cub import load_data_cub, make_subset_cub
-from src.plotting import plot_training_histories_cub, plot_test_accuracies_cub
+from src.plotting import plot_training_histories_cub, plot_test_accuracies_cub, plot_mpo_scores_cub
 from src.common.utils import seed_everything, get_logger, load_models_cub, add_histories
 from src.common.path_utils import load_hyperparameters_cub, save_history_cub, save_model_cub, load_history_cub
 from src.constants import (MODEL_STRINGS_CUB, MAX_EPOCHS, FAST_MAX_EPOCHS_CUB, BOOTSTRAP_CHECKPOINTS,
@@ -11,43 +12,6 @@ from src.constants import (MODEL_STRINGS_CUB, MAX_EPOCHS, FAST_MAX_EPOCHS_CUB, B
 
 
 logger = get_logger(__name__)
-
-
-def evaluate_on_test_set(model, test_loader, device=None, non_blocking=False):
-    """
-    Evaluates a model on the test set and returns the test accuracy.
-
-    Args:
-        model (model): Pytorch pretrained model
-        non_blocking (bool, optional): _description_. Defaults to False.
-        test_loader (dataloader): The test-dataloader
-        device (str): Use "cpu" for cpu training and "cuda:0" for gpu training.
-        non_blocking (bool): If True, allows for asyncronous transfer between RAM and VRAM.
-            This only works together with `pin_memory=True` to dataloader and GPU training.
-
-    Returns:
-        float: The test accuracy
-    """
-    if device is None:
-        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    model = model.to(device, non_blocking=non_blocking)
-    model.eval()
-    test_correct = 0
-    for input, labels, attr_labels, paths in test_loader:
-        if model.short_name in ["lr_oracle", "nn_oracle"]:  # Oracle model, testing on attributes-labels
-            input = attr_labels.to(device, non_blocking=non_blocking)
-        else:  # Normal model
-            input = input.to(device, non_blocking=non_blocking)
-        input = input.to(device, non_blocking=non_blocking)
-        labels = labels.to(device, non_blocking=non_blocking)
-        outputs = model(input)
-        if isinstance(outputs, tuple):  # concept model, returns (outputs, attributes)
-            outputs = outputs[0]
-        _, preds = torch.max(outputs, 1)
-        test_correct += (preds == labels).sum().item()
-
-    test_accuracy = 100 * test_correct / len(test_loader.dataset)
-    return test_accuracy
 
 
 def train_and_evaluate_cub(
@@ -130,8 +94,9 @@ def train_and_evaluate_cub(
         save_model_cub(n_subset, state_dict, model_type=model.short_name,
                        metric="loss", hard_bottleneck=hard_bottleneck)
         model.load_state_dict(state_dict)
-        test_accuracy = evaluate_on_test_set(model, test_loader, device=device, non_blocking=non_blocking)
+        test_accuracy, mpo_list = evaluate_on_test_set(model, test_loader, device=device, non_blocking=non_blocking)
         history["test_accuracy"] = [test_accuracy]
+        history["mpo"] = mpo_list
         histories[model_string] = history
 
     return histories
@@ -223,6 +188,9 @@ def run_models_on_subsets_and_plot(
             plot_training_histories_cub(
                 n_bootstrap, n_subset, histories=histories_total,
                 model_strings=concept_model_strings, hard_bottleneck=hard_bottleneck, attributes=True)
+            plot_mpo_scores_cub(
+                n_bootstrap, n_subset, histories=histories_total, model_strings=concept_model_strings,
+                hard_bottleneck=hard_bottleneck)
 
     plot_test_accuracies_cub(
         subsets=subsets, n_bootstrap=n_bootstrap, hard_bottleneck=hard_bottleneck, model_strings=model_strings)
@@ -264,6 +232,9 @@ def only_plot(
                 plot_training_histories_cub(
                     n_bootstrap, n_subset, histories=histories,
                     model_strings=concept_model_strings, hard_bottleneck=hard_bottleneck, attributes=True)
+                plot_mpo_scores_cub(
+                    n_bootstrap, n_subset, histories=histories, model_strings=concept_model_strings,
+                    hard_bottleneck=hard_bottleneck)
 
     if plot_test:
         plot_test_accuracies_cub(

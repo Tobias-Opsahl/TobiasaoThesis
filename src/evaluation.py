@@ -3,7 +3,7 @@ import torch.nn as nn
 
 from src.train import train_simple, train_cbm
 from src.datasets.datasets_shapes import load_data_shapes, make_subset_shapes
-from src.plotting import plot_training_histories_shapes, plot_test_accuracies_shapes
+from src.plotting import plot_training_histories_shapes, plot_test_accuracies_shapes, plot_mpo_scores_shapes
 from src.common.utils import seed_everything, get_logger, load_models_shapes, add_histories
 from src.common.path_utils import (load_hyperparameters_shapes, save_history_shapes, save_model_shapes,
                                    load_history_shapes)
@@ -12,6 +12,30 @@ from src.constants import (MAX_EPOCHS, FAST_MAX_EPOCHS_SHAPES, BOOTSTRAP_CHECKPO
 
 
 logger = get_logger(__name__)
+
+
+def calculate_mpo(attr_outputs, attr_labels):
+    """
+    Calculates the Misprediction Prediction Overlap metric from https://arxiv.org/pdf/2010.13233.pdf, for every m.
+    Omits m = 0, even though it is in the paper, because I do not believe it makes sense (it is 1 no matter what).
+
+    Args:
+        attr_outputs (tensor): The logit outputs from the concept model
+        attr_labels (tensor): The true concept labels.
+
+    Returns:
+        list: List of mpo-values for m = 1, ..., n_data.
+    """
+    n_data = attr_outputs.shape[0]
+    n_attr = attr_outputs.shape[1]
+    attr_predictions = (torch.sigmoid(attr_outputs) > 0.5).float()
+    wrong_per_instance = (attr_predictions != attr_labels).sum(axis=1)
+    mpo_list = []
+    for m in range(n_attr):
+        mpo = (wrong_per_instance >= (m + 1)).sum() / n_data
+        mpo_list.append(mpo)
+
+    return mpo_list
 
 
 def evaluate_on_test_set(model, test_loader, device=None, non_blocking=False):
@@ -33,6 +57,8 @@ def evaluate_on_test_set(model, test_loader, device=None, non_blocking=False):
     model = model.to(device, non_blocking=non_blocking)
     model.eval()
     test_correct = 0
+    total_attr_labels = []  # Accumulated attr_labels for concept models MPO metric
+    total_attr_outputs = []  # Accumulated attr predictions
     for input, labels, attr_labels, paths in test_loader:
         if model.short_name in ["lr_oracle", "nn_oracle"]:  # Oracle model, testing on attributes-labels
             input = attr_labels.to(device, non_blocking=non_blocking)
@@ -41,12 +67,22 @@ def evaluate_on_test_set(model, test_loader, device=None, non_blocking=False):
         labels = labels.to(device, non_blocking=non_blocking)
         outputs = model(input)
         if isinstance(outputs, tuple):  # concept model, returns (outputs, attributes)
+            attr_outputs = outputs[1]
             outputs = outputs[0]
+            total_attr_labels.append(attr_labels)
+            total_attr_outputs.append(attr_outputs)
         _, preds = torch.max(outputs, 1)
         test_correct += (preds == labels).sum().item()
 
+    if total_attr_outputs != []:  # This means we have a concept model
+        total_attr_outputs_tensor = torch.concat(total_attr_outputs, axis=0)
+        total_attr_labels_tensor = torch.concat(total_attr_labels, axis=0)
+        mpo = calculate_mpo(total_attr_outputs_tensor, total_attr_labels_tensor)
+    else:
+        mpo = None
     test_accuracy = 100 * test_correct / len(test_loader.dataset)
-    return test_accuracy
+
+    return test_accuracy, mpo
 
 
 def train_and_evaluate_shapes(
@@ -131,9 +167,10 @@ def train_and_evaluate_shapes(
         save_model_shapes(n_classes, n_attr, signal_strength, n_subset, state_dict,
                           model_type=model.short_name, metric="loss", hard_bottleneck=hard_bottleneck)
         model.load_state_dict(state_dict)
-        test_accuracy = evaluate_on_test_set(
-            model, test_loader, device=device, non_blocking=non_blocking)
+        test_accuracy, mpo_list = evaluate_on_test_set(model, test_loader, device=device, non_blocking=non_blocking)
+        logger.info(f"Test accuracy: {test_accuracy}. ")
         history["test_accuracy"] = [test_accuracy]
+        history["mpo"] = mpo_list
         histories[model_string] = history
 
     return histories
@@ -225,6 +262,9 @@ def run_models_on_subsets_and_plot(
             plot_training_histories_shapes(
                 n_classes, n_attr, signal_strength, n_bootstrap, n_subset, histories=histories_total,
                 model_strings=concept_model_strings, hard_bottleneck=hard_bottleneck, attributes=True)
+            plot_mpo_scores_shapes(
+                n_classes, n_attr, signal_strength, n_bootstrap, n_subset, histories=histories_total,
+                model_strings=concept_model_strings, hard_bottleneck=hard_bottleneck)
 
     plot_test_accuracies_shapes(
         n_classes, n_attr, signal_strength, subsets=subsets, n_bootstrap=n_bootstrap,
@@ -271,6 +311,9 @@ def only_plot(
                 plot_training_histories_shapes(
                     n_classes, n_attr, signal_strength, n_bootstrap, n_subset, histories=histories,
                     model_strings=concept_model_strings, hard_bottleneck=hard_bottleneck, attributes=True)
+                plot_mpo_scores_shapes(
+                    n_classes, n_attr, signal_strength, n_bootstrap, n_subset, histories=histories,
+                    model_strings=concept_model_strings, hard_bottleneck=hard_bottleneck)
 
     if plot_test:
         plot_test_accuracies_shapes(

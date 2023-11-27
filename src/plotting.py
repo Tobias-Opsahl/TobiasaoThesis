@@ -1,16 +1,14 @@
-"""
-File for visualizing pictures form the datasets
-"""
 import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
 from matplotlib import rc
+from matplotlib.ticker import MaxNLocator
 
 from src.constants import (MODEL_STRINGS_SHAPES, MODEL_STRINGS_CUB,
                            MAP_MODEL_TO_COLOR_SHAPES, MAP_MODEL_TO_LINESTYLES_SHAPES)
 from src.common.path_utils import (load_history_shapes, save_test_plot_shapes, save_training_plot_shapes,
                                    load_history_cub, save_test_plot_cub, save_training_plot_cub,
-                                   save_adversarial_image_shapes)
+                                   save_adversarial_image_shapes, save_mpo_plot_shapes, save_mpo_plot_cub)
 
 
 def plot_image_single(image_path, pred=None, label=None, transformed=False, show=True, title=None):
@@ -157,6 +155,40 @@ def plot_images_worst(image_paths, logits, labels,
 
 
 
+def plot_mpo_scores(histories, model_strings):
+    """
+    Plots the MPO score Misprediction Prediction Overlap metric from https://arxiv.org/pdf/2010.13233.pdf.
+
+    Args:
+        histories (dict): Dictionary of training histories, with mpos.
+        model_strings (list of string): List of only the concept models that should be used for the MPO plot
+    """
+    _ = plt.figure()
+
+    for model_string in model_strings:
+        mpo_array = np.array(histories[model_string]["mpo"])
+        n_bootstrap = mpo_array.shape[0]
+        n_epochs = mpo_array.shape[1]
+        color = MAP_MODEL_TO_COLOR_SHAPES[model_string]
+        linestyle = MAP_MODEL_TO_LINESTYLES_SHAPES[model_string]
+
+        mean_accuracies = np.mean(mpo_array, axis=0)
+        std_accuracies = np.std(mpo_array, axis=0)  # For confidence intervals
+        # z_score = 0.674  # 50% confidence interval
+        z_score = 1.96  # 95% confidence intervals
+        confidence_interval = z_score * std_accuracies / np.sqrt(n_bootstrap)
+        x_values = np.arange(1, n_epochs + 1)
+        ax = plt.gca()  # Get current axis
+        ax.xaxis.set_major_locator(MaxNLocator(integer=True))  # Remove non-integer x-tick values
+
+        plt.plot(x_values, mean_accuracies, label=model_string, c=color, linestyle=linestyle)  # Lines
+        plt.fill_between(x_values, (mean_accuracies - confidence_interval),
+                         (mean_accuracies + confidence_interval), color=color, alpha=0.05)
+
+    plt.subplots_adjust(left=0.065, right=0.95, top=0.95, bottom=0.1)
+    plt.legend()
+
+
 def plot_training_histories(histories, model_strings, attributes=False, title=None):
     """
     Plots training and validation loss and accuracy, in four subplots.
@@ -254,20 +286,49 @@ def plot_test_accuracies(histories_dict, subsets, model_strings, n_bootstrap):
 
         mean_accuracies = np.mean(test_accuracies_array, axis=0)
         std_accuracies = np.std(test_accuracies_array, axis=0)  # For confidence intervals
-
-        z_score = 0.674  # 50% confidence interval
-        # z_score = 1.96  # 95% confidence intervals
+        # z_score = 0.674  # 50% confidence interval
+        z_score = 1.96  # 95% confidence intervals
         confidence_interval = z_score * std_accuracies / np.sqrt(n_bootstrap)
         
         plt.plot(x_values, mean_accuracies, label=model_string, c=color, linestyle=linestyle)  # Lines
         plt.scatter(x_values, mean_accuracies, marker="s", facecolor=color, edgecolor=color)  # Squares at each point
-        plt.fill_between(subsets, (mean_accuracies - confidence_interval),
+        plt.fill_between(x_values, (mean_accuracies - confidence_interval),
                          (mean_accuracies + confidence_interval), color=color, alpha=0.05)
 
     # Change left to 0.075 if there are 4 digits in the y-axis.
     plt.subplots_adjust(left=0.065, right=0.95, top=0.95, bottom=0.1)
     plt.legend()
-    
+
+
+def plot_mpo_scores_shapes(n_classes, n_attr, signal_strength, n_bootstrap, n_subset, histories=None,
+                           model_strings=None, hard_bottleneck=False):
+    """
+
+
+    Args:
+        n_classes (int): The amount of classes in the dataset.
+        n_attr (int): The amonut of attributes (concepts) in the dataset.
+        signal_strength (int, optional): Signal-strength used to make dataset.
+        n_bootstrap (int): The amount of bootstrap iterations that were used.
+        n_subset (int): The amount of instances in each class used in the subset.
+        histories (list of dict): List of training histories, as returned or saved by the train functions
+            in `train.py`.
+        model_strings (list of str): List of the names of the models. Must be of same length as histories.
+        hard_bottleneck (bool): If True, will load histories with hard-bottleneck, and save with "_hard" in name.
+        attributes (bool, optional): If True, will plot the attribute stats. Must be a concept-model.
+            Defaults to False.
+        title (str, optional): Title for the plot. Defaults to None.
+    """
+    if model_strings is None:
+        model_strings = MODEL_STRINGS_SHAPES
+
+    if histories is None:
+        histories = load_history_shapes(n_classes, n_attr, signal_strength, n_bootstrap, n_subset,
+                                        hard_bottleneck=hard_bottleneck)
+
+    plot_mpo_scores(histories=histories, model_strings=model_strings)
+    save_mpo_plot_shapes(n_classes, n_attr, signal_strength, n_bootstrap, n_subset, hard_bottleneck=hard_bottleneck)
+
 
 def plot_training_histories_shapes(n_classes, n_attr, signal_strength, n_bootstrap, n_subset, histories=None,
                                    model_strings=None, hard_bottleneck=False, attributes=False, title=None):
@@ -331,6 +392,30 @@ def plot_test_accuracies_shapes(n_classes, n_attr, signal_strength, subsets, n_b
     plot_test_accuracies(histories_dict, subsets, model_strings=model_strings, n_bootstrap=n_bootstrap)
     save_test_plot_shapes(n_classes, n_attr, signal_strength,
                           n_bootstrap, hard_bottleneck=hard_bottleneck)
+
+
+def plot_mpo_scores_cub(n_bootstrap, n_subset, histories=None, model_strings=None, hard_bottleneck=False):
+    """
+
+    Args:
+        n_bootstrap (int): The amount of bootstrap iterations that were used.
+        n_subset (int): The amount of instances in each class used in the subset.
+        histories (list of dict): List of training histories, as returned or saved by the train functions
+            in `train.py`.
+        model_strings (list of str): List of the names of the models. Must be of same length as histories.
+        hard_bottleneck (bool): If True, will load histories with hard-bottleneck, and save with "_hard" in name.
+        attributes (bool, optional): If True, will plot the attribute stats. Must be a concept-model.
+            Defaults to False.
+        title (str, optional): Title for the plot. Defaults to None.    
+    """
+    if model_strings is None:
+        model_strings = MODEL_STRINGS_CUB
+
+    if histories is None:
+        histories = load_history_cub(n_bootstrap, n_subset, hard_bottleneck=hard_bottleneck)
+
+    plot_mpo_scores(histories=histories, model_strings=model_strings)
+    save_mpo_plot_cub(n_bootstrap, n_subset, hard_bottleneck=hard_bottleneck)
 
 
 def plot_training_histories_cub(n_bootstrap, n_subset, histories=None, model_strings=None, hard_bottleneck=False,

@@ -1,3 +1,7 @@
+"""
+All functions that handle reading and saving files are in here.
+Functions are usually split between Shapes / Cub datasets, and could be more generic.
+"""
 import os
 import yaml
 import torch
@@ -355,6 +359,26 @@ def save_model_shapes(n_classes, n_attr, signal_strength, n_subset, state_dict, 
     filename = Path(f"{model_type}_sub{n_subset}_{metric}{bottleneck}{adversarial_string}.pth")
     file_path = make_file_path(folder_name, filename, check_folder_exists=True)
     torch.save(state_dict, file_path)
+
+
+def save_mpo_plot_shapes(n_classes, n_attr, signal_strength, n_bootstrap, n_subset, hard_bottleneck=False):
+    """
+    Save a mpo plot.
+
+    Args:
+        n_classes (int): The amount of classes in the dataset.
+        n_attr (int): The amonut of attributes (concepts) in the dataset.
+        signal_strength (int, optional): Signal-strength used to make dataset.
+        n_bootstrap (int): The amount of bootstrap iterations that were used.
+        n_subset (int): The amount of instances in each class used in the subset.
+        hard_bottleneck (bool): Set to `True` if hard bottleneck was used. This will alter the name to end with `_hard`.
+    """
+    folder_name = get_full_shapes_folder_path(n_classes, n_attr, signal_strength, relative_folder=PLOTS_FOLDER)
+    bottleneck = "" if not hard_bottleneck else "_hard"
+    filename = Path(f"mpo_sub{n_subset}_b{n_bootstrap}{bottleneck}.pdf")
+    file_path = make_file_path(folder_name, filename, check_folder_exists=True)
+    plt.savefig(file_path)
+    plt.close()
 
 
 def save_training_plot_shapes(n_classes, n_attr, signal_strength, n_bootstrap, n_subset,
@@ -752,6 +776,27 @@ def save_model_cub(n_subset, state_dict, model_type, metric="loss", hard_bottlen
     filename = Path(f"{model_type}{sub_string}_{metric}{bottleneck}{adversarial_string}.pth")
     file_path = make_file_path(folder_name, filename, check_folder_exists=True)
     torch.save(state_dict, file_path)
+
+
+def save_mpo_plot_cub(n_bootstrap, n_subset, hard_bottleneck=False):
+    """
+    Saves the MPO plot.
+
+    Args:
+        n_bootstrap (int): The amount of bootstrap iterations that were used.
+        n_subset (int): The amount of instances in each class used in the subset.
+        hard_bottleneck (bool): Set to `True` if hard bottleneck was used. This will alter the name to end with `_hard`.
+    """
+    folder_name = get_cub_folder_path(relative_folder=PLOTS_FOLDER)
+    bottleneck = "" if not hard_bottleneck else "_hard"
+    if n_subset is not None:
+        sub_string = f"_sub{n_subset}"
+    else:  # `n_subset` = None means full dataset
+        sub_string = "_full"
+    filename = Path(f"mpo{sub_string}_b{n_bootstrap}{bottleneck}.pdf")
+    file_path = make_file_path(folder_name, filename, check_folder_exists=True)
+    plt.savefig(file_path)
+    plt.close()
 
 
 def save_training_plot_cub(n_bootstrap, n_subset, hard_bottleneck=False, attr=False):
