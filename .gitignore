@@ -4,6 +4,7 @@ __pycache__/
 **/.DS_Store
 backlog.txt
 data/*
+graveyard.py
 results/history/*
 results/saved_models/*
 results/adversarial/*

@@ -2,16 +2,18 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from src.datasets.datasets_shapes import load_data_shapes, normalize_shapes, denormalize_shapes
-from src.datasets.datasets_cub import load_data_cub, normalize_cub, denormalize_cub
-from src.common.utils import seed_everything, load_single_model, load_single_model_cub, find_class_imbalance, get_logger
+from src.datasets.datasets_shapes import load_data_shapes, denormalize_shapes
+from src.datasets.datasets_cub import load_data_cub, denormalize_cub
+from src.common.utils import seed_everything, load_single_model, load_single_model_cub, get_logger
 from src.common.path_utils import (load_model_shapes, load_hyperparameters_shapes, save_model_shapes,
-                                   load_model_cub, load_hyperparameters_cub, save_model_cub)
+                                   load_model_cub, load_hyperparameters_cub, save_model_cub,
+                                   save_adversarial_hyperparameters)
 from src.train import train_cbm
 from src.plotting import plot_perturbed_images
 
 
 logger = get_logger(__name__)
+
 
 def run_iterative_class_attack(model, input_image, label, target=None, logits=False, least_likely=False,
                               epsilon=0.5, alpha=0.005, max_steps=100, extra_steps=1, random_start=None,
@@ -398,7 +400,7 @@ def run_adversarial_attacks(
 
 
 def load_model_and_run_attacks_shapes(
-    n_classes, n_attr, signal_strength, train_model=False, target=None, logits=True, least_likely=False,
+    n_classes, n_attr, signal_strength, train_model=False, target=None, logits=False, least_likely=False,
     epsilon=1, alpha=0.001, concept_threshold=1, grad_weight=-0.3, max_steps=100, extra_steps=3, max_images=100,
     random_start=None, batch_size=16, device=None, num_workers=0, pin_memory=False, persistent_workers=False,
     non_blocking=False, seed=57):
@@ -410,7 +412,6 @@ def load_model_and_run_attacks_shapes(
         n_attr (int): Amount of attribues.
         signal_strength (int): The signal-strength used for creating the dataset.
         train_model (bool): Wether to train the model or not.
-        test_loader (dataloader): Dataloader to run attacks on. Should have batch-size 1.
         target (int): If not `None`, will do target attack against this class.
         logits (bool): If `True`, will do attacks based on the gradients of the logits.
             If `False`, will do based on the signed cross entropy loss.
@@ -441,10 +442,12 @@ def load_model_and_run_attacks_shapes(
         seed (int, optional): Seed, used in case subdataset needs to be created. Defaults to 57.
     """
     seed_everything(seed)
+    if device is None:
+        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
     n_subset = 250
     test_loader = load_data_shapes(n_classes, n_attr, signal_strength,
                                    mode="test", shuffle=True, batch_size=1)
-
     hp = load_hyperparameters_shapes(n_classes, n_attr, signal_strength, n_subset, hard_bottleneck=False)["cbm"]
     model = load_single_model("cbm", n_classes, n_attr, hyperparameters=hp)
     model = model.to(device, non_blocking=non_blocking)
@@ -480,11 +483,13 @@ def load_model_and_run_attacks_shapes(
     plot_perturbed_images(output["perturbed_images"], output["original_images"], output["original_predictions"],
                           output["new_predictions"], output["iterations_list"],
                           adversarial_filename="adversarial_image_shapes.png", max_rows=7)
-    logger.info(f"Success rate: {output['success_rate']}")
+    success_rate = output["success_rate"]
+    logger.info(f"Success rate: {success_rate}")
+    return success_rate
 
 
 def load_model_and_run_attacks_cub(
-    train_model=False, target=None, logits=True, least_likely=False, epsilon=1, alpha=0.001, concept_threshold=0.1,
+    train_model=False, target=None, logits=False, least_likely=False, epsilon=1, alpha=0.001, concept_threshold=0.1,
     grad_weight=-0.3, max_steps=100, extra_steps=3, max_images=100, random_start=None, batch_size=16, device=None,
     num_workers=0, pin_memory=False, persistent_workers=False, non_blocking=False, seed=57):
     """
@@ -495,7 +500,6 @@ def load_model_and_run_attacks_cub(
         n_attr (int): Amount of attribues.
         signal_strength (int): The signal-strength used for creating the dataset.
         train_model (bool): Wether to train the model or not.
-        test_loader (dataloader): Dataloader to run attacks on. Should have batch-size 1.
         target (int): If not `None`, will do target attack against this class.
         logits (bool): If `True`, will do attacks based on the gradients of the logits.
             If `False`, will do based on the signed cross entropy loss.
@@ -567,4 +571,108 @@ def load_model_and_run_attacks_cub(
     plot_perturbed_images(output["perturbed_images"], output["original_images"], output["original_predictions"],
                           output["new_predictions"], output["iterations_list"],
                           adversarial_filename="adversarial_image_cub.png")
-    logger.info(f"Success rate: {output['success_rate']}")
+    success_rate = output["success_rate"]
+    logger.info(f"Success rate: {success_rate}")
+    return success_rate
+
+
+def adversarial_grid_search(
+    dataset, n_classes=None, n_attr=None, signal_strength=None, train_model=False, logits=False, epsilon=1,
+    max_steps=100, extra_steps=3, max_images=100, random_start=None, end_name="", device=None, num_workers=0,
+    pin_memory=False, persistent_workers=False, non_blocking=False, seed=57):
+    """
+    Runs a grid-search on the hyperparameters for the adversarial-concept-attack.
+
+    Args:
+        dataset (str): Which dataset to use. Either "Shapes" or "CUB".
+        n_classes (int): If Shapes, Amount of classes.
+        n_attr (int): If Shapes, Amount of attribues.
+        signal_strength (int): If Shapes, The signal-strength used for creating the dataset.
+        train_model (bool): Wether to train the model or not.
+        logits (bool): If `True`, will do attacks based on the gradients of the logits.
+            If `False`, will do based on the signed cross entropy loss.
+        epsilon (float): The maximum perturbation allowed. Uses L2 projection down on it.
+        max_steps (int): Maximum number of iterations.
+        extra_steps (int): How many steps are run after the perturbed image turnes adversarial.
+        max_images (int): Maximum number of images from the test-loader to run.
+        random_start (float): If not None, will make starting image in a random start within the original input image.
+            Will be the uniform noise added to each pixel in the random start.
+        batch_size (int): Batch-size for training the model.
+        end_name (str): Name suffix for the saved hyperparameters.
+        device (str): Use "cpu" for cpu training and "cuda" for gpu training.
+        non_blocking (bool): If True, allows for asyncronous transfer between RAM and VRAM.
+            This only works together with `pin_memory=True` to dataloader and GPU training.
+        num_workers (int): The amount of subprocesses used to load the data from disk to RAM.
+            0, default, means that it will run as main process.
+        pin_memory (bool): Whether or not to pin RAM memory (make it non-pagable).
+            This can increase loading speed from RAM to VRAM (when using `to("cuda:0")`,
+            but also increases the amount of RAM necessary to run the job. Should only
+            be used with GPU training.
+        persistent_workers (bool): If `True`, will not shut down workers between epochs.
+        seed (int, optional): Seed, used in case subdataset needs to be created. Defaults to 57.
+
+    Returns:
+        dict: Best hyperparameters
+    """
+    dataset = dataset.strip().lower()
+    if dataset not in ["shapes", "cub"]:
+        raise ValueError(f"Argument `dataset` must be either \"shapes\" or \"cub\". Was {dataset}. ")
+    if dataset == "shapes" and (n_classes is None or n_attr is None or signal_strength is None):
+        message = f"Arguments `n_classes`, `n_attr` and `signal_strength` must be provided when `dataset` == "
+        message += f"\"shapes\". Was {n_classes=}, {n_attr=}, {signal_strength=}. "
+        raise ValueError(message)
+
+    if train_model:
+        if dataset == "shapes":
+            load_model_and_run_attacks_shapes(
+                n_classes, n_attr, signal_strength, train_model=True, max_steps=1, extra_steps=1, max_images=1,
+                batch_size=16, device=device, num_workers=num_workers, pin_memory=pin_memory,
+                persistent_workers=persistent_workers, non_blocking=non_blocking, seed=seed)
+        elif dataset == "cub":
+            load_model_and_run_attacks_cub(
+                train_model=True, target=None, logits=False, max_steps=1, extra_steps=1, max_images=1, batch_size=16,
+                device=device, num_workers=num_workers, pin_memory=pin_memory, persistent_workers=persistent_workers,
+                non_blocking=non_blocking, seed=seed)
+
+    gradient_weights = [0, -0.1, -0.5, -1]
+    alphas = [0.1, 0.01, 0.001, 0.0001]
+    sensitivity_thresholds = [3, 1, 0.5, 0.1]
+
+    gradient_weights = [-0.1]
+    alphas = [0.1]
+    sensitivity_thresholds = [1]
+
+    best_success = 0
+    best_hyperparameters = None
+    results = []
+    for gradient_weight in gradient_weights:
+        for alpha in alphas:
+            for sensitivity_threshold in sensitivity_thresholds:
+                if dataset == "shapes":
+                    success_rate = load_model_and_run_attacks_shapes(
+                        n_classes, n_attr, signal_strength, train_model=False, target=None, logits=logits,
+                        least_likely=False, epsilon=epsilon, alpha=alpha, concept_threshold=sensitivity_threshold,
+                        grad_weight=gradient_weight, max_steps=max_steps, extra_steps=extra_steps,
+                        max_images=max_images, random_start=random_start, batch_size=16, device=device,
+                        num_workers=num_workers, pin_memory=pin_memory, persistent_workers=persistent_workers,
+                        non_blocking=non_blocking, seed=seed)
+                elif dataset == "cub":
+                    success_rate = load_model_and_run_attacks_cub(
+                        train_model=False, target=None, logits=logits,
+                        least_likely=False, epsilon=epsilon, alpha=alpha, concept_threshold=sensitivity_threshold,
+                        grad_weight=gradient_weight, max_steps=max_steps, extra_steps=extra_steps,
+                        max_images=max_images, random_start=random_start, batch_size=16, device=device,
+                        num_workers=num_workers, pin_memory=pin_memory, persistent_workers=persistent_workers,
+                        non_blocking=non_blocking, seed=seed)
+                result_dict = {
+                    "gradient_weight": gradient_weight, "alpha": alpha, "sensitivity_threshold": sensitivity_threshold,
+                    "epsilon": epsilon, "success_rate": success_rate, "max_steps": max_steps,
+                    "extra_steps": extra_steps, "max_images": max_images}
+                results.append(result_dict)
+                logger.info(result_dict)
+                if success_rate >= best_success:
+                    best_success = success_rate
+                    best_hyperparameters = result_dict
+
+    save_adversarial_hyperparameters(dataset=dataset, hyperparameters=best_hyperparameters, end_name=end_name)
+    return best_hyperparameters

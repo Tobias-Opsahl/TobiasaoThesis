@@ -8,7 +8,7 @@ from src.common.utils import seed_everything, parse_int_list, get_logger, set_gl
 from src.hyperparameter_optimization import run_hyperparameter_optimization_all_models
 from src.evaluation import run_models_on_subsets_and_plot, only_plot
 from src.constants import MODEL_STRINGS_SHAPES, MODEL_STRINGS_ORACLE, MODEL_STRINGS_ALL_SHAPES
-from src.adversarial_attacks import load_model_and_run_attacks_shapes
+from src.adversarial_attacks import load_model_and_run_attacks_shapes, adversarial_grid_search
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Script for parsing command-line arguments.")
@@ -35,6 +35,7 @@ def parse_arguments():
     parser.add_argument("--hard_bottleneck", action="store_true", help="If True, will use hard bottleneck")
     
     # Adversarial attacks
+    parser.add_argument("--adversarial_grid_search", action="store_true", help="Grid search for adversarial attacks.")
     parser.add_argument("--train_model", action="store_true", help="Will train model for adversarial attacks")
     parser.add_argument("--epsilon", type=float, default=0, help="Epsilon for gradient projection in attacks")
     parser.add_argument("--alpha", type=float, default=0.5, help="Step size for perturbation in attacks")
@@ -47,6 +48,7 @@ def parse_arguments():
     parser.add_argument("--least_likely", action="store_true", help="Least likely class attack.")
     parser.add_argument("--target", type=int, default=-1, help="Class to do targeted attack towards")
     parser.add_argument("--random_start", type=float, default=0, help="Range for starting image to be withing")
+    parser.add_argument("--end_name", type=str, default="", help="End name for adversarial hyperparameters.")
 
     # Hardware and div stuff:
     parser.add_argument("--batch_size", type=int, default=16, help="Batch size for training.")
@@ -106,19 +108,27 @@ if __name__ == "__main__":
             model_strings=model_strings, n_bootstrap=args.n_bootstrap, hard_bottleneck=args.hard_bottleneck,
             plot_train=True)
 
-    if args.run_adversarial_attacks:
+    if args.run_adversarial_attacks or args.adversarial_grid_search:
         if args.target == -1:
             args.target = None
         if args.random_start == 0:
             args.random_start = None
         if args.epsilon == 0:
             args.epsilon = None
-        load_model_and_run_attacks_shapes(
-            n_classes=args.n_classes, n_attr=args.n_attr, signal_strength=args.signal_strength,
-            train_model=args.train_model, target=args.target, logits=args.logits, least_likely=args.least_likely,
-            epsilon=args.epsilon, alpha=args.alpha, concept_threshold=args.concept_threshold,
-            grad_weight=args.grad_weight, max_steps=args.max_steps, extra_steps=args.extra_steps,
-            max_images=args.max_images, random_start=args.random_start, batch_size=args.batch_size, device=device,
-            num_workers=args.num_workers, pin_memory=args.pin_memory, persistent_workers=args.persistent_workers,
-            non_blocking=args.non_blocking)
+        if args.adversarial_grid_search:
+            adversarial_grid_search(
+                dataset="shapes", n_classes=args.n_classes, n_attr=args.n_attr, signal_strength=args.signal_strength,
+                train_model=args.train_model, logits=args.logits, epsilon=args.epsilon, max_steps=args.max_steps,
+                extra_steps=args.extra_steps, max_images=args.max_images, random_start=args.random_start,
+                end_name=args.end_name, device=device, num_workers=args.num_workers, pin_memory=args.pin_memory,
+                persistent_workers=args.persistent_workers, non_blocking=args.non_blocking)
+        else:
+            load_model_and_run_attacks_shapes(
+                n_classes=args.n_classes, n_attr=args.n_attr, signal_strength=args.signal_strength,
+                train_model=args.train_model, target=args.target, logits=args.logits, least_likely=args.least_likely,
+                epsilon=args.epsilon, alpha=args.alpha, concept_threshold=args.concept_threshold,
+                grad_weight=args.grad_weight, max_steps=args.max_steps, extra_steps=args.extra_steps,
+                max_images=args.max_images, random_start=args.random_start, batch_size=args.batch_size, device=device,
+                num_workers=args.num_workers, pin_memory=args.pin_memory, persistent_workers=args.persistent_workers,
+                non_blocking=args.non_blocking)
         

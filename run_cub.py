@@ -8,7 +8,7 @@ from src.common.utils import seed_everything, get_logger, set_global_log_level, 
 from src.evaluation_cub import run_models_on_subsets_and_plot, only_plot
 from src.hyperparameter_optimization_cub import run_hyperparameter_optimization_all_models
 from src.constants import MODEL_STRINGS_CUB, MODEL_STRINGS_ORACLE, MODEL_STRINGS_ALL_CUB, SCM_ONLY
-from src.adversarial_attacks import load_model_and_run_attacks_cub
+from src.adversarial_attacks import load_model_and_run_attacks_cub, adversarial_grid_search
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Script for parsing command-line arguments.")
@@ -34,6 +34,7 @@ def parse_arguments():
     parser.add_argument("--hard_bottleneck", action="store_true", help="If True, will use hard bottleneck")
     
     # Adversarial attacks
+    parser.add_argument("--adversarial_grid_search", action="store_true", help="Grid search for adversarial attacks.")
     parser.add_argument("--train_model", action="store_true", help="Will train model for adversarial attacks")
     parser.add_argument("--epsilon", type=float, default=None, help="Epsilon for gradient projection in attacks")
     parser.add_argument("--alpha", type=float, default=0.5, help="Step size for perturbation in attacks")
@@ -46,6 +47,7 @@ def parse_arguments():
     parser.add_argument("--least_likely", action="store_true", help="Least likely class attack.")
     parser.add_argument("--target", type=int, default=-1, help="Class to do targeted attack towards")
     parser.add_argument("--random_start", type=float, default=0, help="Range for starting image to be withing")
+    parser.add_argument("--end_name", type=str, default="", help="End name for adversarial hyperparameters.")
 
     parser.add_argument("--device", type=str, default=None, help="Device to train on. cuda:0 or CPU.")
     parser.add_argument("--non_blocking", action="store_true", help="Allows asynchronous RAM to VRAM operations.")
@@ -66,6 +68,7 @@ if __name__ == "__main__":
     set_global_log_level(args.logging_level)
     logger = get_logger(__name__)
 
+    device = args.device
     if args.device is None or args.device == "":
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -105,17 +108,25 @@ if __name__ == "__main__":
             subsets=args.subsets, model_strings=model_strings, n_bootstrap=args.n_bootstrap,
             hard_bottleneck=args.hard_bottleneck)
 
-    if args.run_adversarial_attacks:
+    if args.run_adversarial_attacks or args.adversarial_grid_search:
         if args.target == -1:
             args.target = None
         if args.random_start == 0:
             args.random_start = None
         if args.epsilon == 0:
             args.epsilon = None
-        load_model_and_run_attacks_cub(
-            train_model=args.train_model, target=args.target, logits=args.logits, least_likely=args.least_likely,
-            epsilon=args.epsilon, alpha=args.alpha, concept_threshold=args.concept_threshold,
-            grad_weight=args.grad_weight, max_steps=args.max_steps, extra_steps=args.extra_steps,
-            max_images=args.max_images, random_start=args.random_start, batch_size=args.batch_size, device=device,
-            num_workers=args.num_workers, pin_memory=args.pin_memory, persistent_workers=args.persistent_workers,
-            non_blocking=args.non_blocking)
+        if args.adversarial_grid_search:
+            adversarial_grid_search(
+                dataset="cub", train_model=args.train_model, logits=args.logits, epsilon=args.epsilon,
+                max_steps=args.max_steps, extra_steps=args.extra_steps, max_images=args.max_images,
+                random_start=args.random_start, end_name=args.end_name, device=args.device,
+                num_workers=args.num_workers, pin_memory=args.pin_memory, persistent_workers=args.persistent_workers,
+                non_blocking=args.non_blocking)
+        else:
+            load_model_and_run_attacks_cub(
+                train_model=args.train_model, target=args.target, logits=args.logits, least_likely=args.least_likely,
+                epsilon=args.epsilon, alpha=args.alpha, concept_threshold=args.concept_threshold,
+                grad_weight=args.grad_weight, max_steps=args.max_steps, extra_steps=args.extra_steps,
+                max_images=args.max_images, random_start=args.random_start, batch_size=args.batch_size, device=device,
+                num_workers=args.num_workers, pin_memory=args.pin_memory, persistent_workers=args.persistent_workers,
+                non_blocking=args.non_blocking)

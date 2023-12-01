@@ -546,6 +546,34 @@ def save_hyperparameters_shapes(n_classes, n_attr, signal_strength, n_subset, hy
         yaml.dump(hyperparameters_full, yaml_file, default_flow_style=False)
 
 
+def save_adversarial_hyperparameters(dataset, hyperparameters, end_name=""):
+    """
+    Saves hyperparameters found from adversarial concept attacks (see src.adversarial_attacks.py).
+    Saves hyperparameters globally for Shapes, not in the designated dataset folder. We can assume that the
+    hyperparameters should work almost the same for the different Shapes datasets.
+
+    Args:
+        dataset (str): Either "shapes" or "cub".
+        hyperparameters (dict): The hyperparameters.
+        end_name (str, optional): Optional ending name of the hyperparameters, if one wants to find many.
+
+    Raises:
+        ValueError: If `dataset` is not in ["shapes", "cub"].
+    """
+    dataset = dataset.strip().lower()
+    if dataset not in ["shapes", "cub"]:
+        raise ValueError(f"Argument `dataset` must be either \"shapes\" or \"cub\". Was {dataset}. ")
+    filename = f"adversarial_hyperparameters{end_name}.yaml"
+    if dataset == "shapes":
+        dataset_folder = SHAPES_FOLDER
+    elif dataset == "cub":
+        dataset_folder = CUB_FOLDER
+    folder_name = Path(RESULTS_FOLDER) / HYPERPARAMETERS_FOLDER / dataset_folder
+    file_path = make_file_path(folder_name, filename, check_folder_exists=False)
+    with open(file_path, "w") as yaml_file:
+        yaml.dump(hyperparameters, yaml_file, default_flow_style=False)
+
+
 def get_feature_selection_cub():
     """
     Returns the feature-selection dictionary made by `src.feautre_selection.py`.
