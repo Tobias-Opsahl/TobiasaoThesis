@@ -96,6 +96,7 @@ def train_and_evaluate_cub(
         model.load_state_dict(state_dict)
         test_accuracy, mpo_list = evaluate_on_test_set(model, test_loader, device=device, non_blocking=non_blocking)
         history["test_accuracy"] = [test_accuracy]
+        logger.info(f"Test accuracy: {test_accuracy}. \n")
         history["mpo"] = mpo_list
         histories[model_string] = history
 

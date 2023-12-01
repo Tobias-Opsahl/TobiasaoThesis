@@ -14,7 +14,7 @@ from src.constants import (MAX_EPOCHS, FAST_MAX_EPOCHS_SHAPES, BOOTSTRAP_CHECKPO
 logger = get_logger(__name__)
 
 
-def calculate_mpo(attr_outputs, attr_labels):
+def calculate_mpo(attr_outputs, attr_labels, device, non_blocking=False):
     """
     Calculates the Misprediction Prediction Overlap metric from https://arxiv.org/pdf/2010.13233.pdf, for every m.
     Omits m = 0, even though it is in the paper, because I do not believe it makes sense (it is 1 no matter what).
@@ -22,18 +22,23 @@ def calculate_mpo(attr_outputs, attr_labels):
     Args:
         attr_outputs (tensor): The logit outputs from the concept model
         attr_labels (tensor): The true concept labels.
+        device (str): Use "cpu" for cpu training and "cuda:0" for gpu training.
+        non_blocking (bool): If True, allows for asyncronous transfer between RAM and VRAM.
+            This only works together with `pin_memory=True` to dataloader and GPU training.
 
     Returns:
         list: List of mpo-values for m = 1, ..., n_data.
     """
     n_data = attr_outputs.shape[0]
     n_attr = attr_outputs.shape[1]
+    attr_outputs = attr_outputs.to(device, non_blocking=non_blocking)
+    attr_labels = attr_labels.to(device, non_blocking=non_blocking)
     attr_predictions = (torch.sigmoid(attr_outputs) > 0.5).float()
     wrong_per_instance = (attr_predictions != attr_labels).sum(axis=1)
     mpo_list = []
     for m in range(n_attr):
         mpo = (wrong_per_instance >= (m + 1)).sum() / n_data
-        mpo_list.append(mpo)
+        mpo_list.append(mpo.cpu())
 
     return mpo_list
 
@@ -77,7 +82,7 @@ def evaluate_on_test_set(model, test_loader, device=None, non_blocking=False):
     if total_attr_outputs != []:  # This means we have a concept model
         total_attr_outputs_tensor = torch.concat(total_attr_outputs, axis=0)
         total_attr_labels_tensor = torch.concat(total_attr_labels, axis=0)
-        mpo = calculate_mpo(total_attr_outputs_tensor, total_attr_labels_tensor)
+        mpo = calculate_mpo(total_attr_outputs_tensor, total_attr_labels_tensor, device, non_blocking)
     else:
         mpo = None
     test_accuracy = 100 * test_correct / len(test_loader.dataset)
@@ -168,7 +173,7 @@ def train_and_evaluate_shapes(
                           model_type=model.short_name, metric="loss", hard_bottleneck=hard_bottleneck)
         model.load_state_dict(state_dict)
         test_accuracy, mpo_list = evaluate_on_test_set(model, test_loader, device=device, non_blocking=non_blocking)
-        logger.info(f"Test accuracy: {test_accuracy}. ")
+        logger.info(f"Test accuracy: {test_accuracy}. \n")
         history["test_accuracy"] = [test_accuracy]
         history["mpo"] = mpo_list
         histories[model_string] = history
