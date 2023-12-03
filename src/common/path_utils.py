@@ -17,7 +17,9 @@ from src.constants import (
     DEFAULT_HYPERPARAMETERS_FILENAME_SHAPES, FAST_HYPERPARAMETERS_FILENAME_SHAPES_HARD,
     DEFAULT_HYPERPARAMETERS_FILENAME_SHAPES_HARD, CUB_TABLES_FOLDER, CUB_PROCESSED_FOLDER,
     CUB_FEATURE_SELECTION_FILENAME, MODEL_STRINGS_ALL_SHAPES, MODEL_STRINGS_ALL_CUB, ORACLE_FOLDER,
-    ADVERSARIAL_FOLDER, ADVERSARIAL_FILENAME)
+    ADVERSARIAL_FOLDER, ADVERSARIAL_FILENAME, ATTRIBUTE_NAMES_PATH_CUB, ATTRIBUTE_NAMES_PATH_SHAPES,
+    ATTRIBUTE_MAPPING_PATH_CUB, CLASS_NAMES_PATH_CUB, CLASS_NAMES_PATH_C10_SHAPES, CLASS_NAMES_PATH_C15_SHAPES,
+    CLASS_NAMES_PATH_C21_SHAPES, ADVERSARIAL_TEXT_FILENAME)
 
 
 def _check_just_file(filename):
@@ -995,3 +997,134 @@ def save_adversarial_image_shapes(dataset_name="shapes", adversarial_filename=No
         adversarial_filename = ADVERSARIAL_FILENAME
     file_path = make_file_path(folder_name, adversarial_filename)
     plt.savefig(file_path)
+
+
+def save_single_image(path, dataset_name, alpha, concept_threshold, type, index):
+    """
+    Save an image with the intention of using for adversarial image saving.
+    Will make a designated folder for the hyperparameters (`alpha` and `concept_treshold`) so that one can run
+    many settings.
+
+    Args:
+        path (str): Path to the image, so we can use the 
+        dataset (str): String of the dataset, "shapes" or "cub".
+        alpha (float): The alpha used for the images.
+        concept_threshold (float): The concept threshold used for the images.
+        type (str): Either "original" or "perturbed".
+        index (int): Index of the number of the perturbed image.
+    """
+    folder_name = f"alpha{alpha}_gamma{concept_threshold}"
+    name = path.split("/")[-1].strip(".jpg")
+    filename = f"{str(index)}_{name}_{type}.png"
+    base_folder = Path(RESULTS_FOLDER)
+    full_folder_path = base_folder / ADVERSARIAL_FOLDER / get_dataset_folder(dataset_name) / folder_name
+    full_path = make_file_path(full_folder_path, filename)
+    plt.savefig(full_path)
+    plt.close()
+
+
+def get_attribute_mapping(dataset_name):
+    """
+    Returns the attributes mappings, from the processed concepts in CBMs to the CUB actual attributes.
+    For shapes, this is just the identity mapping.
+
+    Args:
+        dataset_name (str): Name of the dataset, either "shapes" or "cub".
+
+    Returns:
+        dict: The dictionary mapping.
+    """
+    attribute_mapping_dict = {}
+
+    dataset_name = dataset_name.lower().strip().replace("/", "").replace("\\", "")
+    if dataset_name == "shapes":
+        for i in range(9):  # Max number of attributes for shapes
+            attribute_mapping_dict[i] = i
+
+    elif dataset_name == "cub":
+        attribute_mapping_path = Path(DATA_FOLDER) / ATTRIBUTE_MAPPING_PATH_CUB
+        with open(attribute_mapping_path, "r") as file:
+            for line in file:
+                key, value = line.strip().split(": ")
+                attribute_mapping_dict[int(key)] = int(value)
+
+    return attribute_mapping_dict
+
+
+def get_attribute_names(dataset_name):
+    """
+    Returns the attribute-number to names.
+    The dataloaders only loads attribute labels as a list of int, but this maps them back to the string names
+
+    Args:
+        dataset_name (str): Name of the dataset, either "shapes" or "cub".
+
+    Returns:
+        dict: Dictionary mapping the ints to names.
+    """
+    dataset_name = dataset_name.lower().strip().replace("/", "").replace("\\", "")
+    if dataset_name == "cub":
+        attribute_names_path = Path(DATA_FOLDER) / ATTRIBUTE_NAMES_PATH_CUB
+
+    elif dataset_name == "shapes":
+        attribute_names_path = Path(DATA_FOLDER) / ATTRIBUTE_NAMES_PATH_SHAPES
+
+    attribute_names_mapping = {}
+    with open(attribute_names_path, "r") as file:
+        for line in file:
+            key, attribute_name = line.strip().split(" ", 1)
+            attribute_names_mapping[int(key)] = attribute_name
+    return attribute_names_mapping
+
+
+def get_class_names(dataset_name, n_classes=None):
+    """
+    Returns the class-number to names.
+    The dataloaders only loads attribute classes as a list of int, but this maps them back to the string names.
+
+    Args:
+        dataset_name (str): Name of the dataset, either "shapes" or "cub".
+        n_classes (int): Number of classes fo shapes dataset.
+
+    Returns:
+        dict: Dictionary mapping the ints to names.
+    """
+    dataset_name = dataset_name.lower().strip().replace("/", "").replace("\\", "")
+    if dataset_name == "cub":
+        attribute_names_path = CLASS_NAMES_PATH_CUB
+
+    elif dataset_name == "shapes":
+        if n_classes == 10:
+            attribute_names_path = CLASS_NAMES_PATH_C10_SHAPES
+        if n_classes == 15:
+            attribute_names_path = CLASS_NAMES_PATH_C15_SHAPES
+        if n_classes == 21:
+            attribute_names_path = CLASS_NAMES_PATH_C21_SHAPES
+
+    full_path = Path(DATA_FOLDER) / attribute_names_path
+    attribute_names_mapping = {}
+    with open(full_path, "r") as file:
+        for line in file:
+            key, attribute_name = line.strip().split(" ", 1)
+            if dataset_name == "cub":  # Here indexing starts at 1
+                attribute_names_mapping[int(key) - 1] = attribute_name
+            if dataset_name == "shapes":  # Here it starts at 0
+                attribute_names_mapping[int(key)] = attribute_name
+    return attribute_names_mapping
+
+
+def save_adversarial_text_file(attr_string, dataset_name, alpha, concept_threshold):
+    """
+    Saves the text file created by `plot_perturbed()`. Writes to file in respecitve folder and saves.
+
+    Args:
+        attr_string (str): The string to write to file and save.
+        dataset (str): String of the dataset, "shapes" or "cub".
+        alpha (float): The alpha used for the images.
+        concept_threshold (float): The concept threshold used for the images.
+    """
+    folder_name = f"alpha{alpha}_gamma{concept_threshold}"
+    full_folder_path = Path(RESULTS_FOLDER) / ADVERSARIAL_FOLDER / get_dataset_folder(dataset_name) / folder_name
+    full_path = make_file_path(full_folder_path, ADVERSARIAL_TEXT_FILENAME)
+    with open(full_path, "w") as outfile:
+        outfile.write(attr_string)

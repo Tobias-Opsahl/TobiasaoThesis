@@ -9,7 +9,7 @@ from src.common.path_utils import (load_model_shapes, load_hyperparameters_shape
                                    load_model_cub, load_hyperparameters_cub, save_model_cub,
                                    save_adversarial_hyperparameters)
 from src.train import train_cbm
-from src.plotting import plot_perturbed_images
+from src.plotting import plot_perturbed_images, plot_perturbed
 
 
 logger = get_logger(__name__)
@@ -170,6 +170,8 @@ def run_iterative_concept_attack(
         Tensor: Perturbed image.
         int: 1 or 0 depending on if the image succesfully turned adversarial.
         int: The number of iterations ran.
+        int: Marks if the mask got turned into zeros.
+        int: Marks if the concepts changed.
     """
     if isinstance(target, int):
         target = torch.tensor([target]).to(device, non_blocking=non_blocking)
@@ -183,6 +185,8 @@ def run_iterative_concept_attack(
         
     success = 0
     overall_accuracy = 0
+    zero_mask = 0
+    changed_concepts = 0
     previous_image = perturbed_image.clone()  # Save last iterations image
     for i in range(max_steps + extra_steps):
         if success == 0 and i >= max_steps:
@@ -211,9 +215,10 @@ def run_iterative_concept_attack(
         if overall_accuracy < 1:  # Concept predictions have changed
             message = f"Aborting attack due to changed concepts. \n     Iteration {i}, Success {success}. "
             message += f"Concept-Accuracy {overall_accuracy:.4f}. "
-            logger.warning(message)
+            logger.debug(message)
             if success == 1:  # Reset last image with correct predictions
                 perturbed_image = previous_image
+            changed_concepts = 1
             break
 
         # Check if we have reached our goal
@@ -284,12 +289,14 @@ def run_iterative_concept_attack(
             mask = torch.where((total_grad_sign != concept_sign), grad_weight * torch.ones_like(final_mask), final_mask)
             final_mask = torch.min(final_mask, mask)
 
-        if final_mask.sum() == 0:  # Gradients all zeroed out
-            message = f"Aborting attack due all-zero mask \n     Iteration {i}, Success {success}. "
+        final_mask_float = final_mask.to(torch.float32)
+        grad_weight_tensor = torch.tensor(grad_weight, dtype=torch.float32)
+        if torch.all(torch.isclose(final_mask_float, grad_weight_tensor, atol=0.000001)):
+            message = f"Aborting attack due all-beta mask \n     Iteration {i}, Success {success}. "
             message += f"Concept-Accuracy {overall_accuracy:.4f}. "
-            logger.warning(message)
+            logger.debug(message)
+            zero_mask = 1
             break
-
         # Apply perturbation
         modified_class_gradient = class_adversarial_gradient * final_mask
         previous_image = perturbed_image.clone()  # Copy last image
@@ -298,7 +305,7 @@ def run_iterative_concept_attack(
             perturbed_image = torch.clamp(perturbed_image, input_image - epsilon, input_image + epsilon)
         perturbed_image = torch.clamp(perturbed_image, -mean / std, (1 - mean) / std)
 
-    return perturbed_image, success, i
+    return perturbed_image, success, i, zero_mask, changed_concepts
 
 
 def run_adversarial_attacks(
@@ -344,13 +351,20 @@ def run_adversarial_attacks(
     original_images = []
     perturbed_images = []
     iterations_list = []
+    path_list = []
+    attr_predictions_list = []
+    attr_accuracy_list = []
+    attr_precision_list = []
+    attr_recall_list = []
 
     if denorm_func is None:
         denorm_func = denormalize_shapes  # Shapes denormalisation
 
     counter = 0
     correct_counter = 0
-    for data, label, attr_labels, paths in test_loader:
+    zero_mask_counter = 0
+    changed_concepts_counter = 0
+    for data, label, attr_labels, path in test_loader:
         data = data.to(device, non_blocking=non_blocking)
         label = label.to(device, non_blocking=non_blocking)
         attr_labels = attr_labels.to(device, non_blocking=non_blocking)
@@ -368,7 +382,7 @@ def run_adversarial_attacks(
             logger.debug(f"On iteration [{counter} / {max_images}] ")
 
         # Run the attack
-        perturbed_image, success, iterations_ran = run_iterative_concept_attack(
+        perturbed_image, success, iterations_ran, zero_mask, changed_concepts = run_iterative_concept_attack(
             model=model, input_image=data, class_label=label, concept_labels=attr_labels, target=target, logits=logits,
             least_likely=least_likely, epsilon=epsilon, alpha=alpha, concept_threshold=concept_threshold,
             grad_weight=grad_weight, max_steps=max_steps, extra_steps=extra_steps, random_start=random_start,
@@ -377,32 +391,62 @@ def run_adversarial_attacks(
         logger.debug(f"Image number {counter}, Succes: {success}, iterations ran: {iterations_ran}")
 
         if success:  # Save stuff
-            correct_counter += 1
-            new_class_output, new_attr_output = model(perturbed_image)
-            _, new_prediction = torch.max(new_class_output, 1)
-            image = denorm_func(data)
-            perturbed_image = denorm_func(perturbed_image)
-            original_images.append(image)
-            perturbed_images.append(perturbed_image)
-            original_predictions.append(prediction.item())
-            new_predictions.append(new_prediction.item())
-            iterations_list.append(iterations_ran)
+            new_class_output, new_attr_outputs = model(perturbed_image)
+            new_attr_predictions = (torch.sigmoid(new_attr_outputs) > 0.5).float()
+            old_attr_predictions = (torch.sigmoid(attr_outputs) > 0.5).float()
+            if not torch.all(torch.eq(old_attr_predictions, new_attr_predictions)):  # Double check right concepts
+                logger.warn(f"Concept predictions changed. {old_attr_predictions=} {new_attr_predictions=}")
+            else:  # Successful adversarial concept attack, add a bunch of stats
+                correct_counter += 1
+                attr_predictions_list.append(new_attr_predictions)
+                attr_accuracy = (new_attr_predictions == attr_labels).sum().item()  / len(attr_labels.squeeze()) * 100
+                attr_accuracy_list.append(attr_accuracy)
+                true_attr_positives = torch.sum((new_attr_predictions == 1) & (attr_labels == 1))
+                false_attr_positives = torch.sum((new_attr_predictions == 1) & (attr_labels == 0))
+                false_attr_negatives = torch.sum((new_attr_predictions == 0) & (attr_labels == 1))
+                if true_attr_positives + false_attr_positives == 0:
+                    attr_precision = 0
+                else:
+                    attr_precision = true_attr_positives.float() / (true_attr_positives + false_attr_positives) * 100
+                if true_attr_positives + false_attr_negatives == 0:
+                    attr_recall = 0
+                else:
+                    attr_recall = true_attr_positives.float() / (true_attr_positives + false_attr_negatives) * 100
+                attr_precision_list.append(attr_precision)
+                attr_recall_list.append(attr_recall)
+                _, new_prediction = torch.max(new_class_output, 1)
+                image = denorm_func(data)
+                perturbed_image = denorm_func(perturbed_image)
+                original_images.append(image)
+                perturbed_images.append(perturbed_image)
+                original_predictions.append(prediction.item())
+                new_predictions.append(new_prediction.item())
+                iterations_list.append(iterations_ran)
+                path_list.append(path)
+
+        zero_mask_counter += zero_mask
+        changed_concepts_counter += changed_concepts
 
         if counter >= max_images:
             break
 
     success_rate = correct_counter / counter
-    output = {"perturbed_images": perturbed_images, "original_images": original_images, 
-              "original_predictions": original_predictions, "new_predictions": new_predictions,
-              "iterations_list": iterations_list, "success_rate": success_rate}
-
+    zero_mask_rate = zero_mask_counter / counter
+    changed_concepts_rate = changed_concepts_counter / counter
+    output = {
+        "perturbed_images": perturbed_images, "original_images": original_images, 
+        "original_predictions": original_predictions, "new_predictions": new_predictions,
+        "iterations_list": iterations_list, "paths": path_list, "attr_predictions": attr_predictions_list,
+        "attr_accuracy": attr_accuracy_list, "attr_precision": attr_precision_list, "attr_recall": attr_recall_list,
+        "success_rate": success_rate, "zero_mask_rate": zero_mask_rate, "changed_concepts_rate": changed_concepts_rate}
+    logger.info(f"Adversarial attack results: {success_rate=}, {zero_mask_rate=}, {changed_concepts_rate=}")
     return output
 
 
 def load_model_and_run_attacks_shapes(
     n_classes, n_attr, signal_strength, train_model=False, target=None, logits=False, least_likely=False,
-    epsilon=1, alpha=0.001, concept_threshold=1, grad_weight=-0.3, max_steps=100, extra_steps=3, max_images=100,
-    random_start=None, batch_size=16, device=None, num_workers=0, pin_memory=False, persistent_workers=False,
+    epsilon=1, alpha=0.001, concept_threshold=0.1, grad_weight=-0.3, max_steps=100, extra_steps=3, max_images=100,
+    random_start=None, batch_size=16, plot=True, device=None, num_workers=0, pin_memory=False, persistent_workers=False,
     non_blocking=False, seed=57):
     """
     Loads model and tes-dataloader, and runs adversarial attacks.
@@ -429,6 +473,7 @@ def load_model_and_run_attacks_shapes(
             Will be the uniform noise added to each pixel in the random start.
         max_images (int): Maximum number of images from the test-loader to run.
         batch_size (int): Batch-size for training the model.
+        plot (bool): If `True`, will plot some of the adversarial images.
         device (str): Use "cpu" for cpu training and "cuda" for gpu training.
         non_blocking (bool): If True, allows for asyncronous transfer between RAM and VRAM.
             This only works together with `pin_memory=True` to dataloader and GPU training.
@@ -480,18 +525,19 @@ def load_model_and_run_attacks_shapes(
         concept_threshold=concept_threshold, grad_weight=grad_weight, max_steps=max_steps, extra_steps=extra_steps,
         max_images=max_images, random_start=random_start, denorm_func=denormalize_shapes, mean=0.5, std=0.5,
         device=device, non_blocking=non_blocking)
-    plot_perturbed_images(output["perturbed_images"], output["original_images"], output["original_predictions"],
-                          output["new_predictions"], output["iterations_list"],
-                          adversarial_filename="adversarial_image_shapes.png", max_rows=7)
-    success_rate = output["success_rate"]
-    logger.info(f"Success rate: {success_rate}")
-    return success_rate
+    if plot:
+        plot_perturbed_images(output["perturbed_images"], output["original_images"], output["original_predictions"],
+                              output["new_predictions"], output["iterations_list"],
+                              adversarial_filename="adversarial_image_shapes.png", max_rows=7)
+        plot_perturbed(
+            output, alpha=alpha, concept_threshold=concept_threshold, dataset_name="shapes", n_classes=n_classes)
+    return output
 
 
 def load_model_and_run_attacks_cub(
     train_model=False, target=None, logits=False, least_likely=False, epsilon=1, alpha=0.001, concept_threshold=0.1,
-    grad_weight=-0.3, max_steps=100, extra_steps=3, max_images=100, random_start=None, batch_size=16, device=None,
-    num_workers=0, pin_memory=False, persistent_workers=False, non_blocking=False, seed=57):
+    grad_weight=-0.3, max_steps=100, extra_steps=3, max_images=100, random_start=None, batch_size=16, plot=True,
+    device=None, num_workers=0, pin_memory=False, persistent_workers=False, non_blocking=False, seed=57):
     """
     Loads model and tes-dataloader, and runs adversarial attacks.
 
@@ -517,6 +563,7 @@ def load_model_and_run_attacks_cub(
         random_start (float): If not None, will make starting image in a random start within the original input image.
             Will be the uniform noise added to each pixel in the random start.
         batch_size (int): Batch-size for training the model.
+        plot (bool): If `True`, will plot some of the adversarial images.
         device (str): Use "cpu" for cpu training and "cuda" for gpu training.
         non_blocking (bool): If True, allows for asyncronous transfer between RAM and VRAM.
             This only works together with `pin_memory=True` to dataloader and GPU training.
@@ -568,12 +615,12 @@ def load_model_and_run_attacks_cub(
         concept_threshold=concept_threshold, grad_weight=grad_weight, max_steps=max_steps, extra_steps=extra_steps,
         max_images=max_images, random_start=random_start, denorm_func=denormalize_cub, mean=mean, std=std,
         device=device, non_blocking=non_blocking)
-    plot_perturbed_images(output["perturbed_images"], output["original_images"], output["original_predictions"],
-                          output["new_predictions"], output["iterations_list"],
-                          adversarial_filename="adversarial_image_cub.png")
-    success_rate = output["success_rate"]
-    logger.info(f"Success rate: {success_rate}")
-    return success_rate
+    if plot:
+        plot_perturbed_images(output["perturbed_images"], output["original_images"], output["original_predictions"],
+                              output["new_predictions"], output["iterations_list"],
+                              adversarial_filename="adversarial_image_cub.png")
+        plot_perturbed(output, alpha=alpha, concept_threshold=concept_threshold, dataset_name="cub")
+    return output
 
 
 def adversarial_grid_search(
@@ -625,54 +672,62 @@ def adversarial_grid_search(
     if train_model:
         if dataset == "shapes":
             load_model_and_run_attacks_shapes(
-                n_classes, n_attr, signal_strength, train_model=True, max_steps=1, extra_steps=1, max_images=1,
-                batch_size=16, device=device, num_workers=num_workers, pin_memory=pin_memory,
-                persistent_workers=persistent_workers, non_blocking=non_blocking, seed=seed)
+                n_classes, n_attr, signal_strength, train_model=True, target=None, logits=logits, max_steps=1,
+                extra_steps=1, max_images=1, batch_size=16, plot=False, device=device, num_workers=num_workers,
+                pin_memory=pin_memory, persistent_workers=persistent_workers, non_blocking=non_blocking, seed=seed)
         elif dataset == "cub":
             load_model_and_run_attacks_cub(
                 train_model=True, target=None, logits=False, max_steps=1, extra_steps=1, max_images=1, batch_size=16,
-                device=device, num_workers=num_workers, pin_memory=pin_memory, persistent_workers=persistent_workers,
-                non_blocking=non_blocking, seed=seed)
+                plot=False, device=device, num_workers=num_workers, pin_memory=pin_memory,
+                persistent_workers=persistent_workers, non_blocking=non_blocking, seed=seed)
 
-    gradient_weights = [0, -0.1, -0.5, -1]
-    alphas = [0.1, 0.01, 0.001, 0.0001]
-    sensitivity_thresholds = [3, 1, 0.5, 0.1]
-
-    gradient_weights = [-0.1]
-    alphas = [0.1]
-    sensitivity_thresholds = [1]
+    if dataset == "shapes":
+        gradient_weights = [-0.1]
+        alphas = [0.003, 0.001, 0.00075]
+        sensitivity_thresholds = [0.1, 0.05, 0.01]
+    elif dataset == "cub":
+        gradient_weights = [-0.1]
+        alphas = [0.0001, 0.000075, 0.00005]
+        sensitivity_thresholds = [0.1, 0.075, 0.05, 0.02]
 
     best_success = 0
     best_hyperparameters = None
     results = []
+    counter = 0
+    total_runs = len(gradient_weights) * len(alphas) * len(sensitivity_thresholds)
     for gradient_weight in gradient_weights:
         for alpha in alphas:
             for sensitivity_threshold in sensitivity_thresholds:
+                counter += 1
+                logger.info(f"On search [{counter} / {total_runs}]")
                 if dataset == "shapes":
-                    success_rate = load_model_and_run_attacks_shapes(
+                    output = load_model_and_run_attacks_shapes(
                         n_classes, n_attr, signal_strength, train_model=False, target=None, logits=logits,
                         least_likely=False, epsilon=epsilon, alpha=alpha, concept_threshold=sensitivity_threshold,
                         grad_weight=gradient_weight, max_steps=max_steps, extra_steps=extra_steps,
-                        max_images=max_images, random_start=random_start, batch_size=16, device=device,
+                        max_images=max_images, random_start=random_start, batch_size=16, plot=False, device=device,
                         num_workers=num_workers, pin_memory=pin_memory, persistent_workers=persistent_workers,
                         non_blocking=non_blocking, seed=seed)
                 elif dataset == "cub":
-                    success_rate = load_model_and_run_attacks_cub(
+                    output = load_model_and_run_attacks_cub(
                         train_model=False, target=None, logits=logits,
                         least_likely=False, epsilon=epsilon, alpha=alpha, concept_threshold=sensitivity_threshold,
                         grad_weight=gradient_weight, max_steps=max_steps, extra_steps=extra_steps,
-                        max_images=max_images, random_start=random_start, batch_size=16, device=device,
+                        max_images=max_images, random_start=random_start, batch_size=16, plot=False, device=device,
                         num_workers=num_workers, pin_memory=pin_memory, persistent_workers=persistent_workers,
                         non_blocking=non_blocking, seed=seed)
+                success_rate = output["success_rate"]
                 result_dict = {
                     "gradient_weight": gradient_weight, "alpha": alpha, "sensitivity_threshold": sensitivity_threshold,
-                    "epsilon": epsilon, "success_rate": success_rate, "max_steps": max_steps,
-                    "extra_steps": extra_steps, "max_images": max_images}
+                    "epsilon": epsilon, "max_steps": max_steps, "extra_steps": extra_steps, "max_images": max_images,
+                    "logits": logits, "zero_mask_rate": output["zero_mask_rate"],
+                    "changed_concept_rate": output["changed_concepts_rate"], "success_rate": success_rate,}
                 results.append(result_dict)
-                logger.info(result_dict)
+                logger.info(f"Results: {result_dict} \n")
                 if success_rate >= best_success:
                     best_success = success_rate
                     best_hyperparameters = result_dict
 
     save_adversarial_hyperparameters(dataset=dataset, hyperparameters=best_hyperparameters, end_name=end_name)
+    logger.info(f"Beset hyperparameters found: {best_hyperparameters}")
     return best_hyperparameters

@@ -36,13 +36,16 @@ scp -v -r -J tobiasao@login.uio.no tobiasao@ml1.hpc.uio.no:TobiasaoThesis/result
 scp -v -r -J tobiasao@login.uio.no tobiasao@ml1.hpc.uio.no:TobiasaoThesis/results/plots/ ./results/plots/remote_grid_search_s100_plots/  
 scp -v -r -J tobiasao@login.uio.no tobiasao@ml1.hpc.uio.no:TobiasaoThesis/results/history/ ./results/history/remote_grid_search_all_history/  
 
+scp -v -r -J tobiasao@login.uio.no tobiasao@ml1.hpc.uio.no:TobiasaoThesis/results/adversarial/ ./results/adversarial/remote_adversarial1/  
+
+
 # Cub copy over results
 scp -v -r -J tobiasao@login.uio.no tobiasao@ml1.hpc.uio.no:TobiasaoThesis/results/plots/cub/ ./results/plots/remote_cub1_plots/
 scp -v -r -J tobiasao@login.uio.no tobiasao@ml1.hpc.uio.no:TobiasaoThesis/results/history/cub/ ./results/history/remote_cub1_history/  
 
 
 # Fast:
-python run_cub.py --fast --n_trials 1 --run_hyperparameters --evaluate_and_plot --subsets 1 --n_bootstrap 1 --bootstrap_checkpoints 1 --logging_level debug
+python run_cub.py --fast --n_trials 1 --run_hyperparameters --evaluate_and_plot --subsets 1 --n_bootstrap 1 --bootstrap_checkpoints 1 --hard_bottleneck --logging_level debug
 python run_cub.py --fast --evaluate_and_plot --subsets 30 --n_bootstrap 1 --bootstrap_checkpoints 1 --logging_level debug
 python run_shapes.py --n_classes 21 --n_attr 5 --signal_strength 100 --fast --evaluate_and_plot --n_bootstrap 1 --bootstrap_checkpoints 1 --models oracle
 python run_shapes.py --n_classes 10 --n_attr 5 --signal_strength 98 --evaluate_and_plot --n_bootstrap 2 --hard_bottleneck --logging_level debug --fast --bootstrap_checkpoints 1,2
@@ -383,7 +386,7 @@ CUDA_VISIBLE_DEVICES=2 nohup python run_cub.py --run_hyperparameters --subsets 2
 CUDA_VISIBLE_DEVICES=1 nohup python run_cub.py --run_hyperparameters --subsets 30 --n_trials 50 --num_workers 2 --pin_memory --non_blocking &> logs/cub_full_grid_search.txt &
 
 
-Hyperparameter search SCM
+Hyperparameter search SCM only
 CUDA_VISIBLE_DEVICES=6 nohup python run_cub.py --run_hyperparameters --subsets 5 --n_trials 50 --models scm --num_workers 2 --pin_memory --non_blocking &> logs/cub_scm_s5_grid_search.txt &
 CUDA_VISIBLE_DEVICES=5 nohup python run_cub.py --run_hyperparameters --subsets 10 --n_trials 50 --models scm --num_workers 2 --pin_memory --non_blocking &> logs/cub_scm_s10_grid_search.txt &
 CUDA_VISIBLE_DEVICES=0 nohup python run_cub.py --run_hyperparameters --subsets 15 --n_trials 50 --models scm --num_workers 2 --pin_memory --non_blocking &> logs/cub_scm_s15_grid_search.txt &
@@ -392,11 +395,62 @@ CUDA_VISIBLE_DEVICES=4 nohup python run_cub.py --run_hyperparameters --subsets 2
 CUDA_VISIBLE_DEVICES=3 nohup python run_cub.py --run_hyperparameters --subsets 30 --n_trials 50 --models scm --num_workers 2 --pin_memory --non_blocking &> logs/cub_scm_full_grid_search.txt &
 
 
+CUB HARD bottleneck Evaluation sub 5,10,15,20,25,30 n_bootstrap 3
+CUDA_VISIBLE_DEVICES=1 nohup python run_cub.py --evaluate_and_plot --subsets 5,10,15,20,25,30 --n_bootstrap 3 --hard_bottleneck --num_workers 2 --persistent_workers --pin_memory --non_blocking &> logs/hard_cub_b3_eval.txt &
+
+
+CUB HARD bottleneck Hyperparameter search 
+CUDA_VISIBLE_DEVICES=0 nohup python run_cub.py --run_hyperparameters --subsets 5 --n_trials 50 --num_workers 2 --pin_memory --non_blocking --hard_bottleneck &> logs/hard_cub_s5_grid_search.txt &
+CUDA_VISIBLE_DEVICES=1 nohup python run_cub.py --run_hyperparameters --subsets 10 --n_trials 50 --num_workers 2 --pin_memory --non_blocking --hard_bottleneck &> logs/hard_cub_s10_grid_search.txt &
+CUDA_VISIBLE_DEVICES=3 nohup python run_cub.py --run_hyperparameters --subsets 15 --n_trials 50 --num_workers 2 --pin_memory --non_blocking --hard_bottleneck &> logs/hard_cub_s15_grid_search.txt &
+CUDA_VISIBLE_DEVICES=3 nohup python run_cub.py --run_hyperparameters --subsets 20 --n_trials 50 --num_workers 2 --pin_memory --non_blocking --hard_bottleneck &> logs/hard_cub_s20_grid_search.txt &
+CUDA_VISIBLE_DEVICES=1 nohup python run_cub.py --run_hyperparameters --subsets 25 --n_trials 50 --num_workers 2 --pin_memory --non_blocking --hard_bottleneck &> logs/hard_cub_s25_grid_search.txt &
+CUDA_VISIBLE_DEVICES=0 nohup python run_cub.py --run_hyperparameters --subsets 30 --n_trials 50 --num_workers 2 --pin_memory --non_blocking --hard_bottleneck &> logs/hard_cub_full_grid_search.txt &
+
+
 # Adversarial
 CUDA_VISIBLE_DEVICES=1 nohup python run_cub.py --run_adversarial_attacks --train_model --epsilon 0.1 --alpha 0.001 --max_images 10 --logging_level debug --num_workers 2 --persistent_workers --pin_memory --non_blocking &> logs/cub_adversarial_attacks.txt &
 
 
 # Adversarial attacks
+
+# Remote Shapes Adversarial Grid Search
+CUDA_VISIBLE_DEVICES=2 nohup python run_shapes.py --adversarial_grid_search --max_steps 800 --max_images 200 &> logs/shapes_adversarial_grid_search.txt &
+
+CUDA_VISIBLE_DEVICES=2 nohup python run_shapes.py --n_classes 21 --n_attr 9 --adversarial_grid_search --max_steps 800 --max_images 200 &> logs/c21_shapes_adversarial_grid_search.txt &
+
+
+
+# CUB Shapes Adversarial Grid Search
+CUDA_VISIBLE_DEVICES=1 nohup python run_cub.py --adversarial_grid_search --max_steps 300 --max_images 200 --num_workers 2 --pin_memory --non_blocking &> logs/cub_adversarial_grid_search.txt &
+
+
+
+# Shapes run attacks
+CUDA_VISIBLE_DEVICES=2 nohup python run_shapes.py --run_adversarial_attack --max_steps 800 --max_images 10000 --grad_weight 0.999 --logging_level debug &> logs/g1_shapes_run_adversarial.txt &
+
+1234 / 3572 = 0.3454 success rate
+With grad_weight = 0.999 success_rate=0.3135498320268757
+
+
+# Shapes run attacks
+CUDA_VISIBLE_DEVICES=2 nohup python run_shapes.py --run_adversarial_attack --n_classes 21 --n_attr 9  --max_steps 800 --concept_threshold 0.05 --max_images 10000 --grad_weight 0.999 --logging_level debug &> logs/g1_c21_shapes_run_adversarial.txt &
+CUDA_VISIBLE_DEVICES=2 nohup python run_shapes.py --run_adversarial_attack --n_classes 21 --n_attr 9  --max_steps 800 --concept_threshold 0.05 --max_images 10000 --grad_weight -0.1 --logging_level debug &> logs/c21_shapes_run_adversarial.txt &
+
+success rate 0.2662057044079516
+with grad_weight 0.999 success_rate=0.2250072025352924
+
+
+# CUB run attacks
+CUDA_VISIBLE_DEVICES=2 nohup python run_cub.py --run_adversarial_attack --max_steps 300 --max_images 10000 --grad_weight 0.999 --num_workers 2 --pin_memory --non_blocking --logging_level debug &> logs/g1_cub_run_adversarial_attack.txt &
+
+/ 2643, success_rate=0.5743473325766175
+With grad_weight = 0.999: success_rate=0.16193719258418462
+
+
+
+
+# Local:
 Shapes Max Damage:
 python run_shapes.py --run_adversarial_attacks --max_images 200 --alpha 0.005 --max_steps 90 --extra_steps 1000 --concept_threshold 0.5 --logging_level debug
 
@@ -407,3 +461,4 @@ Cub Max Damage:
 
 Cub Minimal Damage:
 python run_cub.py --run_adversarial_attacks --logging_level debug --max_images 25 --alpha 0.0001 --epsilon 2 --random_start 0 --max_steps 30 --extra_steps 1 --concept_threshold 0.1
+

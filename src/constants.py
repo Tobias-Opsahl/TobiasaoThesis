@@ -43,7 +43,17 @@ CUB_PROCESSED_FOLDER = "CUB_processed/"
 CUB_FEATURE_SELECTION_FILENAME = "CUB_feature_selection.pkl"
 
 ADVERSARIAL_FOLDER = "adversarial"
-ADVERSARIAL_FILENAME = "adversarial_image.pdf"
+ADVERSARIAL_FILENAME = "adversarial_image.png"
+ADVERSARIAL_TEXT_FILENAME = "adversarial_summary.txt"
+
+ATTRIBUTE_NAMES_PATH_CUB = "CUB_200_2011/attributes/attributes.txt"
+ATTRIBUTE_MAPPING_PATH_CUB = "CUB_processed/attribute_mapping.txt"
+ATTRIBUTE_NAMES_PATH_SHAPES = "shapes/attributes.txt"
+
+CLASS_NAMES_PATH_CUB = "CUB_200_2011/classes.txt"
+CLASS_NAMES_PATH_C10_SHAPES = "shapes/classes_c10.txt"
+CLASS_NAMES_PATH_C15_SHAPES = "shapes/classes_c15.txt"
+CLASS_NAMES_PATH_C21_SHAPES = "shapes/classes_c21.txt"
 
 
 N_CLASSES_CUB = 200

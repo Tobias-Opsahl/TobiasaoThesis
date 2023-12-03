@@ -6,9 +6,10 @@ from matplotlib.ticker import MaxNLocator
 
 from src.constants import (MODEL_STRINGS_SHAPES, MODEL_STRINGS_CUB,
                            MAP_MODEL_TO_COLOR_SHAPES, MAP_MODEL_TO_LINESTYLES_SHAPES)
-from src.common.path_utils import (load_history_shapes, save_test_plot_shapes, save_training_plot_shapes,
-                                   load_history_cub, save_test_plot_cub, save_training_plot_cub,
-                                   save_adversarial_image_shapes, save_mpo_plot_shapes, save_mpo_plot_cub)
+from src.common.path_utils import (
+    load_history_shapes, save_test_plot_shapes, save_training_plot_shapes, load_history_cub, save_test_plot_cub,
+    save_training_plot_cub, save_single_image, save_adversarial_image_shapes, save_mpo_plot_shapes, save_mpo_plot_cub,
+    get_attribute_mapping, get_attribute_names, get_class_names, save_adversarial_text_file)
 
 
 def plot_image_single(image_path, pred=None, label=None, transformed=False, show=True, title=None):
@@ -500,24 +501,77 @@ def plot_perturbed_images(perturbed_images, original_images, original_preds, new
     """
     plt.figure(figsize=(cols * 4, max_rows * 4))
 
-    for i, (orig_img, perturbed_img) in enumerate(zip(original_images, perturbed_images)):
+    for i, (original_image, perturbed_image) in enumerate(zip(original_images, perturbed_images)):
         if i > max_rows + 2:
             break
         # Plot original image
         plt.subplot(max_rows, cols, 2 * i + 1)
-        np_orig_img = orig_img.detach().cpu().numpy().squeeze()
-        np_orig_img = np_orig_img.transpose(1, 2, 0)
-        plt.imshow(np_orig_img)
+        plot_tensor(original_image)
         plt.title(f"Original: {original_preds[i]}", fontsize=14)
         plt.axis("off")
 
         # Plot perturbed image
         plt.subplot(max_rows, cols, 2 * i + 2)
-        np_perturbed_img = perturbed_img.detach().cpu().numpy().squeeze()
-        np_perturbed_img = np_perturbed_img.transpose(1, 2, 0)
-        plt.imshow(np_perturbed_img)
+        plot_tensor(perturbed_image)
         plt.title(f"Perturbed: {new_preds[i]}, Iterations: {iterations_list[i]}", fontsize=14)
         plt.axis("off")
 
     plt.tight_layout()
     save_adversarial_image_shapes(dataset_name, adversarial_filename)
+    plt.close()
+
+
+def plot_perturbed(output, alpha, concept_threshold, dataset_name, n_classes=None):
+    # Get mapping of concepts, make path-utils function
+    n_images = len(output["perturbed_images"])
+    attribute_mapping = get_attribute_mapping(dataset_name)
+    attribute_names = get_attribute_names(dataset_name)
+    class_names_mapping = get_class_names(dataset_name, n_classes)
+    attr_string = ""
+    for i in range(n_images):
+        plot_tensor(output["original_images"][i])
+        save_single_image(path=output["paths"][i][0], dataset_name=dataset_name, alpha=alpha,
+                          concept_threshold=concept_threshold, type="original", index=i)
+        plot_tensor(output["perturbed_images"][i])
+        save_single_image(path=output["paths"][i][0], dataset_name=dataset_name, alpha=alpha,
+                          concept_threshold=concept_threshold, type="perturbed", index=i)
+        concepts_list = []
+        attr_predictions = output["attr_predictions"][i].squeeze()  # All the attr-predictions for image number i
+        n_concepts = len(attr_predictions)
+        n_predicted_concepts = 0
+        for j in range(n_concepts):
+            attr_prediction = attr_predictions[j].int().item()  # Attr prediction number j for image number i
+            if attr_prediction == 0:  # Attribute not predicted, continue
+                continue
+            n_predicted_concepts += 1
+            concept = attribute_names[attribute_mapping[j]]
+            concepts_list.append(concept)
+        attr_string += output["paths"][i][0]
+        attr_string += f": \nNumber of Predicted Concepts: {n_predicted_concepts} \n"
+        attr_string += f"Concept Accuracy: {output['attr_accuracy'][i]:.4f}, "
+        attr_string += f"Concept Precision: {output['attr_precision'][i]:.4f}, "
+        attr_string += f"Concept Recall: {output['attr_recall'][i]:.4f} \n"
+        attr_string += str(concepts_list)
+        attr_string += "\n"
+        new_prediction = class_names_mapping[output["new_predictions"][i]]
+        original_prediction = class_names_mapping[output["original_predictions"][i]]
+
+        attr_string += f"Original Prediction: {original_prediction}, New Prediction: {new_prediction=}\n\n"
+    save_adversarial_text_file(attr_string, dataset_name, alpha, concept_threshold)
+
+
+def plot_tensor(image_tensor):
+    """
+    Plots an image tensor. This means detaching it, moving to cpu, squeezing and transposing it.
+
+    Args:
+        image_tensor (torch tensor): The tensor to plot
+    """
+    numpy_image = image_tensor.detach().cpu().numpy().squeeze()
+    numpy_image = numpy_image.transpose(1, 2, 0)
+    height, width, _ = numpy_image.shape
+    fig, ax = plt.subplots(figsize=(width / height, 1), dpi=300)
+    plt.imshow(numpy_image)
+    plt.axis("off")  # Remove ticks and stuff
+    plt.subplots_adjust(left=0, right=1, top=1, bottom=0)  # Remove whitespace
+    plt.close()
