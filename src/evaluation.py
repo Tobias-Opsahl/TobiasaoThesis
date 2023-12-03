@@ -7,8 +7,7 @@ from src.plotting import plot_training_histories_shapes, plot_test_accuracies_sh
 from src.common.utils import seed_everything, get_logger, load_models_shapes, add_histories
 from src.common.path_utils import (load_hyperparameters_shapes, save_history_shapes, save_model_shapes,
                                    load_history_shapes)
-from src.constants import (MAX_EPOCHS, FAST_MAX_EPOCHS_SHAPES, BOOTSTRAP_CHECKPOINTS, MODEL_STRINGS_SHAPES,
-                           CONCEPT_MODELS_STRINGS_SHAPES)
+from src.constants import (MAX_EPOCHS, FAST_MAX_EPOCHS_SHAPES, MODEL_STRINGS_SHAPES, CONCEPT_MODELS_STRINGS_SHAPES)
 
 
 logger = get_logger(__name__)
@@ -182,7 +181,7 @@ def train_and_evaluate_shapes(
 
 
 def run_models_on_subsets_and_plot(
-        n_classes, n_attr, signal_strength, subsets, model_strings=None, n_bootstrap=1, bootstrap_checkpoints=None,
+        n_classes, n_attr, signal_strength, subsets, model_strings=None, n_bootstrap=1,
         fast=False, batch_size=16, hard_bottleneck=None, device=None, non_blocking=False, num_workers=0,
         pin_memory=False, persistent_workers=False, base_seed=57):
     """
@@ -198,7 +197,6 @@ def run_models_on_subsets_and_plot(
         subsets (list of int): List of the subsets to run on.
         model_strings (list of str): List of strings of the models to evaluate. Load from `src.constants.py`.
         n_bootstrap (int, optional): The amount of times to draw new subset and run models. Defaults to 1.
-        bootstrap_checkpoints (list of int): List of bootstrap iterations to save and plot after.
         fast (bool, optional): If True, will load hyperparameters with low `n_epochs`. Defaults to False.
         batch_size (int, optional): Batch-size of the training. Defaults to 16.
         hard_bottleneck (bool): If True, will load hard-bottleneck concept layer for the concept models.
@@ -216,9 +214,6 @@ def run_models_on_subsets_and_plot(
         base_seed (int, optional): Seed for the subset generation. Will iterate with 1 for every bootstrap.
             Defaults to 57.
     """
-    if bootstrap_checkpoints is None:
-        bootstrap_checkpoints = BOOTSTRAP_CHECKPOINTS
-
     if model_strings is None:
         model_strings = MODEL_STRINGS_SHAPES
 

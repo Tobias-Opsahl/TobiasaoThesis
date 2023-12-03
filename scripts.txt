@@ -45,13 +45,13 @@ scp -v -r -J tobiasao@login.uio.no tobiasao@ml1.hpc.uio.no:TobiasaoThesis/result
 
 
 # Fast:
-python run_cub.py --fast --n_trials 1 --run_hyperparameters --evaluate_and_plot --subsets 1 --n_bootstrap 1 --bootstrap_checkpoints 1 --hard_bottleneck --logging_level debug
-python run_cub.py --fast --evaluate_and_plot --subsets 30 --n_bootstrap 1 --bootstrap_checkpoints 1 --logging_level debug
-python run_shapes.py --n_classes 21 --n_attr 5 --signal_strength 100 --fast --evaluate_and_plot --n_bootstrap 1 --bootstrap_checkpoints 1 --models oracle
-python run_shapes.py --n_classes 10 --n_attr 5 --signal_strength 98 --evaluate_and_plot --n_bootstrap 2 --hard_bottleneck --logging_level debug --fast --bootstrap_checkpoints 1,2
-python run_shapes.py --n_classes 10 --n_attr 5 --signal_strength 98 --fast --evaluate_and_plot --n_bootstrap 2 --hard_bottleneck --bootstrap_checkpoints 1,2
+python run_cub.py --fast --n_trials 1 --run_hyperparameters --evaluate_and_plot --subsets 1 --n_bootstrap 1 --hard_bottleneck --logging_level debug
+python run_cub.py --fast --evaluate_and_plot --subsets 30 --n_bootstrap 1 --logging_level debug
+python run_shapes.py --n_classes 21 --n_attr 5 --signal_strength 100 --fast --evaluate_and_plot --n_bootstrap 1 --models all
+python run_shapes.py --n_classes 10 --n_attr 5 --signal_strength 98 --evaluate_and_plot --n_bootstrap 2 --hard_bottleneck --logging_level debug --fast
+python run_shapes.py --n_classes 10 --n_attr 5 --signal_strength 98 --fast --evaluate_and_plot --n_bootstrap 2 --hard_bottleneck 
 python run_shapes.py --n_classes 10 --n_attr 5 --signal_strength 98 --n_trials 2 --fast --evaluate_and_plot --n_bootstrap 1 --hard_bottleneck --run_hyperparameters
-python run_shapes.py --n_classes 10 --n_attr 5 --signal_strength 98 --evaluate_and_plot --subsets 50 --n_bootstrap 1 --bootstrap_checkpoints 1 --logging_level debug
+python run_shapes.py --n_classes 10 --n_attr 5 --signal_strength 98 --evaluate_and_plot --subsets 50 --n_bootstrap 1 --logging_level debug
 
 
 
@@ -175,11 +175,11 @@ CUDA_VISIBLE_DEVICES=0 nohup python run_shapes.py --n_classes 21 --n_attr 9 --si
 
 
 
-CUDA_VISIBLE_DEVICES=6 nohup python run_shapes.py --n_classes 10 --n_attr 9 --signal_strength 98 --evaluate_and_plot --models all --subsets 50,100,150,200,250 --n_bootstrap 10 --bootstrap_checkpoints 1,3,5,10 &> logs/c10_a9_s98_b10_eval.txt &
-CUDA_VISIBLE_DEVICES=6 nohup python run_shapes.py --n_classes 10 --n_attr 9 --signal_strength 98 --evaluate_and_plot --models all --subsets 50,100,150,200,250 --n_bootstrap 10 --bootstrap_checkpoints 1,3,5,10 --hard_bottleneck &> logs/hard_c10_a9_s98_b10_eval.txt &
+CUDA_VISIBLE_DEVICES=6 nohup python run_shapes.py --n_classes 10 --n_attr 9 --signal_strength 98 --evaluate_and_plot --models all --subsets 50,100,150,200,250 --n_bootstrap 10 &> logs/c10_a9_s98_b10_eval.txt &
+CUDA_VISIBLE_DEVICES=6 nohup python run_shapes.py --n_classes 10 --n_attr 9 --signal_strength 98 --evaluate_and_plot --models all --subsets 50,100,150,200,250 --n_bootstrap 10 --hard_bottleneck &> logs/hard_c10_a9_s98_b10_eval.txt &
 
-CUDA_VISIBLE_DEVICES=6 nohup python run_shapes.py --n_classes 10 --n_attr 9 --signal_strength 100 --evaluate_and_plot --models all --subsets 50,100,150,200,250 --n_bootstrap 10 --bootstrap_checkpoints 1,3,5,10 &> logs/c10_a9_s100_b10_eval.txt &
-CUDA_VISIBLE_DEVICES=6 nohup python run_shapes.py --n_classes 10 --n_attr 9 --signal_strength 100 --evaluate_and_plot --models all --subsets 50,100,150,200,250 --n_bootstrap 10 --bootstrap_checkpoints 1,3,5,10 --hard_bottleneck &> logs/hard_c10_a9_s100_b10_eval.txt &
+CUDA_VISIBLE_DEVICES=6 nohup python run_shapes.py --n_classes 10 --n_attr 9 --signal_strength 100 --evaluate_and_plot --models all --subsets 50,100,150,200,250 --n_bootstrap 10 &> logs/c10_a9_s100_b10_eval.txt &
+CUDA_VISIBLE_DEVICES=6 nohup python run_shapes.py --n_classes 10 --n_attr 9 --signal_strength 100 --evaluate_and_plot --models all --subsets 50,100,150,200,250 --n_bootstrap 10 --hard_bottleneck &> logs/hard_c10_a9_s100_b10_eval.txt &
 
 
 Shapes s50
@@ -188,11 +188,11 @@ nohup python run_make_datasets_shapes.py &> logs/make_signal_datasets.txt &
 scp -v -r -J tobiasao@login.uio.no tobiasao@ml1.hpc.uio.no:TobiasaoThesis/data/shapes/shapes_1k_c10_a9_s50/ ./data/shapes/shapes_1k_c10_a9_s50/
 
 Fast s50
-python run_shapes.py --fast --n_classes 10 --n_attr 9 --signal_strength 50 --evaluate_and_plot --subsets 29 --n_bootstrap 1 --bootstrap_checkpoints 1 --run_hyperparameters --n_trials 2
+python run_shapes.py --fast --n_classes 10 --n_attr 9 --signal_strength 50 --evaluate_and_plot --subsets 29 --n_bootstrap 1  --run_hyperparameters --n_trials 2
 
 Evaluate s50
-CUDA_VISIBLE_DEVICES=0 nohup python run_shapes.py --n_classes 10 --n_attr 9 --signal_strength 50 --evaluate_and_plot --models all --subsets 50,100,150,200,250 --n_bootstrap 10 --bootstrap_checkpoints 1,3,5,10 &> logs/c10_a9_s50_b10_eval.txt &
-CUDA_VISIBLE_DEVICES=1 nohup python run_shapes.py --n_classes 10 --n_attr 9 --signal_strength 50 --evaluate_and_plot --models all --subsets 50,100,150,200,250 --n_bootstrap 10 --bootstrap_checkpoints 1,3,5,10 --hard_bottleneck &> logs/hard_c10_a9_s50_b10_eval.txt &
+CUDA_VISIBLE_DEVICES=0 nohup python run_shapes.py --n_classes 10 --n_attr 9 --signal_strength 50 --evaluate_and_plot --models all --subsets 50,100,150,200,250 --n_bootstrap 10  &> logs/c10_a9_s50_b10_eval.txt &
+CUDA_VISIBLE_DEVICES=1 nohup python run_shapes.py --n_classes 10 --n_attr 9 --signal_strength 50 --evaluate_and_plot --models all --subsets 50,100,150,200,250 --n_bootstrap 10  --hard_bottleneck &> logs/hard_c10_a9_s50_b10_eval.txt &
 
 Hyperparam s50
 CUDA_VISIBLE_DEVICES=1 nohup python run_shapes.py --n_classes 10 --n_attr 9 --signal_strength 50 --run_hyperparameters --subsets 50,150,200 &> logs/c10_a9_s50_sub1_grid_search.txt &
@@ -209,11 +209,11 @@ nohup python run_make_datasets_shapes.py &> logs/make_signal_datasets.txt &
 scp -v -r -J tobiasao@login.uio.no tobiasao@ml1.hpc.uio.no:TobiasaoThesis/data/shapes/shapes_1k_c10_a9_s60/ ./data/shapes/shapes_1k_c10_a9_s60/
 
 Fast s60
-python run_shapes.py --fast --n_classes 10 --n_attr 9 --signal_strength 60 --evaluate_and_plot --subsets 29 --n_bootstrap 1 --bootstrap_checkpoints 1 --run_hyperparameters --n_trials 2
+python run_shapes.py --fast --n_classes 10 --n_attr 9 --signal_strength 60 --evaluate_and_plot --subsets 29 --n_bootstrap 1  --run_hyperparameters --n_trials 2
 
 Evaluate s60
-CUDA_VISIBLE_DEVICES=2 nohup python run_shapes.py --n_classes 10 --n_attr 9 --signal_strength 60 --evaluate_and_plot --models all --subsets 50,100,150,200,250 --n_bootstrap 10 --bootstrap_checkpoints 1,3,5,10 &> logs/c10_a9_s60_b10_eval.txt &
-CUDA_VISIBLE_DEVICES=3 nohup python run_shapes.py --n_classes 10 --n_attr 9 --signal_strength 60 --evaluate_and_plot --models all --subsets 50,100,150,200,250 --n_bootstrap 10 --bootstrap_checkpoints 1,3,5,10 --hard_bottleneck &> logs/hard_c10_a9_s60_b10_eval.txt &
+CUDA_VISIBLE_DEVICES=2 nohup python run_shapes.py --n_classes 10 --n_attr 9 --signal_strength 60 --evaluate_and_plot --models all --subsets 50,100,150,200,250 --n_bootstrap 10  &> logs/c10_a9_s60_b10_eval.txt &
+CUDA_VISIBLE_DEVICES=3 nohup python run_shapes.py --n_classes 10 --n_attr 9 --signal_strength 60 --evaluate_and_plot --models all --subsets 50,100,150,200,250 --n_bootstrap 10  --hard_bottleneck &> logs/hard_c10_a9_s60_b10_eval.txt &
 
 Hyperparam s60
 CUDA_VISIBLE_DEVICES=1 nohup python run_shapes.py --n_classes 10 --n_attr 9 --signal_strength 60 --run_hyperparameters --subsets 50,150,200 &> logs/c10_a9_s60_sub1_grid_search.txt &
@@ -229,11 +229,11 @@ Shapes s70
 scp -v -r -J tobiasao@login.uio.no tobiasao@ml1.hpc.uio.no:TobiasaoThesis/data/shapes/shapes_1k_c10_a9_s70/ ./data/shapes/shapes_1k_c10_a9_s70/
 
 Fast s70
-python run_shapes.py --fast --n_classes 10 --n_attr 9 --signal_strength 70 --evaluate_and_plot --subsets 29 --n_bootstrap 1 --bootstrap_checkpoints 1 --run_hyperparameters --n_trials 2
+python run_shapes.py --fast --n_classes 10 --n_attr 9 --signal_strength 70 --evaluate_and_plot --subsets 29 --n_bootstrap 1  --run_hyperparameters --n_trials 2
 
 Evaluate s70
-CUDA_VISIBLE_DEVICES=2 nohup python run_shapes.py --n_classes 10 --n_attr 9 --signal_strength 70 --evaluate_and_plot --models all --subsets 50,100,150,200,250 --n_bootstrap 10 --bootstrap_checkpoints 1,3,5,10 &> logs/c10_a9_s70_b10_eval.txt &
-CUDA_VISIBLE_DEVICES=2 nohup python run_shapes.py --n_classes 10 --n_attr 9 --signal_strength 70 --evaluate_and_plot --models all --subsets 50,100,150,200,250 --n_bootstrap 10 --bootstrap_checkpoints 1,3,5,10 --hard_bottleneck &> logs/hard_c10_a9_s70_b10_eval.txt &
+CUDA_VISIBLE_DEVICES=2 nohup python run_shapes.py --n_classes 10 --n_attr 9 --signal_strength 70 --evaluate_and_plot --models all --subsets 50,100,150,200,250 --n_bootstrap 10  &> logs/c10_a9_s70_b10_eval.txt &
+CUDA_VISIBLE_DEVICES=2 nohup python run_shapes.py --n_classes 10 --n_attr 9 --signal_strength 70 --evaluate_and_plot --models all --subsets 50,100,150,200,250 --n_bootstrap 10  --hard_bottleneck &> logs/hard_c10_a9_s70_b10_eval.txt &
 
 Hyperparam s70
 CUDA_VISIBLE_DEVICES=0 nohup python run_shapes.py --n_classes 10 --n_attr 9 --signal_strength 70 --run_hyperparameters --subsets 50,150,200 &> logs/c10_a9_s70_sub1_grid_search.txt &
@@ -249,11 +249,11 @@ Shapes s80
 scp -v -r -J tobiasao@login.uio.no tobiasao@ml1.hpc.uio.no:TobiasaoThesis/data/shapes/shapes_1k_c10_a9_s80/ ./data/shapes/shapes_1k_c10_a9_s80/
 
 Fast s80
-python run_shapes.py --fast --n_classes 10 --n_attr 9 --signal_strength 80 --evaluate_and_plot --subsets 29 --n_bootstrap 1 --bootstrap_checkpoints 1 --run_hyperparameters --n_trials 2
+python run_shapes.py --fast --n_classes 10 --n_attr 9 --signal_strength 80 --evaluate_and_plot --subsets 29 --n_bootstrap 1  --run_hyperparameters --n_trials 2
 
 Evaluate s80
-CUDA_VISIBLE_DEVICES=2 nohup python run_shapes.py --n_classes 10 --n_attr 9 --signal_strength 80 --evaluate_and_plot --models all --subsets 50,100,150,200,250 --n_bootstrap 10 --bootstrap_checkpoints 1,3,5,10 &> logs/c10_a9_s80_b10_eval.txt &
-CUDA_VISIBLE_DEVICES=1 nohup python run_shapes.py --n_classes 10 --n_attr 9 --signal_strength 80 --evaluate_and_plot --models all --subsets 50,100,150,200,250 --n_bootstrap 10 --bootstrap_checkpoints 1,3,5,10 --hard_bottleneck &> logs/hard_c10_a9_s80_b10_eval.txt &
+CUDA_VISIBLE_DEVICES=2 nohup python run_shapes.py --n_classes 10 --n_attr 9 --signal_strength 80 --evaluate_and_plot --models all --subsets 50,100,150,200,250 --n_bootstrap 10  &> logs/c10_a9_s80_b10_eval.txt &
+CUDA_VISIBLE_DEVICES=1 nohup python run_shapes.py --n_classes 10 --n_attr 9 --signal_strength 80 --evaluate_and_plot --models all --subsets 50,100,150,200,250 --n_bootstrap 10  --hard_bottleneck &> logs/hard_c10_a9_s80_b10_eval.txt &
 
 Hyperparam s80
 CUDA_VISIBLE_DEVICES=2 nohup python run_shapes.py --n_classes 10 --n_attr 9 --signal_strength 80 --run_hyperparameters --subsets 50,150,200 &> logs/c10_a9_s80_sub1_grid_search.txt &
@@ -269,11 +269,11 @@ Shapes s90
 scp -v -r -J tobiasao@login.uio.no tobiasao@ml1.hpc.uio.no:TobiasaoThesis/data/shapes/shapes_1k_c10_a9_s90/ ./data/shapes/shapes_1k_c10_a9_s90/
 
 Fast s90
-python run_shapes.py --fast --n_classes 10 --n_attr 9 --signal_strength 90 --evaluate_and_plot --subsets 29 --n_bootstrap 1 --bootstrap_checkpoints 1 --run_hyperparameters --n_trials 2
+python run_shapes.py --fast --n_classes 10 --n_attr 9 --signal_strength 90 --evaluate_and_plot --subsets 29 --n_bootstrap 1  --run_hyperparameters --n_trials 2
 
 Evaluate s90
-CUDA_VISIBLE_DEVICES=2 nohup python run_shapes.py --n_classes 10 --n_attr 9 --signal_strength 90 --evaluate_and_plot --models all --subsets 50,100,150,200,250 --n_bootstrap 10 --bootstrap_checkpoints 1,3,5,10 &> logs/c10_a9_s90_b10_eval.txt &
-CUDA_VISIBLE_DEVICES=1 nohup python run_shapes.py --n_classes 10 --n_attr 9 --signal_strength 90 --evaluate_and_plot --models all --subsets 50,100,150,200,250 --n_bootstrap 10 --bootstrap_checkpoints 1,3,5,10 --hard_bottleneck &> logs/hard_c10_a9_s90_b10_eval.txt &
+CUDA_VISIBLE_DEVICES=2 nohup python run_shapes.py --n_classes 10 --n_attr 9 --signal_strength 90 --evaluate_and_plot --models all --subsets 50,100,150,200,250 --n_bootstrap 10  &> logs/c10_a9_s90_b10_eval.txt &
+CUDA_VISIBLE_DEVICES=1 nohup python run_shapes.py --n_classes 10 --n_attr 9 --signal_strength 90 --evaluate_and_plot --models all --subsets 50,100,150,200,250 --n_bootstrap 10  --hard_bottleneck &> logs/hard_c10_a9_s90_b10_eval.txt &
 
 Hyperparam s90
 CUDA_VISIBLE_DEVICES=0 nohup python run_shapes.py --n_classes 10 --n_attr 9 --signal_strength 90 --run_hyperparameters --subsets 50,150,200 &> logs/c10_a9_s90_sub1_grid_search.txt &
@@ -288,11 +288,11 @@ CUDA_VISIBLE_DEVICES=1 nohup python run_shapes.py --n_classes 10 --n_attr 9 --si
 
 Run Oracles Shapes
 s50-s90
-CUDA_VISIBLE_DEVICES=2 nohup python run_shapes.py --n_classes 10 --n_attr 9 --signal_strength 50 --evaluate_and_plot --models oracle --subsets 50,100,150,200,250 --n_bootstrap 10 --bootstrap_checkpoints 1,3,5,10 &> logs/oracle_c10_a9_s50_b10_eval.txt &
-CUDA_VISIBLE_DEVICES=3 nohup python run_shapes.py --n_classes 10 --n_attr 9 --signal_strength 60 --evaluate_and_plot --models oracle --subsets 50,100,150,200,250 --n_bootstrap 10 --bootstrap_checkpoints 1,3,5,10 &> logs/oracle_c10_a9_s60_b10_eval.txt &
-CUDA_VISIBLE_DEVICES=1 nohup python run_shapes.py --n_classes 10 --n_attr 9 --signal_strength 70 --evaluate_and_plot --models oracle --subsets 50,100,150,200,250 --n_bootstrap 10 --bootstrap_checkpoints 1,3,5,10 &> logs/oracle_c10_a9_s70_b10_eval.txt &
-CUDA_VISIBLE_DEVICES=2 nohup python run_shapes.py --n_classes 10 --n_attr 9 --signal_strength 80 --evaluate_and_plot --models oracle --subsets 50,100,150,200,250 --n_bootstrap 10 --bootstrap_checkpoints 1,3,5,10 &> logs/oracle_c10_a9_s80_b10_eval.txt &
-CUDA_VISIBLE_DEVICES=3 nohup python run_shapes.py --n_classes 10 --n_attr 9 --signal_strength 90 --evaluate_and_plot --models oracle --subsets 50,100,150,200,250 --n_bootstrap 10 --bootstrap_checkpoints 1,3,5,10 &> logs/oracle_c10_a9_s90_b10_eval.txt &
+CUDA_VISIBLE_DEVICES=2 nohup python run_shapes.py --n_classes 10 --n_attr 9 --signal_strength 50 --evaluate_and_plot --models oracle --subsets 50,100,150,200,250 --n_bootstrap 10  &> logs/oracle_c10_a9_s50_b10_eval.txt &
+CUDA_VISIBLE_DEVICES=3 nohup python run_shapes.py --n_classes 10 --n_attr 9 --signal_strength 60 --evaluate_and_plot --models oracle --subsets 50,100,150,200,250 --n_bootstrap 10  &> logs/oracle_c10_a9_s60_b10_eval.txt &
+CUDA_VISIBLE_DEVICES=1 nohup python run_shapes.py --n_classes 10 --n_attr 9 --signal_strength 70 --evaluate_and_plot --models oracle --subsets 50,100,150,200,250 --n_bootstrap 10  &> logs/oracle_c10_a9_s70_b10_eval.txt &
+CUDA_VISIBLE_DEVICES=2 nohup python run_shapes.py --n_classes 10 --n_attr 9 --signal_strength 80 --evaluate_and_plot --models oracle --subsets 50,100,150,200,250 --n_bootstrap 10  &> logs/oracle_c10_a9_s80_b10_eval.txt &
+CUDA_VISIBLE_DEVICES=3 nohup python run_shapes.py --n_classes 10 --n_attr 9 --signal_strength 90 --evaluate_and_plot --models oracle --subsets 50,100,150,200,250 --n_bootstrap 10  &> logs/oracle_c10_a9_s90_b10_eval.txt &
 
 
 
@@ -300,9 +300,9 @@ CUDA_VISIBLE_DEVICES=3 nohup python run_shapes.py --n_classes 10 --n_attr 9 --si
 
 s98 a5 Oracle
 # Eval:
-CUDA_VISIBLE_DEVICES=1 nohup python run_shapes.py --n_classes 10 --n_attr 5 --signal_strength 98 --evaluate_and_plot --models oracle --subsets 50,100,150,200,250 --n_bootstrap 10 --bootstrap_checkpoints 1,3,5,10 &> logs/oracle_c10_a5_s98_b10_eval.txt &
-CUDA_VISIBLE_DEVICES=1 nohup python run_shapes.py --n_classes 15 --n_attr 5 --signal_strength 98 --evaluate_and_plot --models oracle --subsets 50,100,150,200,250 --n_bootstrap 10 --bootstrap_checkpoints 1,3,5,10 &> logs/oracle_c15_a5_s98_b10_eval.txt &
-CUDA_VISIBLE_DEVICES=1 nohup python run_shapes.py --n_classes 21 --n_attr 5 --signal_strength 98 --evaluate_and_plot --models oracle --subsets 50,100,150,200,250 --n_bootstrap 10 --bootstrap_checkpoints 1,3,5,10 &> logs/oracle_c21_a5_s98_b10_eval.txt &
+CUDA_VISIBLE_DEVICES=1 nohup python run_shapes.py --n_classes 10 --n_attr 5 --signal_strength 98 --evaluate_and_plot --models oracle --subsets 50,100,150,200,250 --n_bootstrap 10  &> logs/oracle_c10_a5_s98_b10_eval.txt &
+CUDA_VISIBLE_DEVICES=1 nohup python run_shapes.py --n_classes 15 --n_attr 5 --signal_strength 98 --evaluate_and_plot --models oracle --subsets 50,100,150,200,250 --n_bootstrap 10  &> logs/oracle_c15_a5_s98_b10_eval.txt &
+CUDA_VISIBLE_DEVICES=1 nohup python run_shapes.py --n_classes 21 --n_attr 5 --signal_strength 98 --evaluate_and_plot --models oracle --subsets 50,100,150,200,250 --n_bootstrap 10  &> logs/oracle_c21_a5_s98_b10_eval.txt &
 
 # Plot:
 CUDA_VISIBLE_DEVICES=2 nohup python run_shapes.py --n_classes 10 --n_attr 5 --signal_strength 98 --only_plot --models shapes --add_oracle --subsets 50,100,150,200,250 --n_bootstrap 10 &> logs/oracle_c10_a5_s98_b10_plot.txt &
@@ -315,9 +315,9 @@ CUDA_VISIBLE_DEVICES=2 nohup python run_shapes.py --n_classes 21 --n_attr 5 --si
 
 s98 a9 Oracle
 # Eval:
-CUDA_VISIBLE_DEVICES=1 nohup python run_shapes.py --n_classes 10 --n_attr 9 --signal_strength 98 --evaluate_and_plot --models oracle --subsets 50,100,150,200,250 --n_bootstrap 10 --bootstrap_checkpoints 1,3,5,10 &> logs/oracle_c10_a9_s98_b10_eval.txt &
-CUDA_VISIBLE_DEVICES=1 nohup python run_shapes.py --n_classes 15 --n_attr 9 --signal_strength 98 --evaluate_and_plot --models oracle --subsets 50,100,150,200,250 --n_bootstrap 10 --bootstrap_checkpoints 1,3,5,10 &> logs/oracle_c15_a9_s98_b10_eval.txt &
-CUDA_VISIBLE_DEVICES=1 nohup python run_shapes.py --n_classes 21 --n_attr 9 --signal_strength 98 --evaluate_and_plot --models oracle --subsets 50,100,150,200,250 --n_bootstrap 10 --bootstrap_checkpoints 1,3,5,10 &> logs/oracle_c21_a9_s98_b10_eval.txt &
+CUDA_VISIBLE_DEVICES=1 nohup python run_shapes.py --n_classes 10 --n_attr 9 --signal_strength 98 --evaluate_and_plot --models oracle --subsets 50,100,150,200,250 --n_bootstrap 10  &> logs/oracle_c10_a9_s98_b10_eval.txt &
+CUDA_VISIBLE_DEVICES=1 nohup python run_shapes.py --n_classes 15 --n_attr 9 --signal_strength 98 --evaluate_and_plot --models oracle --subsets 50,100,150,200,250 --n_bootstrap 10  &> logs/oracle_c15_a9_s98_b10_eval.txt &
+CUDA_VISIBLE_DEVICES=1 nohup python run_shapes.py --n_classes 21 --n_attr 9 --signal_strength 98 --evaluate_and_plot --models oracle --subsets 50,100,150,200,250 --n_bootstrap 10  &> logs/oracle_c21_a9_s98_b10_eval.txt &
 
 # Plot:
 CUDA_VISIBLE_DEVICES=2 nohup python run_shapes.py --n_classes 10 --n_attr 9 --signal_strength 98 --only_plot --models shapes --add_oracle --subsets 50,100,150,200,250 --n_bootstrap 10 &> logs/oracle_c10_a9_s98_b10_plot.txt &
@@ -330,9 +330,9 @@ CUDA_VISIBLE_DEVICES=2 nohup python run_shapes.py --n_classes 21 --n_attr 9 --si
 
 s100 a5 Oracle
 # Eval:
-CUDA_VISIBLE_DEVICES=2 nohup python run_shapes.py --n_classes 10 --n_attr 5 --signal_strength 100 --evaluate_and_plot --models oracle --subsets 50,100,150,200,250 --n_bootstrap 10 --bootstrap_checkpoints 1,3,5,10 &> logs/oracle_c10_a5_s100_b10_eval.txt &
-CUDA_VISIBLE_DEVICES=2 nohup python run_shapes.py --n_classes 15 --n_attr 5 --signal_strength 100 --evaluate_and_plot --models oracle --subsets 50,100,150,200,250 --n_bootstrap 10 --bootstrap_checkpoints 1,3,5,10 &> logs/oracle_c15_a5_s100_b10_eval.txt &
-CUDA_VISIBLE_DEVICES=2 nohup python run_shapes.py --n_classes 21 --n_attr 5 --signal_strength 100 --evaluate_and_plot --models oracle --subsets 50,100,150,200,250 --n_bootstrap 10 --bootstrap_checkpoints 1,3,5,10 &> logs/oracle_c21_a5_s100_b10_eval.txt &
+CUDA_VISIBLE_DEVICES=2 nohup python run_shapes.py --n_classes 10 --n_attr 5 --signal_strength 100 --evaluate_and_plot --models oracle --subsets 50,100,150,200,250 --n_bootstrap 10  &> logs/oracle_c10_a5_s100_b10_eval.txt &
+CUDA_VISIBLE_DEVICES=2 nohup python run_shapes.py --n_classes 15 --n_attr 5 --signal_strength 100 --evaluate_and_plot --models oracle --subsets 50,100,150,200,250 --n_bootstrap 10  &> logs/oracle_c15_a5_s100_b10_eval.txt &
+CUDA_VISIBLE_DEVICES=2 nohup python run_shapes.py --n_classes 21 --n_attr 5 --signal_strength 100 --evaluate_and_plot --models oracle --subsets 50,100,150,200,250 --n_bootstrap 10  &> logs/oracle_c21_a5_s100_b10_eval.txt &
 
 # Plot:
 CUDA_VISIBLE_DEVICES=2 nohup python run_shapes.py --n_classes 10 --n_attr 5 --signal_strength 100 --only_plot --models shapes --add_oracle --subsets 50,100,150,200,250 --n_bootstrap 10 &> logs/oracle_c10_a5_s100_b10_plot.txt &
@@ -345,9 +345,9 @@ CUDA_VISIBLE_DEVICES=2 nohup python run_shapes.py --n_classes 21 --n_attr 5 --si
 
 s100 a9 Oracle
 # Eval:
-CUDA_VISIBLE_DEVICES=3 nohup python run_shapes.py --n_classes 10 --n_attr 9 --signal_strength 100 --evaluate_and_plot --models oracle --subsets 50,100,150,200,250 --n_bootstrap 10 --bootstrap_checkpoints 1,3,5,10 &> logs/oracle_c10_a9_s100_b10_eval.txt &
-CUDA_VISIBLE_DEVICES=3 nohup python run_shapes.py --n_classes 15 --n_attr 9 --signal_strength 100 --evaluate_and_plot --models oracle --subsets 50,100,150,200,250 --n_bootstrap 10 --bootstrap_checkpoints 1,3,5,10 &> logs/oracle_c15_a9_s100_b10_eval.txt &
-CUDA_VISIBLE_DEVICES=3 nohup python run_shapes.py --n_classes 21 --n_attr 9 --signal_strength 100 --evaluate_and_plot --models oracle --subsets 50,100,150,200,250 --n_bootstrap 10 --bootstrap_checkpoints 1,3,5,10 &> logs/oracle_c21_a9_s100_b10_eval.txt &
+CUDA_VISIBLE_DEVICES=3 nohup python run_shapes.py --n_classes 10 --n_attr 9 --signal_strength 100 --evaluate_and_plot --models oracle --subsets 50,100,150,200,250 --n_bootstrap 10  &> logs/oracle_c10_a9_s100_b10_eval.txt &
+CUDA_VISIBLE_DEVICES=3 nohup python run_shapes.py --n_classes 15 --n_attr 9 --signal_strength 100 --evaluate_and_plot --models oracle --subsets 50,100,150,200,250 --n_bootstrap 10  &> logs/oracle_c15_a9_s100_b10_eval.txt &
+CUDA_VISIBLE_DEVICES=3 nohup python run_shapes.py --n_classes 21 --n_attr 9 --signal_strength 100 --evaluate_and_plot --models oracle --subsets 50,100,150,200,250 --n_bootstrap 10  &> logs/oracle_c21_a9_s100_b10_eval.txt &
 
 # Plot:
 CUDA_VISIBLE_DEVICES=2 nohup python run_shapes.py --n_classes 10 --n_attr 9 --signal_strength 100 --only_plot --models shapes --add_oracle --subsets 50,100,150,200,250 --n_bootstrap 10 &> logs/oracle_c10_a9_s100_b10_plot.txt &
@@ -362,19 +362,19 @@ CUDA_VISIBLE_DEVICES=2 nohup python run_shapes.py --n_classes 21 --n_attr 9 --si
 CUB:
 
 Evaluation sub 5,10,15,20,25,30 n_bootstrap 1
-CUDA_VISIBLE_DEVICES=4 nohup python run_cub.py --evaluate_and_plot --subsets 5,10,15,20,25,30 --n_bootstrap 1 --bootstrap_checkpoints 1 --num_workers 4 --persistent_workers --pin_memory --non_blocking &> logs/cub_b1_eval.txt &
+CUDA_VISIBLE_DEVICES=4 nohup python run_cub.py --evaluate_and_plot --subsets 5,10,15,20,25,30 --n_bootstrap 1  --num_workers 4 --persistent_workers --pin_memory --non_blocking &> logs/cub_b1_eval.txt &
 
 Evaluation sub 5,10,15,20,25,30 n_bootstrap 2
-CUDA_VISIBLE_DEVICES=4 nohup python run_cub.py --evaluate_and_plot --subsets 5,10,15,20,25,30 --n_bootstrap 2 --bootstrap_checkpoints 1,2 --num_workers 4 --persistent_workers --pin_memory --non_blocking &> logs/cub_b2_eval.txt &
+CUDA_VISIBLE_DEVICES=4 nohup python run_cub.py --evaluate_and_plot --subsets 5,10,15,20,25,30 --n_bootstrap 2  --num_workers 4 --persistent_workers --pin_memory --non_blocking &> logs/cub_b2_eval.txt &
 
 Evaluation sub 5,10,15,20,25,30 n_bootstrap 3
-CUDA_VISIBLE_DEVICES=1 nohup python run_cub.py --evaluate_and_plot --subsets 5,10,15,20,25,30 --n_bootstrap 3 --bootstrap_checkpoints 1,2,3 --num_workers 2 --persistent_workers --pin_memory --non_blocking &> logs/cub_b3_eval.txt &
+CUDA_VISIBLE_DEVICES=1 nohup python run_cub.py --evaluate_and_plot --subsets 5,10,15,20,25,30 --n_bootstrap 3  --num_workers 2 --persistent_workers --pin_memory --non_blocking &> logs/cub_b3_eval.txt &
 
 Evaluation sub 5,10,15,20,25,30 n_bootstrap 5
-CUDA_VISIBLE_DEVICES=5 nohup python run_cub.py --evaluate_and_plot --subsets 5,10,15,20,25,30 --n_bootstrap 5 --bootstrap_checkpoints 1,3,5 --num_workers 2 --persistent_workers --pin_memory --non_blocking &> logs/cub_b5_eval.txt &
+CUDA_VISIBLE_DEVICES=5 nohup python run_cub.py --evaluate_and_plot --subsets 5,10,15,20,25,30 --n_bootstrap 5  --num_workers 2 --persistent_workers --pin_memory --non_blocking &> logs/cub_b5_eval.txt &
 
 Hard Bottleneck Evaluation sub 5,10,15,20,25,30 n_bootstrap 5
-CUDA_VISIBLE_DEVICES=6 nohup python run_cub.py --evaluate_and_plot --subsets 5,10,15,20,25,30 --n_bootstrap 5 --bootstrap_checkpoints 1,3,5 --num_workers 2 --persistent_workers --pin_memory --non_blocking --hard_bottleneck &> logs/hard_cub_b5_eval.txt &
+CUDA_VISIBLE_DEVICES=6 nohup python run_cub.py --evaluate_and_plot --subsets 5,10,15,20,25,30 --n_bootstrap 5  --num_workers 2 --persistent_workers --pin_memory --non_blocking --hard_bottleneck &> logs/hard_cub_b5_eval.txt &
 
 
 Hyperparameter search 

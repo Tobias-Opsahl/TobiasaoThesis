@@ -20,7 +20,6 @@ FAST_HYPERPARAMETERS_FILENAME_SHAPES = "fast.yaml"
 DEFAULT_HYPERPARAMETERS_FILENAME_SHAPES_HARD = "default_hard.yaml"
 FAST_HYPERPARAMETERS_FILENAME_SHAPES_HARD = "fast_hard.yaml"
 
-BOOTSTRAP_CHECKPOINTS = [1, 3, 5, 10]
 USE_XAVIER_INIT_IN_BOTTLENECK = False
 
 # Folder paths. Should not need to be edited, unless you for some reason want to save results somewhere else.
