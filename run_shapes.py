@@ -17,6 +17,8 @@ def parse_arguments():
     parser.add_argument("--no_grid_search", action="store_true", help="Do not run grid-search, but TPEsampler.")
     parser.add_argument("--evaluate_and_plot", action="store_true", help="Evaluate models and plot.")
     parser.add_argument("--only_plot", action="store_true", help="Plot models after evaluation.")
+    parser.add_argument("--plot_train", action="store_true", help="Include training histories and mpo in plots.")
+    parser.add_argument("--plot_all_variations", action="store_true", help="Plot variations of the Shapes dataset.")
     parser.add_argument("--run_adversarial_attacks", action="store_true", help="Run adversarial attacks")
     models_help = "Models to run. Chose `shapes` for normal models, `oracle` for oracle and `all` for both. "
     parser.add_argument("--models", type=str, choices=["shapes", "oracle", "all"], default="shapes", help=models_help)
@@ -101,10 +103,20 @@ if __name__ == "__main__":
  
     if args.only_plot:
         logger.info(f"\nPlotting for models {model_strings}. \n")
-        only_plot(
-            n_classes=args.n_classes, n_attr=args.n_attr, signal_strength=args.signal_strength, subsets=args.subsets,
-            model_strings=model_strings, n_bootstrap=args.n_bootstrap, hard_bottleneck=args.hard_bottleneck,
-            plot_train=True)
+
+        if args.plot_all_variations:
+            for hard_bottleneck in [False, True]:
+                for n_attr in [5, 9]:
+                    for signal_strength in [98, 100]:
+                        only_plot(
+                            n_classes=args.n_classes, n_attr=n_attr, signal_strength=signal_strength, 
+                            subsets=args.subsets, model_strings=model_strings, n_bootstrap=args.n_bootstrap,
+                            hard_bottleneck=hard_bottleneck, plot_train=args.plot_train)
+        else:
+            only_plot(
+                n_classes=args.n_classes, n_attr=args.n_attr, signal_strength=args.signal_strength,
+                subsets=args.subsets, model_strings=model_strings, n_bootstrap=args.n_bootstrap,
+                hard_bottleneck=args.hard_bottleneck, plot_train=args.plot_train)
 
     if args.run_adversarial_attacks or args.adversarial_grid_search:
         if args.target == -1:

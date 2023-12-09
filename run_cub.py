@@ -17,6 +17,7 @@ def parse_arguments():
     parser.add_argument("--no_grid_search", action="store_true", help="Do not run grid-search, but TPEsampler.")
     parser.add_argument("--evaluate_and_plot", action="store_true", help="Evaluate models and plot.")
     parser.add_argument("--only_plot", action="store_true", help="Plot models after evaluation.")
+    parser.add_argument("--plot_train", action="store_true", help="Include training histories and mpo in plots.")
     parser.add_argument("--run_adversarial_attacks", action="store_true", help="Run adversarial attacks")
     models_help = "Models to run. Chose `cub` for normal models, `oracle` for oracle and `all` for both, `scm` "
     models_help += "for only the scm model. "
@@ -104,7 +105,7 @@ if __name__ == "__main__":
         logger.info(f"\nPlotting for models {model_strings}. \n")
         only_plot(
             subsets=args.subsets, model_strings=model_strings, n_bootstrap=args.n_bootstrap,
-            hard_bottleneck=args.hard_bottleneck)
+            hard_bottleneck=args.hard_bottleneck, plot_train=args.plot_train)
 
     if args.run_adversarial_attacks or args.adversarial_grid_search:
         if args.target == -1:

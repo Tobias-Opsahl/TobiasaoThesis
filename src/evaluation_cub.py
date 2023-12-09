@@ -215,24 +215,24 @@ def only_plot(
             concept_model_strings.append(model_string)
 
     if plot_train:
-        for n_subset in subsets:
-            histories = load_history_cub(
-                n_bootstrap, n_subset=n_subset, hard_bottleneck=hard_bottleneck)
+        n_subset = subsets[-1]
+        histories = load_history_cub(
+            n_bootstrap, n_subset=n_subset, hard_bottleneck=hard_bottleneck)
 
+        plot_training_histories_cub(
+            n_bootstrap, n_subset, histories=histories,
+            model_strings=model_strings, hard_bottleneck=hard_bottleneck, attributes=False)
+
+        if concept_model_strings != {}:
+            # Exclude cnn model when plotting attributes / concept training
             plot_training_histories_cub(
                 n_bootstrap, n_subset, histories=histories,
-                model_strings=model_strings, hard_bottleneck=hard_bottleneck, attributes=False)
+                model_strings=concept_model_strings, hard_bottleneck=hard_bottleneck, attributes=True)
+            plot_mpo_scores_cub(
+                n_bootstrap, n_subset, histories=histories, model_strings=concept_model_strings,
+                hard_bottleneck=hard_bottleneck)
 
-            if concept_model_strings != {}:
-                # Exclude cnn model when plotting attributes / concept training
-                plot_training_histories_cub(
-                    n_bootstrap, n_subset, histories=histories,
-                    model_strings=concept_model_strings, hard_bottleneck=hard_bottleneck, attributes=True)
-                plot_mpo_scores_cub(
-                    n_bootstrap, n_subset, histories=histories, model_strings=concept_model_strings,
-                    hard_bottleneck=hard_bottleneck)
-
-    if plot_test:
+    if plot_test and len(subsets) > 1:
         plot_test_accuracies_cub(
             subsets=subsets, n_bootstrap=n_bootstrap,
             hard_bottleneck=hard_bottleneck, model_strings=model_strings)

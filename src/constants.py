@@ -27,7 +27,7 @@ USE_XAVIER_INIT_IN_BOTTLENECK = False
 # also make all the other sub-folder absolute
 RESULTS_FOLDER = "results/"
 HYPERPARAMETERS_FOLDER = "hyperparameters/"
-HISTORY_FOLDER = "history/"
+HISTORY_FOLDER = "history/remote_final1_history/"
 SAVED_MODELS_FOLDER = "saved_models/"
 PLOTS_FOLDER = "plots/"
 ORACLE_FOLDER = "oracles/"
@@ -98,4 +98,13 @@ MAP_MODEL_TO_LINESTYLES_SHAPES = {
     "scm": ":",
     "lr_oracle": "-",
     "nn_oracle": ":"
+}
+
+MAP_NAMES_TO_DOCUMENT_NAMES = {
+    "cnn": "Standard Model",
+    "cbm": "Vanilla CBM",
+    "cbm_res": "CBM-Res",
+    "cbm_skip": "CBM-Skip",
+    "scm": "SCM",
+    "lr_oracle": "Oracle"
 }
