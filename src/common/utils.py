@@ -387,3 +387,19 @@ def load_models_cub(model_strings=None, n_subset=None, hyperparameters=None, har
         models.append(model)
 
     return models
+
+
+def count_parameters(model):
+    """
+    Returns parameters (trainable and not) of a model.
+
+    Args:
+        model (pytorch model): The model to count parameters for.
+
+    Returns:
+        (int, int, int): Total parameters, trainable parameters, non-trainable parameters.
+    """
+    total_params = sum(p.numel() for p in model.parameters())
+    trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    frozen_params = total_params - trainable_params
+    return total_params, trainable_params, frozen_params

@@ -116,22 +116,3 @@ class ResNet18SCM(nn.Module):
         x = self.final_classifier(x)  # Out: N x n_classes
 
         return x, concepts
-
-
-def count_parameters(model):
-    total_params = sum(p.numel() for p in model.parameters())
-    trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    frozen_params = total_params - trainable_params
-    return total_params, trainable_params, frozen_params
-
-
-if __name__ == "__main__":
-    custom_model = ResNet18SCM()
-
-    # Example input
-    input_tensor = torch.randn(1, 3, 224, 224)  # Batch size 1, 3 channels, 224x224 image
-
-    # Forward pass
-    output = custom_model(input_tensor)
-    from IPython import embed
-    embed()
