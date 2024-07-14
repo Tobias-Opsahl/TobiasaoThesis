@@ -290,7 +290,7 @@ def make_subset_cub(n_images_class, seed=57):
         class_mapping_train[data_dict["class_label"]].append(data_dict)
     for data_dict in val_list:
         class_mapping_val[data_dict["class_label"]].append(data_dict)
-    
+
     new_train_list = []
     new_val_list = []
     for i in range(N_CLASSES_CUB):  # Take the first `n_image_class * split` from each class.
@@ -314,7 +314,7 @@ def make_small_test_set(n_size=200):
     small_test = full_test[:n_size]
     write_test_data_list_cub(small_test, "test_small.pkl")
 
-    
+
 def make_correct_paths(base_path="data/"):
     """
     Reads the preprocessed CUB dictionaries and overwrites the base path.

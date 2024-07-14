@@ -472,7 +472,7 @@ def make_single_shape(shape, concept_labels, use_position_concepts=True):
     """
     shape = shape.strip().lower()
     if shape not in ["triangle", "pentagon", "hexagon", "rectangle", "ellipse", "circle", "wedge"]:
-        message = f"Argument `shape` must be in [\"triangle\", \"pentagon\", \"hexagon\", \"rectangle\", "
+        message = "Argument `shape` must be in [\"triangle\", \"pentagon\", \"hexagon\", \"rectangle\", "
         message += f"\"ellipse\", \"circle\", \"wedge\"]. Got {shape}"
         raise ValueError(message)
     n_vertices = 0
@@ -972,6 +972,7 @@ def make_shapes_1k_c10_a9_s90():
     generate_shapes_dataset(class_names=class_names, shape_combinations=shape_combinations, n_images_class=1000,
                             split_data=True, base_dir=base_dir, use_position_concepts=False,
                             use_background_concepts=True, signal_strength=0.9)
+
 
 if __name__ == "__main__":
     all_shapes = ["circle", "rectangle", "triangle", "pentagon", "hexagon", "ellipse", "wedge"]

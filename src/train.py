@@ -216,7 +216,7 @@ def train_cbm(model, criterion, attr_criterion, optimizer, train_loader, val_loa
     if attr_weight_decay is None:
         attr_weight_decay = 1  # This results in no weight-decay
     if isinstance(attr_weight, list) and attr_weight_decay == 1:
-        message = f"When `attr_weight_decay` is not 1, `attr_weight` needs to be a float, not list. "
+        message = "When `attr_weight_decay` is not 1, `attr_weight` needs to be a float, not list. "
         message += f"`attr_weight_decay` was {attr_weight_decay} and `att_weight` was {attr_weight}. "
         raise ValueError(message)
     if n_early_stop is None:

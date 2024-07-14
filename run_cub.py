@@ -10,9 +10,10 @@ from src.hyperparameter_optimization_cub import run_hyperparameter_optimization_
 from src.constants import MODEL_STRINGS_CUB, MODEL_STRINGS_ORACLE, MODEL_STRINGS_ALL_CUB, SCM_ONLY
 from src.adversarial_attacks import load_model_and_run_attacks_cub, adversarial_grid_search
 
+
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Script for parsing command-line arguments.")
-    
+
     parser.add_argument("--run_hyperparameters", action="store_true", help="Run hyperparameter search.")
     parser.add_argument("--no_grid_search", action="store_true", help="Do not run grid-search, but TPEsampler.")
     parser.add_argument("--evaluate_and_plot", action="store_true", help="Evaluate models and plot.")
@@ -25,13 +26,13 @@ def parse_arguments():
 
     parser.add_argument("--batch_size", type=int, default=16, help="Batch size for training.")
     parser.add_argument("--n_bootstrap", type=int, default=1, help="number of bootstrap iterations to run")
-    help = "Sizes of subsets to run on. Can be single int or list of int, for example `5` or `5,10,15`. " 
+    help = "Sizes of subsets to run on. Can be single int or list of int, for example `5` or `5,10,15`. "
     help += " Use `30` for full dataset."
     parser.add_argument("--subsets", type=parse_int_list, default=[1], help=help)
     parser.add_argument("--n_trials", type=int, default=100, help="Number of trials for hyperparameter search.")
     parser.add_argument("--fast", action="store_true", help="Use fast testing hyperparameters.")
     parser.add_argument("--hard_bottleneck", action="store_true", help="If True, will use hard bottleneck")
-    
+
     # Adversarial attacks
     parser.add_argument("--adversarial_grid_search", action="store_true", help="Grid search for adversarial attacks.")
     parser.add_argument("--train_model", action="store_true", help="Will train model for adversarial attacks")

@@ -272,8 +272,8 @@ def run_models_on_subsets_and_plot(
 
 
 def only_plot(
-    n_classes, n_attr, signal_strength, subsets, model_strings=None, n_bootstrap=1, hard_bottleneck=None,
-    plot_train=True, plot_test=True):
+        n_classes, n_attr, signal_strength, subsets, model_strings=None, n_bootstrap=1, hard_bottleneck=None,
+        plot_train=True, plot_test=True):
     """
     Assume histories are made, and only do the plotting. This is useful for changing the plots slightly after a run.
 

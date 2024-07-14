@@ -105,57 +105,6 @@ def plot_images_random(image_paths, preds=None, labels=None, show=True, n_random
         plt.show()
 
 
-def plot_images_mislabeled(image_paths, preds, labels, show=True, n_random=10, n_cols=5, title=None):
-    """
-    Plot random mislabeled images from the data provided.
-
-    Arguments:
-        image_paths (list of str): List of string paths to images.
-        preds (np.array): [n] array of predicted labels corresponding to the images.
-        labels (np.array): [n] array of labels corresponding to the images.
-        show (bool): If True, will call plt.show().
-        n_random (int): The amount of images that will be plotted.
-        n_cols (int): The amount of images in each columns.
-        title (str): Title for the plot.
-    """
-    paths = np.array(paths)  # For indexing
-    indices = (preds != labels)
-    wrong_paths = image_paths[indices]  # Index wrongly labeled images
-    preds = preds[indices]
-    labels = labels[indices]
-    # Use random plotting function
-    plot_images_random(wrong_paths, preds, labels,
-                       show, n_random, n_cols, title)
-
-
-def plot_images_worst(image_paths, logits, labels,
-                      show=True, n_images=10, n_cols=5, title=None):
-    """
-    Plot (probably mislabeled) images that corresponds to the worst predictions. This means
-    the value for the true class and the predicted logit value is as different as possible.
-
-    Arguments:
-        image_paths (list of str): List of string paths to images.
-        logits (np.array): [n] array of predicted logits values
-            (either softmax or other activation function outputs).
-        labels (np.array): [n] array of labels corresponding to the images.
-        show (bool): If True, will call plt.show().
-        n_images (int): The amount of images that will be plotted.
-        n_cols (int): The amount of images in each columns
-        title (str): Title for the plot.
-    """
-    paths = np.array(paths)  # For indexing
-    predicted_logits = logits[np.arange(len(labels)), labels]
-    indices = predicted_logits.argsort()
-    wrong_paths = image_paths[indices[:n_images]]
-    logits = logits[indices[:n_images]]
-    labels = labels[indices[:n_images]]
-    preds = logits.argmax(axis=1)
-    plot_images_random(wrong_paths, preds, labels,
-                       show, n_images, n_cols, title)
-
-
-
 def plot_mpo_scores(histories, model_strings):
     """
     Plots the MPO score Misprediction Prediction Overlap metric from https://arxiv.org/pdf/2010.13233.pdf.
@@ -292,7 +241,7 @@ def plot_test_accuracies(histories_dict, subsets, model_strings, n_bootstrap):
         std_accuracies = np.std(test_accuracies_array, axis=0)  # For confidence intervals
         z_score = 1.96  # 95% confidence intervals
         confidence_interval = z_score * std_accuracies / np.sqrt(n_bootstrap)
-        
+
         plt.plot(x_values, mean_accuracies, label=plot_model_string, c=color, linestyle=linestyle)  # Lines
         plt.scatter(x_values, mean_accuracies, marker="s", facecolor=color, edgecolor=color)  # Squares at each point
         plt.fill_between(x_values, (mean_accuracies - confidence_interval),
@@ -411,7 +360,7 @@ def plot_mpo_scores_cub(n_bootstrap, n_subset, histories=None, model_strings=Non
         hard_bottleneck (bool): If True, will load histories with hard-bottleneck, and save with "_hard" in name.
         attributes (bool, optional): If True, will plot the attribute stats. Must be a concept-model.
             Defaults to False.
-        title (str, optional): Title for the plot. Defaults to None.    
+        title (str, optional): Title for the plot. Defaults to None.
     """
     if model_strings is None:
         model_strings = MODEL_STRINGS_CUB
@@ -438,7 +387,7 @@ def plot_training_histories_cub(n_bootstrap, n_subset, histories=None, model_str
         hard_bottleneck (bool): If True, will load histories with hard-bottleneck, and save with "_hard" in name.
         attributes (bool, optional): If True, will plot the attribute stats. Must be a concept-model.
             Defaults to False.
-        title (str, optional): Title for the plot. Defaults to None.    
+        title (str, optional): Title for the plot. Defaults to None.
     """
     if model_strings is None:
         model_strings = MODEL_STRINGS_CUB

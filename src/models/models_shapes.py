@@ -118,7 +118,7 @@ class ShapesCBM(ShapesBaseModel):
         if isinstance(attribute_activation_function, str):
             attribute_activation_function = attribute_activation_function.strip().lower()
         if hard and attribute_activation_function != "sigmoid":
-            message = f"Attribute actiation function must be `sigmoid` when `hard` is True. "
+            message = "Attribute actiation function must be `sigmoid` when `hard` is True. "
             message += f"Was {attribute_activation_function}. "
             raise ValueError(message)
         if attribute_activation_function == "sigmoid":
@@ -198,7 +198,7 @@ class ShapesCBMWithResidual(ShapesBaseModel):
         if isinstance(attribute_activation_function, str):
             attribute_activation_function = attribute_activation_function.strip().lower()
         if hard and attribute_activation_function != "sigmoid":
-            message = f"Attribute actiation function must be `sigmoid` when `hard` is True. "
+            message = "Attribute actiation function must be `sigmoid` when `hard` is True. "
             message += f"Was {attribute_activation_function}. "
             raise ValueError(message)
         if attribute_activation_function == "sigmoid":
@@ -280,7 +280,7 @@ class ShapesCBMWithSkip(ShapesBaseModel):
         if isinstance(attribute_activation_function, str):
             attribute_activation_function = attribute_activation_function.strip().lower()
         if hard and attribute_activation_function != "sigmoid":
-            message = f"Attribute actiation function must be `sigmoid` when `hard` is True. "
+            message = "Attribute actiation function must be `sigmoid` when `hard` is True. "
             message += f"Was {attribute_activation_function}. "
             raise ValueError(message)
         if attribute_activation_function == "sigmoid":
@@ -359,7 +359,7 @@ class ShapesSCM(nn.Module):
         if isinstance(attribute_activation_function, str):
             attribute_activation_function = attribute_activation_function.strip().lower()
         if hard and attribute_activation_function != "sigmoid":
-            message = f"Attribute actiation function must be `sigmoid` when `hard` is True. "
+            message = "Attribute actiation function must be `sigmoid` when `hard` is True. "
             message += f"Was {attribute_activation_function}. "
             raise ValueError(message)
         if attribute_activation_function == "sigmoid":

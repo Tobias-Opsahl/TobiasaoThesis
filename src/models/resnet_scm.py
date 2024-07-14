@@ -1,7 +1,6 @@
 import torch
 import torchvision
 import torch.nn as nn
-import torchvision.models as models
 import torch.nn.functional as F
 
 
@@ -17,7 +16,7 @@ class ResNet18SCM(nn.Module):
         if isinstance(attribute_activation_function, str):
             attribute_activation_function = attribute_activation_function.strip().lower()
         if hard and attribute_activation_function != "sigmoid":
-            message = f"Attribute actiation function must be `sigmoid` when `hard` is True. "
+            message = "Attribute actiation function must be `sigmoid` when `hard` is True. "
             message += f"Was {attribute_activation_function}. "
             raise ValueError(message)
         if attribute_activation_function == "sigmoid":
@@ -65,7 +64,6 @@ class ResNet18SCM(nn.Module):
         x = self.layers[2](x)  # ReLU
         x = self.layers[3](x)  # MaxPool
         x = self.layers[4](x)  # BasicBlock
-        
 
         x = self.layers[5](x)  # BasicBlock
 

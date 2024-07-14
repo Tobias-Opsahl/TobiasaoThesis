@@ -10,6 +10,7 @@ from src.evaluation import run_models_on_subsets_and_plot, only_plot
 from src.constants import MODEL_STRINGS_SHAPES, MODEL_STRINGS_ORACLE, MODEL_STRINGS_ALL_SHAPES
 from src.adversarial_attacks import load_model_and_run_attacks_shapes, adversarial_grid_search
 
+
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Script for parsing command-line arguments.")
 
@@ -33,7 +34,7 @@ def parse_arguments():
     parser.add_argument("--n_trials", type=int, default=100, help="Number of trials for hyperparameter search.")
     parser.add_argument("--fast", action="store_true", help="Use fast testing hyperparameters.")
     parser.add_argument("--hard_bottleneck", action="store_true", help="If True, will use hard bottleneck")
-    
+
     # Adversarial attacks
     parser.add_argument("--adversarial_grid_search", action="store_true", help="Grid search for adversarial attacks.")
     parser.add_argument("--train_model", action="store_true", help="Will train model for adversarial attacks")
@@ -100,7 +101,7 @@ if __name__ == "__main__":
             fast=args.fast, batch_size=args.batch_size, hard_bottleneck=args.hard_bottleneck,
             non_blocking=args.non_blocking, num_workers=args.num_workers, pin_memory=args.pin_memory,
             persistent_workers=args.persistent_workers)
- 
+
     if args.only_plot:
         logger.info(f"\nPlotting for models {model_strings}. \n")
 
@@ -109,7 +110,7 @@ if __name__ == "__main__":
                 for n_attr in [5, 9]:
                     for signal_strength in [98, 100]:
                         only_plot(
-                            n_classes=args.n_classes, n_attr=n_attr, signal_strength=signal_strength, 
+                            n_classes=args.n_classes, n_attr=n_attr, signal_strength=signal_strength,
                             subsets=args.subsets, model_strings=model_strings, n_bootstrap=args.n_bootstrap,
                             hard_bottleneck=hard_bottleneck, plot_train=args.plot_train)
         else:
@@ -141,4 +142,3 @@ if __name__ == "__main__":
                 max_images=args.max_images, random_start=args.random_start, batch_size=args.batch_size, device=device,
                 num_workers=args.num_workers, pin_memory=args.pin_memory, persistent_workers=args.persistent_workers,
                 non_blocking=args.non_blocking)
-        

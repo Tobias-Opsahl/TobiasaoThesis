@@ -29,11 +29,13 @@ def get_base_model_cub(n_output=256):
         param.requires_grad = True
     return resnet18
 
+
 class CubCNN(nn.Module):
     """
     A simple feed forward CNN. Uses the base model, and then two more linear layers.
     Does not perform a softmax, it should be infered in the loss-function.
     """
+
     def __init__(self, n_classes=200, n_linear_output=256, n_hidden=256, dropout_probability=0.2):
         """
         Args:
@@ -63,6 +65,7 @@ class CubCNN(nn.Module):
 
         return x
 
+
 class CubCBM(nn.Module):
     """
     A Join Concept Bottleneck Model, as from the Concept Bottleneck Models paper. https://arxiv.org/abs/2007.04612
@@ -75,6 +78,7 @@ class CubCBM(nn.Module):
     No softmax or sigmoid are done to the output of forward, (altough a sigmoid or relu may be applied to the
     bottleneck-layer before it is passed to the next layers) so be sure to infer this in the loss function.
     """
+
     def __init__(self, n_classes=200, n_attr=112, n_linear_output=256, attribute_activation_function="sigmoid",
                  hard=False, two_layers=True, dropout_probability=0.2):
         """
@@ -104,7 +108,7 @@ class CubCBM(nn.Module):
         if isinstance(attribute_activation_function, str):
             attribute_activation_function = attribute_activation_function.strip().lower()
         if hard and attribute_activation_function != "sigmoid":
-            message = f"Attribute activation function must be `sigmoid` when `hard` is True. "
+            message = "Attribute activation function must be `sigmoid` when `hard` is True. "
             message += f"Was {attribute_activation_function}. "
             raise ValueError(message)
         if attribute_activation_function == "sigmoid":
@@ -127,7 +131,7 @@ class CubCBM(nn.Module):
                 nn.init.zeros_(self.attribute_classifier.bias)
 
     def forward(self, x):
-        x = self.base_model.forward(x) # Base model, Out: N x n_linear_output
+        x = self.base_model.forward(x)  # Base model, Out: N x n_linear_output
         x = F.relu(x)
         x = self.dropout(x)
         concepts = self.attribute_classifier(x)  # Out: N x n_attr
@@ -159,6 +163,7 @@ class CubCBMWithResidual(nn.Module):
     No softmax or sigmoid are done to the output of forward, (altough a sigmoid or relu may be applied to the
     bottleneck-layer before it is passed to the next layers) so be sure to infer this in the loss function.
     """
+
     def __init__(self, n_classes=200, n_attr=112, n_linear_output=256, attribute_activation_function="sigmoid",
                  hard=False, dropout_probability=0.2):
         """
@@ -186,7 +191,7 @@ class CubCBMWithResidual(nn.Module):
         if isinstance(attribute_activation_function, str):
             attribute_activation_function = attribute_activation_function.strip().lower()
         if hard and attribute_activation_function != "sigmoid":
-            message = f"Attribute actiation function must be `sigmoid` when `hard` is True. "
+            message = "Attribute actiation function must be `sigmoid` when `hard` is True. "
             message += f"Was {attribute_activation_function}. "
             raise ValueError(message)
         if attribute_activation_function == "sigmoid":
@@ -240,6 +245,7 @@ class CubCBMWithSkip(nn.Module):
     No softmax or sigmoid are done to the output of forward, (altough a sigmoid or relu may be applied to the
     bottleneck-layer before it is passed to the next layers) so be sure to infer this in the loss function.
     """
+
     def __init__(self, n_classes=200, n_attr=112, n_linear_output=256, attribute_activation_function="sigmoid",
                  n_hidden=128, hard=False, dropout_probability=0.2):
         """
@@ -269,7 +275,7 @@ class CubCBMWithSkip(nn.Module):
         if isinstance(attribute_activation_function, str):
             attribute_activation_function = attribute_activation_function.strip().lower()
         if hard and attribute_activation_function != "sigmoid":
-            message = f"Attribute actiation function must be `sigmoid` when `hard` is True. "
+            message = "Attribute actiation function must be `sigmoid` when `hard` is True. "
             message += f"Was {attribute_activation_function}. "
             raise ValueError(message)
         if attribute_activation_function == "sigmoid":
@@ -310,11 +316,13 @@ class CubCBMWithSkip(nn.Module):
 
         return x, concepts
 
+
 class CubLogisticOracle(nn.Module):
     """
     Logistic regression from attributes to classes.
     This model is designed to recieve concepts labels at testing time, and is therefore considered an oracle.
     """
+
     def __init__(self, n_classes, n_attr):
         """
         Args:
@@ -341,6 +349,7 @@ class CubNNOracle(nn.Module):
     The hidden layer has as many nodes as the input layer, and uses ReLU activation function.
     This model is designed to recieve concepts labels at testing time, and is therefore considered an oracle.
     """
+
     def __init__(self, n_classes, n_attr):
         """
         Args:

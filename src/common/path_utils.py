@@ -173,7 +173,7 @@ def get_shapes_dataset_path(n_classes, n_attr, signal_strength, check_already_ex
     if check_already_exists:
         if not dataset_path.exists():
             message = f"Shapes dataset for {n_classes=}, {n_attr=}, {signal_strength=} does not exist. "
-            message += f"Check if there were a typo, or create the dataset with `src/datasets/make_shapes_datasets.py. "
+            message += "Check if there were a typo, or create the dataset with `src/datasets/make_shapes_datasets.py. "
             raise ValueError(message)
     return dataset_path
 
@@ -201,9 +201,9 @@ def load_data_list_shapes(n_classes, n_attr, signal_strength, n_subset=None, mod
         data_list_path = dataset_path / "tables/" / filename
     try:
         data_list = pickle.load(open(data_list_path, "rb"))
-    except Exception as e:
+    except Exception:
         message = f"Data-list {data_list_path} not found. Try creating datalist with make_subset_shapes() from "
-        message += f"src.datasets.datasets_shapes.py, or create datasets with src.datasets.make_shapes_datasets.py. "
+        message += "src.datasets.datasets_shapes.py, or create datasets with src.datasets.make_shapes_datasets.py. "
         raise FileNotFoundError(message)
     return data_list
 
@@ -320,7 +320,7 @@ def load_model_shapes(n_classes, n_attr, signal_strength, n_subset, model_type, 
     folder_name = get_full_shapes_folder_path(n_classes, n_attr, signal_strength, relative_folder=SAVED_MODELS_FOLDER)
     bottleneck = "" if not hard_bottleneck else "_hard"
     if adversarial:
-        adversarial_string = f"_adversarial"
+        adversarial_string = "_adversarial"
     else:
         adversarial_string = ""
     filename = Path(f"{model_type}_sub{n_subset}_{metric}{bottleneck}{adversarial_string}.pth")
@@ -355,7 +355,7 @@ def save_model_shapes(n_classes, n_attr, signal_strength, n_subset, state_dict, 
     folder_name = get_full_shapes_folder_path(n_classes, n_attr, signal_strength, relative_folder=SAVED_MODELS_FOLDER)
     bottleneck = "" if (model_type == "cnn") or not hard_bottleneck else "_hard"
     if adversarial:
-        adversarial_string = f"_adversarial"
+        adversarial_string = "_adversarial"
     else:
         adversarial_string = ""
     filename = Path(f"{model_type}_sub{n_subset}_{metric}{bottleneck}{adversarial_string}.pth")
@@ -451,7 +451,7 @@ def load_hyperparameters_shapes(n_classes=None, n_attr=None, signal_strength=Non
         dict: The hyperparameters.
     """
     if (not default and not fast) and ((n_classes is None) or (n_attr is None) or (n_subset is None)):
-        message = f"When getting non-default or non-fast hyperparameters, arguments `n_classes`, `n_attr` and "
+        message = "When getting non-default or non-fast hyperparameters, arguments `n_classes`, `n_attr` and "
         message += f"`n_subset` must be provided (all of them must be int). Was {n_classes=}, {n_attr=}, {n_subset=}. "
         raise ValueError(message)
 
@@ -635,9 +635,9 @@ def load_data_list_cub(mode, n_subset=None):
         data_list_path = base_path / CUB_TABLES_FOLDER / filename
     try:
         data_list = pickle.load(open(data_list_path, "rb"))
-    except Exception as e:
+    except Exception:
         message = f"Data-list {data_list_path} not found. Try creating datalist with make_subset_cub() from "
-        message += f"`src.datasets.datasets_cub.py`, and check the paths in `src.constants.py`. "
+        message += "`src.datasets.datasets_cub.py`, and check the paths in `src.constants.py`. "
         raise FileNotFoundError(message)
     return data_list
 
@@ -765,7 +765,7 @@ def load_model_cub(n_subset, model_type, metric="loss", hard_bottleneck=False, d
     else:  # `n_subset` = None means full dataset
         sub_string = "_full"
     if adversarial:
-        adversarial_string = f"_adversarial"
+        adversarial_string = "_adversarial"
     else:
         adversarial_string = ""
     filename = Path(f"{model_type}{sub_string}_{metric}{bottleneck}{adversarial_string}.pth")
@@ -800,7 +800,7 @@ def save_model_cub(n_subset, state_dict, model_type, metric="loss", hard_bottlen
     else:  # `n_subset` = None means full dataset
         sub_string = "_full"
     if adversarial:
-        adversarial_string = f"_adversarial"
+        adversarial_string = "_adversarial"
     else:
         adversarial_string = ""
     filename = Path(f"{model_type}{sub_string}_{metric}{bottleneck}{adversarial_string}.pth")
@@ -1006,7 +1006,7 @@ def save_single_image(path, dataset_name, alpha, concept_threshold, type, index)
     many settings.
 
     Args:
-        path (str): Path to the image, so we can use the 
+        path (str): Path to the image.
         dataset (str): String of the dataset, "shapes" or "cub".
         alpha (float): The alpha used for the images.
         concept_threshold (float): The concept threshold used for the images.
@@ -1128,3 +1128,78 @@ def save_adversarial_text_file(attr_string, dataset_name, alpha, concept_thresho
     full_path = make_file_path(full_folder_path, ADVERSARIAL_TEXT_FILENAME)
     with open(full_path, "w") as outfile:
         outfile.write(attr_string)
+
+
+def get_concept_label_names_cub(folder_name, image_name):
+    # # class name to class number
+    # class_name_to_number = {}
+    # with open("data/CUB_200_2011/classes.txt") as infile:
+    #     for line in infile:
+    #         words = line.split(".")
+    #         string_number = words[0].split()[1]
+    #         class_name = words[-1]
+    #         class_name_to_number[class_name] = string_number
+    # # paths to numbers
+    path_to_numbers = {}
+    with open("data/CUB_200_2011/images.txt") as infile:
+        for line in infile:
+            words = line.split()
+            string_number = words[0]
+            image_path = words[1]
+            path_to_numbers[image_path] = string_number
+
+    # Concept int to string
+    concept_int_to_string = {}
+    with open("data/CUB_200_2011/attributes/attributes.txt") as infile:
+        for line in infile:
+            words = line.split()
+            concept_int = words[0]
+            concept_string = words[1]
+            concept_int_to_string[concept_int] = concept_string
+
+    # class_name = image_name.split("_0")[0]
+    # class_folder_name = class_name_to_number[class_name] + "." + class_name
+    image_path = Path(folder_name) / image_name
+    image_number = path_to_numbers[str(image_path)]
+
+    concept_list_int = []
+    concept_list_string = []
+    with open("data/CUB_200_2011/attributes/image_attribute_labels.txt") as infile:
+        for line in infile:
+            words = line.split()
+            current_image_number = words[0]
+            if current_image_number != image_number:
+                # print(current_image_number, image_number)
+                continue
+            if words[2] == "1":  # Concept is present
+                concept_list_int.append(words[1])  # Number of concept present
+                concept_string = concept_int_to_string[words[1]]
+                concept_list_string.append(concept_string)
+    print(concept_list_string)
+
+    attribute_mapping = {}
+    with open("data/CUB_processed/attribute_mapping.txt") as infile:
+        for line in infile:
+            words = line.split(": ")
+            processed_number = int(words[0])
+            cub_number = int(words[1].strip())
+            attribute_mapping[processed_number] = cub_number
+
+    from src.datasets.datasets_cub import load_data_cub
+    i = 0
+    data = load_data_cub(mode="test", batch_size=1, shuffle=False)
+    for input, labels, attr_labels, paths in data:
+        i += 1
+        if i % 500 == 0:
+            print(i)
+        new_image_path = paths[0].split("images/")[1]
+        if new_image_path == str(image_path):
+            new_concept_list_int = []
+            new_concept_list_string = []
+            for i in range(112):
+                if attr_labels.squeeze()[i]:
+                    new_concept_list_int.append(attribute_mapping[i])
+                    concept_string = concept_int_to_string[str(attribute_mapping[i] + 1)]
+                    new_concept_list_string.append(concept_string)
+            break
+    print(new_concept_list_string)

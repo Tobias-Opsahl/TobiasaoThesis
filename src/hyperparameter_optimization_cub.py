@@ -4,7 +4,7 @@ import torch.nn as nn
 
 from src.datasets.datasets_cub import load_data_cub, make_subset_cub
 from src.train import train_simple, train_cbm
-from src.common.utils import load_single_model_cub, get_logger, seed_everything, find_class_imbalance
+from src.common.utils import load_single_model_cub, get_logger, seed_everything
 from src.common.path_utils import load_hyperparameters_cub, save_hyperparameters_cub
 from src.constants import MODEL_STRINGS_CUB, MODEL_STRINGS_ALL_CUB
 
@@ -133,7 +133,7 @@ class HyperparameterOptimizationShapes:
             ValueError or TypeError: If the dict is on wrong format.
         """
         if not isinstance(hyperparameters_to_search, dict):
-            message = f"Argument `hyperparameters_to_search` must be of type dict, and map hyperparameter-names to "
+            message = "Argument `hyperparameters_to_search` must be of type dict, and map hyperparameter-names to "
             message += f"booleans. Was type {type(hyperparameters_to_search)} with value {hyperparameters_to_search}. "
             raise TypeError(message)
         if hyperparameters_to_search.get("attr_schedule") is not None:
@@ -141,12 +141,12 @@ class HyperparameterOptimizationShapes:
             attr_weight = hyperparameters_to_search["attr_weight"]
             attr_weight_decay = hyperparameters_to_search["attr_weight_decay"]
             if attr_schedule and (attr_weight or attr_weight_decay):
-                message = f"Argument `hyperparameters_to_search`: When `attr_schedule` is True, `attr_weight` and "
+                message = "Argument `hyperparameters_to_search`: When `attr_schedule` is True, `attr_weight` and "
                 message += f"`attr_weight_schedule` must be False. Was {attr_weight=}, {attr_weight_decay=}. "
                 raise ValueError(message)
         for hyperparameter_name in self.hyperparameter_names:
             if hyperparameters_to_search.get(hyperparameter_name) is None:
-                message = f"Argument `hyperparameters_to_search` (dict) did not include all needed arguments. "
+                message = "Argument `hyperparameters_to_search` (dict) did not include all needed arguments. "
                 message += f"Was missing argument {hyperparameter_name}. "
                 message += f"Need the following keys mapped to a boolean: {self.hyperparameter_names}. "
                 raise ValueError(message)
@@ -416,8 +416,7 @@ class HyperparameterOptimizationShapes:
             Exception: If the hyperparameters are not yet searched for.
         """
         if not self.study_ran:
-            raise Exception(
-                f"run_hyperparameter_search must be called before write_to_yaml().")
+            raise Exception("run_hyperparameter_search must be called before write_to_yaml().")
         trial = self.study.best_trial
         hyperparameters = self._get_hyperparameters_from_best_trial(trial)
         hyperparameters = self._round_dict_values(hyperparameters)
