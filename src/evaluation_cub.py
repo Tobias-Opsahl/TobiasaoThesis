@@ -1,14 +1,13 @@
 import torch
 import torch.nn as nn
 
-from src.train import train_simple, train_cbm
-from src.evaluation import evaluate_on_test_set
+from src.common.path_utils import load_history_cub, load_hyperparameters_cub, save_history_cub, save_model_cub
+from src.common.utils import add_histories, get_logger, load_models_cub, seed_everything
+from src.constants import CONCEPT_MODELS_STRINGS_CUB, FAST_MAX_EPOCHS_CUB, MAX_EPOCHS, MODEL_STRINGS_CUB
 from src.datasets.datasets_cub import load_data_cub, make_subset_cub
-from src.plotting import plot_training_histories_cub, plot_test_accuracies_cub, plot_mpo_scores_cub
-from src.common.utils import seed_everything, get_logger, load_models_cub, add_histories
-from src.common.path_utils import load_hyperparameters_cub, save_history_cub, save_model_cub, load_history_cub
-from src.constants import (MODEL_STRINGS_CUB, MAX_EPOCHS, FAST_MAX_EPOCHS_CUB, CONCEPT_MODELS_STRINGS_CUB)
-
+from src.evaluation import evaluate_on_test_set
+from src.plotting import plot_mpo_scores_cub, plot_test_accuracies_cub, plot_training_histories_cub
+from src.train import train_cbm, train_simple
 
 logger = get_logger(__name__)
 
@@ -103,7 +102,7 @@ def train_and_evaluate_cub(
 
 
 def run_models_on_subsets_and_plot(
-        subsets,  model_strings=None, n_bootstrap=1, fast=False,
+        subsets, model_strings=None, n_bootstrap=1, fast=False,
         batch_size=16, hard_bottleneck=None, device=None, non_blocking=False, num_workers=0, pin_memory=False,
         persistent_workers=False, base_seed=57):
     """

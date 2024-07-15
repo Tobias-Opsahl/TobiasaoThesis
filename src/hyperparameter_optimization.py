@@ -2,12 +2,11 @@ import optuna
 import torch
 import torch.nn as nn
 
-from src.datasets.datasets_shapes import load_data_shapes, make_subset_shapes
-from src.train import train_simple, train_cbm
-from src.common.utils import load_single_model, get_logger, seed_everything
 from src.common.path_utils import load_hyperparameters_shapes, save_hyperparameters_shapes
+from src.common.utils import get_logger, load_single_model, seed_everything
 from src.constants import MODEL_STRINGS_ALL_SHAPES, MODEL_STRINGS_SHAPES
-
+from src.datasets.datasets_shapes import load_data_shapes, make_subset_shapes
+from src.train import train_cbm, train_simple
 
 logger = get_logger(__name__)
 

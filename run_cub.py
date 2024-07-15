@@ -2,13 +2,14 @@
 Testing function where the code can be run.
 """
 import argparse
+
 import torch
 
-from src.common.utils import seed_everything, get_logger, set_global_log_level, parse_int_list
-from src.evaluation_cub import run_models_on_subsets_and_plot, only_plot
+from src.adversarial_attacks import adversarial_grid_search, load_model_and_run_attacks_cub
+from src.common.utils import get_logger, parse_int_list, seed_everything, set_global_log_level
+from src.constants import MODEL_STRINGS_ALL_CUB, MODEL_STRINGS_CUB, MODEL_STRINGS_ORACLE, SCM_ONLY
+from src.evaluation_cub import only_plot, run_models_on_subsets_and_plot
 from src.hyperparameter_optimization_cub import run_hyperparameter_optimization_all_models
-from src.constants import MODEL_STRINGS_CUB, MODEL_STRINGS_ORACLE, MODEL_STRINGS_ALL_CUB, SCM_ONLY
-from src.adversarial_attacks import load_model_and_run_attacks_cub, adversarial_grid_search
 
 
 def parse_arguments():

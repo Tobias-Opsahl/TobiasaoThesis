@@ -2,12 +2,11 @@ import optuna
 import torch
 import torch.nn as nn
 
-from src.datasets.datasets_cub import load_data_cub, make_subset_cub
-from src.train import train_simple, train_cbm
-from src.common.utils import load_single_model_cub, get_logger, seed_everything
 from src.common.path_utils import load_hyperparameters_cub, save_hyperparameters_cub
-from src.constants import MODEL_STRINGS_CUB, MODEL_STRINGS_ALL_CUB
-
+from src.common.utils import get_logger, load_single_model_cub, seed_everything
+from src.constants import MODEL_STRINGS_ALL_CUB, MODEL_STRINGS_CUB
+from src.datasets.datasets_cub import load_data_cub, make_subset_cub
+from src.train import train_cbm, train_simple
 
 logger = get_logger(__name__)
 

@@ -1,14 +1,15 @@
-import torch
-import random
 import pickle
-import torchvision
-import numpy as np
-from torch.utils.data import Dataset, DataLoader
-from PIL import Image
+import random
 
-from src.common.utils import seed_everything
-from src.common.path_utils import (load_data_list_cub, write_data_list_cub, get_feature_selection_cub,
+import numpy as np
+import torch
+import torchvision
+from PIL import Image
+from torch.utils.data import DataLoader, Dataset
+
+from src.common.path_utils import (get_feature_selection_cub, load_data_list_cub, write_data_list_cub,
                                    write_test_data_list_cub)
+from src.common.utils import seed_everything
 from src.constants import N_CLASSES_CUB
 
 
@@ -131,8 +132,7 @@ def normalize_cub(input_image):
     Returns:
         Tensor: The normalised image.
     """
-    normalize = torchvision.transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                                 std=[0.229, 0.224, 0.225])
+    normalize = torchvision.transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     normalized = normalize(input_image)
     return normalized
 
@@ -150,8 +150,8 @@ def denormalize_cub(input_image):
     Returns:
         Tensor: The denormalised image.
     """
-    denormalize = torchvision.transforms.Normalize(mean=[-0.485 / 0.229, -0.456/0.224, -0.406/0.225],
-                                                   std=[1 / 0.229, 1 / 0.224, 1 / 0.225])
+    denormalize = torchvision.transforms.Normalize(
+        mean=[-0.485 / 0.229, -0.456 / 0.224, -0.406 / 0.225], std=[1 / 0.229, 1 / 0.224, 1 / 0.225])
     denormalized = denormalize(input_image)
     return denormalized
 
@@ -250,10 +250,10 @@ def load_data_cub(mode="train-val", n_subset=None, n_attr=112,
     for mode in modes:  # Loop over the train, val, test (or just one of them)
         transform = get_transforms_cub(mode, resol=resol, normalization=normalization)
         data_list = load_data_list_cub(mode=mode, n_subset=n_subset)
-        dataset = CUBDataset(data_list=data_list,  transform=transform, attr_mask=attr_mask)
-        dataloader = make_dataloader(dataset=dataset, sampler=sampler, batch_size=batch_size, shuffle=shuffle,
-                                     drop_last=drop_last, num_workers=num_workers, pin_memory=pin_memory,
-                                     persistent_workers=persistent_workers)
+        dataset = CUBDataset(data_list=data_list, transform=transform, attr_mask=attr_mask)
+        dataloader = make_dataloader(
+            dataset=dataset, sampler=sampler, batch_size=batch_size, shuffle=shuffle, drop_last=drop_last,
+            num_workers=num_workers, pin_memory=pin_memory, persistent_workers=persistent_workers)
         dataloaders.append(dataloader)
 
     if len(dataloaders) == 1:  # Just return the datalaoder, not list

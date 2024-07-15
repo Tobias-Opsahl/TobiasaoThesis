@@ -1,9 +1,8 @@
-import torch
 import optuna
+import torch
 
 from src.common.utils import get_logger
 from src.constants import N_EARLY_STOP_DEFAULT
-
 
 logger = get_logger(__name__)
 

@@ -1,14 +1,13 @@
 import torch
 import torch.nn as nn
 
-from src.train import train_simple, train_cbm
+from src.common.path_utils import (load_history_shapes, load_hyperparameters_shapes, save_history_shapes,
+                                   save_model_shapes)
+from src.common.utils import add_histories, get_logger, load_models_shapes, seed_everything
+from src.constants import CONCEPT_MODELS_STRINGS_SHAPES, FAST_MAX_EPOCHS_SHAPES, MAX_EPOCHS, MODEL_STRINGS_SHAPES
 from src.datasets.datasets_shapes import load_data_shapes, make_subset_shapes
-from src.plotting import plot_training_histories_shapes, plot_test_accuracies_shapes, plot_mpo_scores_shapes
-from src.common.utils import seed_everything, get_logger, load_models_shapes, add_histories
-from src.common.path_utils import (load_hyperparameters_shapes, save_history_shapes, save_model_shapes,
-                                   load_history_shapes)
-from src.constants import (MAX_EPOCHS, FAST_MAX_EPOCHS_SHAPES, MODEL_STRINGS_SHAPES, CONCEPT_MODELS_STRINGS_SHAPES)
-
+from src.plotting import plot_mpo_scores_shapes, plot_test_accuracies_shapes, plot_training_histories_shapes
+from src.train import train_cbm, train_simple
 
 logger = get_logger(__name__)
 

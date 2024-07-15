@@ -25,14 +25,14 @@ found in `datasets_shapes.py`.
 """
 
 import os
-import shutil
 import pickle
-import numpy as np
-import matplotlib.pyplot as plt
+import shutil
+
 import matplotlib.patches as patches
+import matplotlib.pyplot as plt
+import numpy as np
 
-from src.common.utils import split_dataset, get_logger
-
+from src.common.utils import get_logger, split_dataset
 
 logger = get_logger(__name__)
 

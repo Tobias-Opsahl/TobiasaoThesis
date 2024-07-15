@@ -1,10 +1,11 @@
 import os
 import pickle
 import random
+
 import torch
 import torchvision
-from torch.utils.data import Dataset, DataLoader
 from PIL import Image
+from torch.utils.data import DataLoader, Dataset
 
 from src.common.path_utils import load_data_list_shapes, write_data_list_shapes
 

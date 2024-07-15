@@ -3,10 +3,11 @@ File for feature selecting the 112 attributes from the CUB dataset.
 We try to see if they can be accurately represented by a smaller subset.
 """
 import pickle
+
 import numpy as np
+from sklearn.feature_selection import RFE
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score
-from sklearn.feature_selection import RFE
 
 
 def read_processed_cub(path="data/CUB_processed/class_attr_data_10/", subset=""):

@@ -3,9 +3,9 @@ Note that a lot of this code is similar to Shapes, and could easily be generic i
 constant parallel development, so it was easier to keep them separate.
 """
 import torch
-import torchvision
 import torch.nn as nn
 import torch.nn.functional as F
+import torchvision
 
 from src.constants import USE_XAVIER_INIT_IN_BOTTLENECK
 
