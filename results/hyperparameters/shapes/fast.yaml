@@ -1,5 +1,5 @@
 cbm:
-  attr_weight: 1
+  attr_weight: 10
   attr_weight_decay: 1
   gamma: 0.7
   learning_rate: 0.01
@@ -10,7 +10,7 @@ cbm:
   dropout_probability: 0.1
   hard: false
 cbm_res:
-  attr_weight: 1
+  attr_weight: 10
   attr_weight_decay: 1
   gamma: 0.7
   learning_rate: 0.01
@@ -20,7 +20,7 @@ cbm_res:
   dropout_probability: 0.1
   hard: false
 cbm_skip:
-  attr_weight: 1
+  attr_weight: 10
   attr_weight_decay: 1
   gamma: 0.7
   learning_rate: 0.01
@@ -31,7 +31,7 @@ cbm_skip:
   dropout_probability: 0.1
   hard: false
 scm:
-  attr_weight: 1
+  attr_weight: 10
   attr_weight_decay: 1
   gamma: 0.7
   learning_rate: 0.01
