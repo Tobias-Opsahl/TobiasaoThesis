@@ -29,7 +29,7 @@ class ShapesDataset(Dataset):
         return len(self.data_list)
 
     def __getitem__(self, idx):
-        img_path = self.data_list[idx]["img_path"]
+        img_path = str(self.data_list[idx]["img_path"])
         class_label = self.data_list[idx]["class_label"]
         # Convert from dict to list to tensor
         attribute_label = torch.tensor(list(self.data_list[idx]["attribute_label"].values())).to(torch.float32)
