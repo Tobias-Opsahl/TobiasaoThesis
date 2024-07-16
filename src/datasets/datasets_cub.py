@@ -9,8 +9,11 @@ from torch.utils.data import DataLoader, Dataset
 
 from src.common.path_utils import (get_feature_selection_cub, load_data_list_cub, write_data_list_cub,
                                    write_test_data_list_cub)
-from src.common.utils import seed_everything
-from src.constants import N_CLASSES_CUB
+from src.common.utils import seed_everything, get_logger
+from src.constants import N_CLASSES_CUB, DATA_FOLDER
+
+
+logger = get_logger(__name__)
 
 
 class CUBDataset(Dataset):
@@ -315,7 +318,7 @@ def make_small_test_set(n_size=200):
     write_test_data_list_cub(small_test, "test_small.pkl")
 
 
-def make_correct_paths(base_path="data/"):
+def make_correct_paths():
     """
     Reads the preprocessed CUB dictionaries and overwrites the base path.
     The original published dataset had the authors full path in the `img_path`
@@ -327,14 +330,23 @@ def make_correct_paths(base_path="data/"):
             The folders `CUB_processed/class_attr_data_10/` should be inside
             this folder.
     """
+    base_path = DATA_FOLDER
     mid_path = "CUB_processed/class_attr_data_10/"
+    logger.info("Starting correcting absolute paths in CUB to relative paths. ")
     for dataset in ["train", "val", "test"]:
+        logger.info(f"Working on dataset type {dataset}...")
         full_path = base_path + mid_path + dataset + ".pkl"
         data_list = pickle.load(open(full_path, "rb"))
         # Data is a list of each observation
         for row in data_list:  # Loop over each dict
             # Overwrite each path with correct path
+            if len(row["img_path"].split("datasets/")) == 1:
+                message = f"No `datasets/` found in CUB path. Path was `{row['img_path']}`. Paths are likely already "
+                message += "corrected. Aborting `make_correct_paths()`. "
+                logger.warn(message)
+                return
             row["img_path"] = base_path + row["img_path"].split("datasets/")[1]
 
         with open(base_path + mid_path + dataset + ".pkl", "wb") as outfile:
             pickle.dump(data_list, outfile)
+    logger.info("Successfully finished correcting paths in CUB.")
