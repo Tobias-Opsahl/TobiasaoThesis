@@ -36,16 +36,16 @@ The other model predicts the concepts sequentially through the layers, instead o
 
 The thesis argues that current concept datasets has various shortcomings, so in order to properly benchmark the models, we propose our own class of synthetic concept datasets, called *ConceptShapes*. The amount of classes, concepts, and relationship between concepts and classes can be adjusted by the user. Datasets can be quickly generated, or downloaded from the [releases](https://github.com/Tobias-Opsahl/ConceptShapes/releases). We made a separate repository explaining the datasets in detail, along with the most user-friendly documentation and code to generate, process and load the data, which can be [found here](https://github.com/Tobias-Opsahl/ConceptShapes).
 
-![Adversarial_Concept_Attack](readme_images/cub_concept_attack.png)
-*Example of Adversarial Concept Attack. The image is perturbed so that the concept predictions remain the same, but the downstream target prediction is changed.*
-
-Adversarial Concept Attacks differs from [this paper](https://ojs.aaai.org/index.php/AAAI/article/view/26765), which constructs adversarial attack algorithm that changes the concept predictions, but keeps the class prediction the same.
-
 ### 3) Adversarial Concept Attacks
 
 Previous concept-based models have been motivated by interpretability. Since the CBM uses only concept predictions in order to predict the output, the model's behaviour can be explained by its concept predictions. However, several experiments challenge this claim, and show that more information than just the concepts are embedded in the concept predictions [(article 1)](https://arxiv.org/abs/2106.13314) [(article 2)](https://arxiv.org/abs/2105.04289). We further put the promised interpretable qualities into questions by creating *adversarial concept attacks*.
 
 We construct an algorithm that, given a CBM and an input image, produces a perturbed image that looks identical to humans, producing the exact same concept predictions, but different target predictions. Since the concept predictions are used as the interpretation of the model's behaviour, but two identical interpretations give two vastly different model behaviours, we believe this challenges the interpretable qualities of concept-based models.
+
+![Adversarial_Concept_Attack](readme_images/cub_concept_attack.png)
+*Example of Adversarial Concept Attack. The image is perturbed so that the concept predictions remain the same, but the downstream target prediction is changed.*
+
+Adversarial Concept Attacks differs from [this paper](https://ojs.aaai.org/index.php/AAAI/article/view/26765), which constructs adversarial attack algorithm that changes the concept predictions, but keeps the class prediction the same.
 
 ## Dependencies
 
@@ -82,7 +82,7 @@ and **Python** version 3.10.12.
 
 ConceptShapes is a flexible synthetic class of concept datasets, originally proposed in this Thesis. It provides an easy way to generate datasets with concept labels, where the user can choose the amount of classes, amount of concepts and the relationship between them. Many versions of the datasets were used in the experiments in the thesis. The code for creating the datasets is provided in this repository, but we recommend to use [this updated](https://github.com/Tobias-Opsahl/ConceptShapes) repository, or download from its releases. See the README.md there for more information about the datasets.
 
-All of the ConceptShapes datasets are light and can be trained and evaluated on an ordinary laptop's CPU in a couple of minutes. Please put the datasets in the `data/conceptshapes/` folder, illustrated in `File Structure`.
+All of the ConceptShapes datasets are light and can be trained and evaluated on an ordinary laptop's CPU in a couple of minutes. Please put the datasets in the `data/shapes/` folder, illustrated in `File Structure`.
 
 ### CUB
 
@@ -90,13 +90,21 @@ The Caltech-USCD Birds-200-2011 (CUB) [(paper link)](https://www.florian-schroff
 
 The original dataset and the processed version can be downloaded [here](https://worksheets.codalab.org/worksheets/0x362911581fcd4e048ddfd84f47203fd2). Please download `CUB_200_2011` and `CUB_processed`, and put them in the `data/` folder.
 
+The processed dataset has absolute paths with the authors' name, so it needs to be changed to relative paths. In order to do so, simply run:
+
+```cli
+python initialize.py
+```
+
+This will loop over the processed data table and change the absolute paths to relative paths.
+
 ## File Structure
 
 Most of the source code is saved in `src/`, while the data should be saved in `data/`. For running experiments, please use `run_cub.py` and `run_shapes.py` with command line arguments, explained in the section `Example Runs`. Below is an overview of the filetree. The file `run_make_datasets_shapes.py` was originally used to make the ConceptShapes datasets, but we recommend to use [this repo](https://github.com/Tobias-Opsahl/ConceptShapes) instead.
 
 ```filetree
 data/
-└── conceptshapes/
+└── shapes/
    ├── shapes_1k_c10_a5_s100/
    ├── shapes_1k_c10_a9_s100/
    └── ... other conceptshapes datasets
@@ -133,7 +141,9 @@ Once the desired dataset is downloaded and the dependecies are installed, the co
 
 ConceptShapes can be run on an ordinary laptop's CPU, but we recommend using a GPU when using the full CUB dataset.
 
-**Tip:** In order to quickly test the code, it can be run with `--fast`, which runs very few epochs when training. If `--n_subset` is not specified, it will be run on a very small subset of the data, which will make the code run very fast. This is very convenient for checking that everything works before doing the full run.
+**Tip:** In order to quickly test the code, it can be run with `--fast`, which runs very few epochs when training. If `--n_subset` is not specified, it will be run on a very small subset of the data, which will make the code run very fast. This is very convenient for checking that everything works before doing the full run. When running hyperparameter searches, also add `--n_trials 1` to terminate after a single run.
+
+When running CUB, remember to run `python initialize.py` in order to correct the CUB paths.
 
 ### ConceptShapes Dataset Specification
 
@@ -165,7 +175,7 @@ In order to only run on the full CUB dataset, one can use `--subsets 30`.
 
 ### Training, Evaluating and Plotting
 
-One can train, evaluate and plot the results by passing `--evaluate_and_plot`. This will use the best hyperparameters to train the models, evaluate it on the test-set, and plot results. The best hyperparameters found are saved in `results/hyperparameters/`, but one can override it by running hyperparameter searches (explained below). The argument `--n_bootstrap <n>` specified how many times to draw subsets that each model is trained and tested on, which was 10 for ConceptShapes and 3 for CUB.
+One can train, evaluate and plot the results by passing `--evaluate_and_plot`. This will use the best hyperparameters to train the models, evaluate it on the test-set, and plot results. If no hyperparameters are searched for yet (see below), this will just use defualt hyperparameters instead. The argument `--n_bootstrap <n>` specified how many times to draw subsets that each model is trained and tested on, which was 10 for ConceptShapes and 3 for CUB.
 
 Here are some example runs:
 
@@ -210,11 +220,11 @@ Other hardware arguments are `--non_blocking`, which will make the RAM to VRAM a
 Use `--run_adversarial_attacks` to run adversarial concept attacks. If the model to run on is not trained, also pass `--train_model`. Use the argument `--adversarial_grid_search` to perform a grid search on the hyperparameters. There are various hyperparameters that can be changed as well. Here are some example runs:
 
 ```cli
-python run_shapes.py --adversarial_grid_search --max_steps 800 --max_images 200
+python run_shapes.py --adversarial_grid_search --n_classes 10 --n_attr 9 --signal_strength 98 --max_steps 800 --max_images 200
 ```
 
 ```cli
-python run_shapes.py --run_adversarial_attack --max_steps 800 --max_images 10000 --grad_weight 0.999 --logging_level debug
+python run_shapes.py --run_adversarial_attack --n_classes 10 --n_attr 9 --signal_strength 98 --max_steps 800 --max_images 10000 --grad_weight 0.999 --logging_level debug
 ```
 
 ```cli
@@ -222,3 +232,13 @@ python run_cub.py --run_adversarial_attacks --train_model --epsilon 0.1 --alpha 
 ```
 
 ![no gif :(](https://media.giphy.com/media/mcsPU3SkKrYDdW3aAU/giphy.gif)
+
+### Error Messages
+
+If you get something like:
+
+```cli
+No such file or directory: '/juice/scr/scr102/scr/thaonguyen/CUB_supervision/datasets/CUB_200_2011/images/ ...
+```
+
+when running CUB, it is because you have not changed the CBM authors' absolute path to a relative one. See the `CUB` section above.
